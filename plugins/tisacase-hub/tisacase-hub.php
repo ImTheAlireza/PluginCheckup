@@ -70,6 +70,20 @@ function tsh_ver( $rel = '' ) {
 	return $ver;
 }
 
+/**
+ * هدر سفارشی را به وردپرس معرفی می‌کند تا `get_plugins()` آن را برگرداند
+ * (بدون این فیلتر، `TisaCase Hub:` در دادهٔ افزونه‌ها دیده نمی‌شود).
+ * باید همین‌جا و پیش از هر فراخوانی get_plugins() ثبت شود.
+ *
+ * @param array $headers هدرهای مجاز.
+ * @return array
+ */
+function tsh_extra_plugin_headers( $headers ) {
+	$headers[] = 'TisaCase Hub';
+	return $headers;
+}
+add_filter( 'extra_plugin_headers', 'tsh_extra_plugin_headers' );
+
 add_action( 'init', 'tsh_load_textdomain' );
 /**
  * بارگذاری متن‌ها (بستهٔ زبانی اختیاری است).
