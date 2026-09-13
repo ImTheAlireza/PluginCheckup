@@ -1,0 +1,121 @@
+/* TisaCase Order Phone Exporter — فقط چیزهای مخصوص این صفحه.
+   کامپوننت‌ها از tisacase-ui.css (هاب) می‌آیند؛ اینجا همه var() + fallback است. */
+
+.tisa-phx .tisa-page-head {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--tisa-sp-3, 12px);
+	margin: 0 0 var(--tisa-sp-4, 16px);
+}
+
+.tisa-phx .tisa-page-head .tisa-meta {
+	margin: 4px 0 0;
+}
+
+.tisa-phx__card {
+	max-width: 900px;
+	display: flex;
+	flex-direction: column;
+	gap: var(--tisa-sp-4, 16px);
+}
+
+.tisa-phx__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tisa-sp-2, 8px);
+}
+
+/* دکمهٔ آرام — اگر هاب نبود، همین fallback کافی است */
+.tisa-phx .tisa-btn--ghost {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
+	color: var(--tisa-muted, #77828A);
+}
+
+.tisa-phx .tisa-btn--ghost:hover {
+	background: var(--tisa-surface-3, #F6F5F1);
+	color: var(--tisa-ink, #1F2A2E);
+}
+
+.tisa-phx__box {
+	display: flex;
+	flex-direction: column;
+	gap: var(--tisa-sp-3, 12px);
+	padding-top: var(--tisa-sp-4, 16px);
+	border-top: 1px solid var(--tisa-border, #E3E1DA);
+}
+
+.tisa-phx__box[hidden] {
+	display: none;
+}
+
+/* اعداد پیشرفت: قلم رابط + tabular، نه مونو (قرارداد §۸) */
+.tisa-phx .tisa-progress-text {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.9;
+	color: var(--tisa-ink, #1F2A2E);
+}
+
+.tisa-phx .tisa-progress-text .is-ok   { color: var(--tisa-success, #1A7F37); }
+.tisa-phx .tisa-progress-text .is-warn { color: var(--tisa-warning-ink, #8A6116); }
+.tisa-phx .tisa-progress-text .is-fail { color: var(--tisa-danger, #B5453A); }
+
+/* خطا: لاگِ LTR داخل پنل نرمِ قرمز */
+.tisa-phx__err {
+	margin: 0;
+	max-height: 180px;
+	overflow: auto;
+	padding: var(--tisa-sp-3, 12px);
+	border-radius: var(--tisa-r-sm, 10px);
+	border-inline-start: 3px solid var(--tisa-danger, #B5453A);
+	background: var(--tisa-danger-soft, #FBECEA);
+	color: var(--tisa-danger-ink, #8E3128);
+	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
+	font-size: var(--tisa-fs-meta, 12px);
+	direction: ltr;
+	text-align: left;
+	white-space: pre-wrap;
+}
+
+.tisa-phx__files-h {
+	margin: var(--tisa-sp-2, 8px) 0 var(--tisa-sp-2, 8px);
+}
+
+.tisa-phx__files-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tisa-sp-2, 8px);
+}
+
+.tisa-phx__help {
+	max-width: 900px;
+	margin-top: var(--tisa-sp-4, 16px);
+}
+
+.tisa-phx__help summary {
+	cursor: pointer;
+	color: var(--tisa-muted, #77828A);
+}
+
+.tisa-phx__help p {
+	margin: var(--tisa-sp-2, 8px) 0 0;
+	line-height: 1.9;
+}
+
+/* fallback های حداقلی وقتی هاب خاموش است (فقط چیزهایی که بدون آن‌ها صفحه می‌شکند) */
+.tisa-phx .tisa-progress {
+	height: 10px;
+	overflow: hidden;
+	border-radius: var(--tisa-r-pill, 999px);
+	background: var(--tisa-surface-3, #EFEBE1);
+}
+
+.tisa-phx .tisa-progress__bar {
+	height: 100%;
+	background: var(--tisa-primary, #0E7C6B);
+	transition: width .2s ease;
+}
