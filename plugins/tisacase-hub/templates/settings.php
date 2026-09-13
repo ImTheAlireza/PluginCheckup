@@ -127,6 +127,27 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 
 		<div class="tisa-setrow">
 			<div class="tisa-setrow__text">
+				<b class="tisa-h3"><?php esc_html_e( 'جایگاه هاب در نوار کنار', 'tisacase-hub' ); ?></b>
+				<p class="tisa-meta"><?php esc_html_e( 'هاب یک گزینهٔ مستقل است — هیچ ورودی‌ای داخل منوی ووکامرس ثبت نمی‌کند. جایگاهش را خودتان انتخاب کنید؛ اگر جایی شلوغ بود، «عدد دلخواه» را امتحان کنید (اعداد اعشاری مثل ۵۷٫۵ هم قبول است).', 'tisacase-hub' ); ?></p>
+			</div>
+			<div class="tisa-setrow__ctrl">
+				<label class="tisa-field" style="margin:0">
+					<span class="tisa-label"><?php esc_html_e( 'جایگاه', 'tisacase-hub' ); ?></span>
+					<select name="<?php echo esc_attr( $opt ); ?>[menu_position]" class="tisa-select" id="tsh-pos">
+						<?php foreach ( TSH_Admin::positions() as $pkey => $pinfo ) : ?>
+							<option value="<?php echo esc_attr( $pkey ); ?>" <?php selected( $settings['menu_position'], $pkey ); ?>><?php echo esc_html( $pinfo['label'] ); ?></option>
+						<?php endforeach; ?>
+					</select>
+				</label>
+				<label class="tisa-field" style="margin:0">
+					<span class="tisa-label"><?php esc_html_e( 'عدد دلخواه', 'tisacase-hub' ); ?></span>
+					<input type="text" name="<?php echo esc_attr( $opt ); ?>[menu_position_custom]" class="tisa-input tisa-input--number" style="max-width:110px" value="<?php echo esc_attr( (string) $settings['menu_position_custom'] ); ?>" placeholder="57.5" pattern="\d{1,2}(\.\d{1,2})?" dir="ltr">
+				</label>
+			</div>
+		</div>
+
+		<div class="tisa-setrow">
+			<div class="tisa-setrow__text">
 				<b class="tisa-h3"><?php esc_html_e( 'آیتم‌های پخش‌شده در ووکامرس/محصولات را مخفی کن', 'tisacase-hub' ); ?></b>
 				<p class="tisa-meta"><?php esc_html_e( 'فقط نمایش در منو حذف می‌شود؛ URL مستقیم، بوک‌مارک‌ها و صفحهٔ هر افزونه سالم است. با خاموش‌کردن این گزینه یا غیرفعال‌کردن هاب، همه برمی‌گردند.', 'tisacase-hub' ); ?></p>
 			</div>

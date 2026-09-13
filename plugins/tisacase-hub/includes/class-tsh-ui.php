@@ -39,6 +39,8 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 				'hide_scattered' => 1,
 				'style_plugins'  => 1,
 				'style_product_screens' => 1,
+				'menu_position'         => 'top',
+				'menu_position_custom'  => '',
 				'show_counts'    => 1,
 				'cache_ttl'      => 300,
 				'hidden'         => array(),

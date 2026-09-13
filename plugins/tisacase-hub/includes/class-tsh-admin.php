@@ -52,22 +52,72 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		 * @return void
 		 */
 		public static function menu() {
-			self::$main = add_menu_page(
-				__( 'اختصاصی تیساکیس', 'tisacase-hub' ),
-				__( 'اختصاصی تیساکیس', 'tisacase-hub' ),
-				self::$cap,
-				TSH_SLUG,
-				array( __CLASS__, 'render_hub' ),
-				TSH_View::icon_data_uri( 'grid' ),
-				'56.5'
-			);
+			$position = self::menu_position();
+			$icon     = TSH_View::icon_data_uri( 'grid' );
+
+			self::$main = ( '' === $position )
+				? add_menu_page( __( 'اختصاصی تیساکیس', 'tisacase-hub' ), __( 'اختصاصی تیساکیس', 'tisacase-hub' ), self::$cap, TSH_SLUG, array( __CLASS__, 'render_hub' ), $icon )
+				: add_menu_page( __( 'اختصاصی تیساکیس', 'tisacase-hub' ), __( 'اختصاصی تیساکیس', 'tisacase-hub' ), self::$cap, TSH_SLUG, array( __CLASS__, 'render_hub' ), $icon, $position );
 
 			add_submenu_page( TSH_SLUG, __( 'ابزارها', 'tisacase-hub' ), __( 'ابزارها', 'tisacase-hub' ), self::$cap, TSH_SLUG, array( __CLASS__, 'render_hub' ) );
 			add_submenu_page( TSH_SLUG, __( 'سلامت افزونه‌ها', 'tisacase-hub' ), __( 'سلامت افزونه‌ها', 'tisacase-hub' ), self::$cap, TSH_SLUG . '-health', array( __CLASS__, 'render_health' ) );
 			add_submenu_page( TSH_SLUG, __( 'ظاهر و تنظیمات', 'tisacase-hub' ), __( 'ظاهر و تنظیمات', 'tisacase-hub' ), self::$cap, TSH_SLUG . '-settings', array( __CLASS__, 'render_settings' ) );
 
-			// یک ورودی کوتاه داخل منوی ووکامرس، تا هاب گم نشود (خودِ صفحه همان لانچر است).
-			add_submenu_page( 'woocommerce', __( 'اختصاصی تیساکیس', 'tisacase-hub' ), __( 'اختصاصی تیساکیس', 'tisacase-hub' ), self::$cap, TSH_SLUG, array( __CLASS__, 'render_hub' ) );
+			// عمداً هیچ ورودی‌ای داخل منوی ووکامرس ثبت نمی‌شود: هاب یک گزینهٔ مستقل در
+			// نوار کنار است. (جایگاهش از تنظیمات قابل تغییر است.)
+		}
+
+		/**
+		 * جایگاه‌های آماده در نوار کنار (عددِ جایگاه وردپرس + توضیحش).
+		 *
+		 * @return array<string,array{label:string,pos:string}>
+		 */
+		public static function positions() {
+			return array(
+				'top'         => array(
+					'label' => __( 'بالا — درست بعد از داشبورد', 'tisacase-hub' ),
+					'pos'   => '2.5',
+				),
+				'before_wc'   => array(
+					'label' => __( 'بالای ووکامرس', 'tisacase-hub' ),
+					'pos'   => '55.4',
+				),
+				'after_products' => array(
+					'label' => __( 'بعد از محصولات (جای همیشگی این ابزارها)', 'tisacase-hub' ),
+					'pos'   => '30.5',
+				),
+				'before_tools' => array(
+					'label' => __( 'نزدیک پایین — قبل از ابزارها', 'tisacase-hub' ),
+					'pos'   => '74.5',
+				),
+				'default'     => array(
+					'label' => __( 'پیش‌فرض وردپرس (انتهای فهرست)', 'tisacase-hub' ),
+					'pos'   => '',
+				),
+				'custom'      => array(
+					'label' => __( 'عدد دلخواه', 'tisacase-hub' ),
+					'pos'   => 'custom',
+				),
+			);
+		}
+
+		/**
+		 * عدد جایگاه نهایی.
+		 *
+		 * @return string رشتهٔ خالی یعنی «به وردپرس بسپار».
+		 */
+		public static function menu_position() {
+			$key  = (string) TSH_UI::setting( 'menu_position', 'top' );
+			$list = self::positions();
+			if ( ! isset( $list[ $key ] ) ) {
+				$key = 'top';
+			}
+			$pos = $list[ $key ]['pos'];
+			if ( 'custom' === $pos ) {
+				$raw = (string) TSH_UI::setting( 'menu_position_custom', '' );
+				return preg_match( '/^\d{1,2}(\.\d{1,2})?$/', $raw ) ? $raw : '';
+			}
+			return (string) apply_filters( 'tisacase_hub_menu_position', $pos, $key );
 		}
 
 		/**
@@ -167,6 +217,12 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			$out['cache_ttl'] = max( 0, min( 86400, $ttl ) );
 
 			// این کلید در فرم نیست (از روی کارت‌ها عوض می‌شود) → دست نخورد.
+			$pos_keys = array_keys( self::positions() );
+			$pos      = isset( $in['menu_position'] ) ? sanitize_key( $in['menu_position'] ) : 'top';
+			$out['menu_position'] = in_array( $pos, $pos_keys, true ) ? $pos : 'top';
+			$custom               = isset( $in['menu_position_custom'] ) ? trim( (string) $in['menu_position_custom'] ) : '';
+			$out['menu_position_custom'] = preg_match( '/^\d{1,2}(\.\d{1,2})?$/', $custom ) ? $custom : '';
+
 			$current = TSH_UI::settings();
 			$hidden  = isset( $in['hidden'] ) ? (array) $in['hidden'] : (array) ( isset( $current['hidden'] ) ? $current['hidden'] : array() );
 			$hidden  = array_values( array_unique( array_map( 'sanitize_key', array_filter( $hidden ) ) ) );
