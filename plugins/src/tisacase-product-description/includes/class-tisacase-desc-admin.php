@@ -714,10 +714,16 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 
 			$opts = TisaCase_Desc_Core::get_options();
 			?>
-			<div class="tc-wrap" dir="rtl">
-				<?php self::header(); ?>
-				<?php self::notices(); ?>
-
+			<div class="tc-wrap wrap" dir="rtl">
+				<header class="tc-hero">
+					<div class="tc-hero-row">
+						<div class="tc-hero-mark" aria-hidden="true"><?php echo self::icon_svg(); // phpcs:ignore ?></div>
+						<div class="tc-hero-text">
+							<h1 class="tc-hero-title"><?php echo esc_html__( 'قوانین توضیحات محصول', 'tisacase-desc' ); ?></h1>
+							<p class="tc-hero-sub"><?php echo esc_html__( 'درج خودکار توضیحات چاپی و هشدار قاب، با اسکن و بازگردانی', 'tisacase-desc' ); ?></p>
+						</div>
+						<span class="tc-hero-ver" dir="ltr">v<?php echo esc_html( TISACASE_DESC_VERSION ); ?></span>
+					</div>
 				<nav class="tc-tabs" role="tablist">
 					<a class="tc-tab <?php echo 'settings' === $tab ? 'is-active' : ''; ?>"
 						href="<?php echo esc_url( self::url( 'settings' ) ); ?>">
@@ -732,6 +738,8 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 						<?php echo esc_html__( 'بازگردانی', 'tisacase-desc' ); ?>
 					</a>
 				</nav>
+				</header>
+				<?php self::notices(); ?>
 
 				<?php if ( 'tools' === $tab ) : ?>
 					<?php self::render_tools( $opts ); ?>
@@ -741,10 +749,6 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 					<?php self::render_settings( $opts ); ?>
 				<?php endif; ?>
 
-				<footer class="tc-footer">
-					<span><?php echo esc_html__( 'قوانین توضیحات محصول TisaCase', 'tisacase-desc' ); ?> — v<?php echo esc_html( TISACASE_DESC_VERSION ); ?></span>
-					<span><?php echo esc_html__( 'پشتیبانی:', 'tisacase-desc' ); ?> <a href="https://tisachap.com" target="_blank" rel="noopener">TISACHAP.COM</a></span>
-				</footer>
 			</div>
 			<?php
 		}
@@ -774,7 +778,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 				$msg = isset( $_GET['reset'] ) // phpcs:ignore
 					? __( 'تنظیمات به پیش‌فرض بازگردانده شد.', 'tisacase-desc' )
 					: __( 'تنظیمات با موفقیت ذخیره شد.', 'tisacase-desc' );
-				echo '<div class="tc-notice tc-notice--success"><span class="tc-notice-icon">✔</span> ' . esc_html( $msg ) . '</div>';
+				echo '<div class="tc-notice tc-notice--success">' . esc_html( $msg ) . '</div>';
 			}
 		}
 
@@ -791,7 +795,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 				<!-- General -->
 				<section class="tc-card">
 					<header class="tc-card-head">
-						<div class="tc-card-icon tc-card-icon--ink">⚙</div>
+						<span class="tc-card-icon tc-card-icon--ink" aria-hidden="true"></span>
 						<div>
 							<h2><?php echo esc_html__( 'تنظیمات عمومی', 'tisacase-desc' ); ?></h2>
 							<p><?php echo esc_html__( 'رفتار کلی افزونه و همگام‌سازی خودکار.', 'tisacase-desc' ); ?></p>
@@ -853,7 +857,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 				<!-- Printed products -->
 				<section class="tc-card">
 					<header class="tc-card-head">
-						<div class="tc-card-icon tc-card-icon--teal">🖨</div>
+						<span class="tc-card-icon tc-card-icon--teal" aria-hidden="true"></span>
 						<div>
 							<h2><?php echo esc_html__( 'محصولات چاپی', 'tisacase-desc' ); ?></h2>
 							<p><?php echo esc_html__( 'محصولاتی که شناسه (SKU) آن‌ها با الگوی زیر مطابقت دارد.', 'tisacase-desc' ); ?></p>
@@ -899,7 +903,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 				<!-- Preparation time -->
 				<section class="tc-card">
 					<header class="tc-card-head">
-						<div class="tc-card-icon tc-card-icon--teal">⏱</div>
+						<span class="tc-card-icon tc-card-icon--teal" aria-hidden="true"></span>
 						<div>
 							<h2><?php echo esc_html__( 'زمان آماده‌سازی محصولات چاپی', 'tisacase-desc' ); ?></h2>
 							<p><?php echo esc_html__( 'برای محصولاتی که SKU آن‌ها با الگوی چاپی (CH/SB) مطابقت دارد، مقدار فیلد «زمان آماده‌سازی» به‌صورت خودکار ثبت می‌شود.', 'tisacase-desc' ); ?></p>
@@ -973,7 +977,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 				<!-- Frame products -->
 				<section class="tc-card">
 					<header class="tc-card-head">
-						<div class="tc-card-icon tc-card-icon--sage">🖼</div>
+						<span class="tc-card-icon tc-card-icon--sage" aria-hidden="true"></span>
 						<div>
 							<h2><?php echo esc_html__( 'محصولات قاب', 'tisacase-desc' ); ?></h2>
 							<p><?php echo esc_html__( 'محصولاتی که عنوان آن‌ها شامل کلمات کلیدی زیر باشد.', 'tisacase-desc' ); ?></p>
@@ -1030,7 +1034,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 			?>
 			<section class="tc-card">
 				<header class="tc-card-head">
-					<div class="tc-card-icon tc-card-icon--sage">🕓</div>
+					<span class="tc-card-icon tc-card-icon--sage" aria-hidden="true"></span>
 					<div>
 						<h2><?php echo esc_html__( 'بازگردانی (Rollback)', 'tisacase-desc' ); ?></h2>
 						<p><?php echo esc_html__( 'قبل از هر اصلاح انبوه یا انتخابی، به‌صورت خودکار از توضیحات قبلی محصولات پشتیبان گرفته می‌شود. اگر نتیجه مطابق انتظار نبود، از اینجا به حالت قبل برگردید.', 'tisacase-desc' ); ?></p>
@@ -1079,7 +1083,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 
 			<section class="tc-card">
 				<header class="tc-card-head">
-					<div class="tc-card-icon tc-card-icon--ink">ℹ️</div>
+					<span class="tc-card-icon tc-card-icon--ink" aria-hidden="true"></span>
 					<div>
 						<h2><?php echo esc_html__( 'نحوه کار بازگردانی', 'tisacase-desc' ); ?></h2>
 						<p><?php echo esc_html__( 'چند نکته برای اطمینان از سلامت محصولات:', 'tisacase-desc' ); ?></p>
@@ -1106,7 +1110,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 			?>
 			<section class="tc-card">
 				<header class="tc-card-head">
-					<div class="tc-card-icon tc-card-icon--teal">🔎</div>
+					<span class="tc-card-icon tc-card-icon--teal" aria-hidden="true"></span>
 					<div>
 						<h2><?php echo esc_html__( 'اسکن محصولات و اصلاح انتخابی', 'tisacase-desc' ); ?></h2>
 						<p><?php echo esc_html__( 'محصولاتی که توضیحاتشان با قوانین مطابقت ندارد را پیدا می‌کند و در یک لیست نشان می‌دهد؛ هیچ تغییری اعمال نمی‌شود مگر اینکه خودتان موارد را انتخاب و اصلاح کنید.', 'tisacase-desc' ); ?></p>
@@ -1159,7 +1163,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 
 			<section class="tc-card">
 				<header class="tc-card-head">
-					<div class="tc-card-icon tc-card-icon--teal">🛠</div>
+					<span class="tc-card-icon tc-card-icon--teal" aria-hidden="true"></span>
 					<div>
 						<h2><?php echo esc_html__( 'اصلاح انبوه توضیحات', 'tisacase-desc' ); ?></h2>
 						<p><?php echo esc_html__( 'همه محصولات (قدیمی و جدید) را بررسی کرده و توضیحات را مطابق قوانین بازنویسی می‌کند.', 'tisacase-desc' ); ?></p>
@@ -1205,7 +1209,7 @@ if ( ! class_exists( 'TisaCase_Desc_Admin' ) ) {
 
 			<section class="tc-card">
 				<header class="tc-card-head">
-					<div class="tc-card-icon tc-card-icon--sage">🔍</div>
+					<span class="tc-card-icon tc-card-icon--sage" aria-hidden="true"></span>
 					<div>
 						<h2><?php echo esc_html__( 'پیش‌نمایش زنده', 'tisacase-desc' ); ?></h2>
 						<p><?php echo esc_html__( 'شناسه یک محصول را وارد کنید تا ببینید کدام قانون روی آن اعمال می‌شود.', 'tisacase-desc' ); ?></p>
