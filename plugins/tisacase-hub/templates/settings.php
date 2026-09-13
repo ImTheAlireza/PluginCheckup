@@ -151,7 +151,7 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 					<span><?php esc_html_e( 'نمایش', 'tisacase-hub' ); ?></span>
 				</label>
 				<label class="tisa-field" style="margin:0">
-					<span class="tisa-label"><?php esc_html_e( 'کش (ثانیه)', 'tisacase-hub' ); ?></span>
+					<span class="tisa-label"><?php esc_html_e( 'کش (ثانیه) — صفر یعنی بدون کش', 'tisacase-hub' ); ?></span>
 					<input type="number" name="<?php echo esc_attr( $opt ); ?>[cache_ttl]" class="tisa-input tisa-input--number tisa-input--w-sm" min="0" max="86400" step="60" value="<?php echo esc_attr( (string) $settings['cache_ttl'] ); ?>">
 				</label>
 			</div>
