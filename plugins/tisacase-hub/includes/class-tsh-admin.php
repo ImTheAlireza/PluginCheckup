@@ -457,14 +457,75 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		 * @return void
 		 */
 		public static function mute_foreign_notices() {
-			if ( ! TSH_UI::is_hub_screen() ) {
+			$screen = TSH_UI::screen_id();
+			$scope  = TSH_UI::scope( $screen );
+			if ( '' === $scope ) {
 				return;
 			}
-			remove_all_actions( 'admin_notices' );
-			remove_all_actions( 'all_admin_notices' );
-			remove_all_actions( 'network_admin_notices' );
-			remove_all_actions( 'user_admin_notices' );
-			add_action( 'admin_notices', array( __CLASS__, 'admin_notice' ) );
+			if ( 'plugin' === $scope && ! TSH_UI::setting( 'style_plugins' ) ) {
+				return;
+			}
+
+			// فقط کال‌بک‌هایی می‌مانند که فایل‌شان داخل پوشهٔ همین افزونه (یا هاب) است.
+			$allow = array( wp_normalize_path( TSH_DIR ) );
+			if ( 'plugin' === $scope ) {
+				foreach ( TSH_Registry::items() as $item ) {
+					if ( empty( $item['dir'] ) ) {
+						continue;
+					}
+					foreach ( (array) $item['screens'] as $sc ) {
+						if ( $sc === $screen ) {
+							$allow[] = wp_normalize_path( trailingslashit( WP_PLUGIN_DIR ) . $item['dir'] . '/' );
+						}
+					}
+				}
+			}
+
+			global $wp_filter;
+			foreach ( array( 'admin_notices', 'all_admin_notices', 'network_admin_notices', 'user_admin_notices' ) as $hook ) {
+				if ( empty( $wp_filter[ $hook ] ) || ! ( $wp_filter[ $hook ] instanceof WP_Hook ) ) {
+					continue;
+				}
+				foreach ( $wp_filter[ $hook ]->callbacks as $priority => $cbs ) {
+					foreach ( $cbs as $id => $cb ) {
+						$file = self::callback_file( $cb['function'] );
+						$keep = false;
+						foreach ( $allow as $dir ) {
+							if ( $file && 0 === strpos( $file, $dir ) ) {
+								$keep = true;
+								break;
+							}
+						}
+						if ( ! $keep ) {
+							remove_filter( $hook, $cb['function'], $priority );
+						}
+					}
+				}
+			}
+		}
+
+		/**
+		 * مسیر فایلِ یک کال‌بک (برای تشخیص «مال کدام افزونه است»).
+		 *
+		 * @param callable $fn کال‌بک.
+		 * @return string
+		 */
+		private static function callback_file( $fn ) {
+			try {
+				if ( $fn instanceof Closure || ( is_string( $fn ) && function_exists( $fn ) ) ) {
+					$r = new ReflectionFunction( $fn );
+				} elseif ( is_array( $fn ) && 2 === count( $fn ) ) {
+					$r = new ReflectionMethod( $fn[0], $fn[1] );
+				} elseif ( is_string( $fn ) && false !== strpos( $fn, '::' ) ) {
+					list( $c, $m ) = explode( '::', $fn, 2 );
+					$r = new ReflectionMethod( $c, $m );
+				} else {
+					return '';
+				}
+				return wp_normalize_path( (string) $r->getFileName() );
+			} catch ( Throwable $e ) { // phpcs:ignore
+				return '';
+			}
 		}
 
 		/**

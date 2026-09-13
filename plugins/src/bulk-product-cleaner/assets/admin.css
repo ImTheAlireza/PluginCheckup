@@ -18,8 +18,9 @@ body.woocommerce_page_bdc-cleaner #wpcontent { background: var(--tisa-bg, #F4F2E
 }
 .bdc-wrap *, .bdc-wrap *::before, .bdc-wrap *::after { box-sizing: border-box; }
 
-/* نوتیس‌های وردپرس زیر سر می‌نشینند */
-.bdc-wrap > .notice, .bdc-wrap .bdc-hero + .notice { margin: 0 0 var(--tisa-sp-4, 16px); }
+/* نوتیس‌هایی که JS وردپرس بعد از h1 (داخل سر) می‌اندازد: پنهان؛ نوتیس‌های خودِ صفحه زیر سر */
+.bdc-hero .notice, .bdc-hero .update-nag, .bdc-hero .updated, .bdc-hero .error { display: none !important; }
+.bdc-wrap > .notice { margin: 0 0 var(--tisa-sp-4, 16px); }
 
 /* ---------- سر سبز ---------- */
 .bdc-hero {
@@ -46,22 +47,23 @@ body.woocommerce_page_bdc-cleaner #wpcontent { background: var(--tisa-bg, #F4F2E
 .bdc-wrap h1.bdc-title { margin: 0; padding: 0; font-size: var(--tisa-fs-hero, 24px); font-weight: 800; line-height: 1.3; color: var(--tisa-on-primary, #fff); }
 .bdc-hero__sub { margin: 3px 0 0; font-size: var(--tisa-fs-control, 13px); opacity: .78; }
 
-/* تب‌ها داخل سر: زیرخط سفید */
-.bdc-tabs { position: relative; display: flex; gap: var(--tisa-sp-2, 8px); margin: var(--tisa-sp-5, 24px) 0 0; }
+/* تب‌ها داخل سر: قرص سفید برای فعال، سفید روشن برای بقیه — هیچ متن تیره‌ای روی سبز */
+.bdc-tabs { position: relative; display: flex; gap: var(--tisa-sp-2, 8px); margin: var(--tisa-sp-5, 24px) 0 0; padding: 0 0 var(--tisa-sp-5, 24px); }
 .bdc-tab {
 	display: inline-flex; align-items: center; gap: 8px;
-	padding: 10px 6px 14px; border-bottom: 2px solid transparent;
-	color: rgba(255, 255, 255, .72); font-size: var(--tisa-fs-control, 13px); font-weight: 600; text-decoration: none;
-	transition: color .15s, border-color .15s;
+	height: 36px; padding: 0 var(--tisa-sp-4, 16px); border-radius: var(--tisa-r-pill, 999px);
+	background: rgba(255, 255, 255, .10); color: var(--tisa-on-primary, #fff);
+	font-size: var(--tisa-fs-control, 13px); font-weight: 600; text-decoration: none;
+	transition: background .15s, color .15s;
 }
-.bdc-tab + .bdc-tab { margin-inline-start: var(--tisa-sp-4, 16px); }
-.bdc-tab:hover { color: var(--tisa-on-primary, #fff); }
-.bdc-tab.is-active { color: var(--tisa-on-primary, #fff); border-bottom-color: var(--tisa-on-primary, #fff); }
-.bdc-tab:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(255, 255, 255, .45); border-radius: var(--tisa-r-xs, 6px); }
+.bdc-tab:hover { background: rgba(255, 255, 255, .2); color: var(--tisa-on-primary, #fff); }
+.bdc-tab.is-active { background: var(--tisa-surface, #fff); color: var(--tisa-primary-ink, #0A5F52); }
+.bdc-tab:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(255, 255, 255, .45); }
 .bdc-tab-count {
 	display: inline-block; min-width: 18px; padding: 0 6px; border-radius: var(--tisa-r-pill, 999px);
-	background: rgba(255, 255, 255, .18); color: var(--tisa-on-primary, #fff); font-size: var(--tisa-fs-tiny, 11px); line-height: 18px; text-align: center;
+	background: rgba(255, 255, 255, .22); color: inherit; font-size: var(--tisa-fs-tiny, 11px); line-height: 18px; text-align: center;
 }
+.bdc-tab.is-active .bdc-tab-count { background: var(--tisa-primary-soft, #E8F0EE); }
 .bdc-tab-body { margin: 0; }
 
 /* ---------- کارت‌ها روی بوم ---------- */
