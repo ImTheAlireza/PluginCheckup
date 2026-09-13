@@ -1,0 +1,96 @@
+/* Bulk Product Cleaner — استایل ادمین (v12.5 · زبان طراحی TisaCase)
+   قبلاً رشته‌ای داخل PHP بود (کش‌ناپذیر)؛ حالا فایل، بعد از لایهٔ توکن هاب.
+   دکمه/جدول/تب بومی وردپرس را هاب با tisa-scope بازنویسی می‌کند.
+   مهندسی رنگ: قرمز فقط برای خودِ عمل مخرب (bdc-danger) و پیام تأیید؛ بقیه آرام.
+   §۸: شمارنده‌ها قلم رابط + tabular؛ شناسهٔ اجرا و لاگ مونو. */
+
+.bdc-wrap { max-width: 1280px; font-variant-numeric: tabular-nums; }
+.bdc-title { display: flex; align-items: center; gap: var(--tisa-sp-2, 8px); margin-bottom: var(--tisa-sp-3, 12px); }
+
+/* تب‌ها: شمارنده آرام؛ فقط تب فعال رنگ می‌گیرد */
+.bdc-tabs { margin: 0 0 4px; }
+.bdc-tabs .nav-tab { display: inline-flex; align-items: center; gap: 6px; font-size: var(--tisa-fs-control, 13px); }
+.bdc-tab-count { display: inline-block; min-width: 18px; padding: 0 6px; border-radius: var(--tisa-r-pill, 999px); background: var(--tisa-surface-3, #EFEBE1); color: var(--tisa-muted, #77828A); font-size: var(--tisa-fs-tiny, 11px); line-height: 18px; text-align: center; font-weight: 600; }
+.nav-tab-active .bdc-tab-count { background: var(--tisa-primary-soft, #E8F0EE); color: var(--tisa-primary-ink, #0A5F52); }
+.bdc-tab-body { margin-top: 4px; }
+
+.bdc-card { margin: var(--tisa-sp-4, 16px) 0; padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px); border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r, 14px); background: var(--tisa-surface, #fff); }
+
+/* آمار: عدد ink، نه آبی؛ یک کاشی برجسته با tint */
+.bdc-stats { display: flex; flex-wrap: wrap; gap: var(--tisa-sp-3, 12px); margin: var(--tisa-sp-4, 16px) 0; }
+.bdc-stat { min-width: 150px; padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px); border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-sm, 10px); background: var(--tisa-surface, #fff); }
+.bdc-stat-info { background: var(--tisa-primary-tint, #F2FBF8); border-color: var(--tisa-primary-border, #B9D9D2); }
+.bdc-stat-num { display: block; font-size: var(--tisa-fs-display, 24px); font-weight: 800; line-height: 1.2; color: var(--tisa-ink, #1F2A2E); }
+.bdc-stat-lbl { display: block; margin-top: 2px; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+
+/* فیلترها */
+.bdc-filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--tisa-sp-3, 12px) var(--tisa-sp-5, 24px); align-items: end; }
+.bdc-field { margin: 0; }
+.bdc-field label { display: block; margin-bottom: 4px; font-weight: 600; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.bdc-field input, .bdc-field select { width: 100%; max-width: 100%; }
+.bdc-field-inline { display: flex; align-items: center; height: 100%; }
+.bdc-fieldset { margin: 0; padding: var(--tisa-sp-2, 8px) var(--tisa-sp-3, 12px); border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-xs, 6px); }
+.bdc-fieldset legend { padding: 0 4px; font-weight: 600; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.bdc-chk { display: inline-flex; align-items: center; gap: 5px; margin-inline-end: var(--tisa-sp-2, 8px); font-size: var(--tisa-fs-control, 13px); white-space: nowrap; }
+.bdc-filter-actions { display: flex; gap: var(--tisa-sp-2, 8px); margin: var(--tisa-sp-3, 12px) 0 0; }
+
+/* جدول */
+.bdc-table th, .bdc-table td { vertical-align: middle; }
+.bdc-table .check-column { width: 34px; padding-inline-start: 10px; }
+.bdc-thumb-cell { width: 56px; }
+.bdc-thumb { display: block; width: 44px; height: 44px; object-fit: cover; border-radius: var(--tisa-r-xs, 6px); }
+.bdc-nothumb { display: inline-block; width: 44px; height: 44px; line-height: 44px; text-align: center; border-radius: var(--tisa-r-xs, 6px); background: var(--tisa-surface-3, #EFEBE1); color: var(--tisa-muted, #77828A); }
+.bdc-name a { font-weight: 600; text-decoration: none; color: var(--tisa-ink, #1F2A2E); }
+.bdc-name a:hover { color: var(--tisa-primary-ink, #0A5F52); }
+.bdc-empty { padding: var(--tisa-sp-6, 32px); text-align: center; color: var(--tisa-muted, #77828A); }
+
+/* بَج وضعیت: یک خانواده */
+.bdc-badge { display: inline-block; padding: 2px 9px; border-radius: var(--tisa-r-pill, 999px); font-size: var(--tisa-fs-tiny, 11px); font-weight: 600; background: var(--tisa-surface-3, #EFEBE1); color: var(--tisa-ink-soft, #45555C); }
+.bdc-badge-publish { background: var(--tisa-success-soft, #E5F4E7); color: var(--tisa-success, #1A7F37); }
+.bdc-badge-draft   { background: var(--tisa-surface-3, #EFEBE1); color: var(--tisa-muted, #77828A); }
+.bdc-badge-pending { background: var(--tisa-warning-soft, #FCF3D7); color: var(--tisa-warning-ink, #8A6116); }
+.bdc-badge-private { background: var(--tisa-info-soft, #F0F6FC); color: var(--tisa-info, #135E96); }
+.bdc-badge-trash   { background: var(--tisa-danger-soft, #FBECEA); color: var(--tisa-danger-ink, #8E3128); }
+
+.bdc-selectall { margin-top: var(--tisa-sp-3, 12px); padding: var(--tisa-sp-2, 8px) var(--tisa-sp-3, 12px); border: 1px solid var(--tisa-primary-border, #B9D9D2); border-radius: var(--tisa-r-xs, 6px); background: var(--tisa-primary-tint, #F2FBF8); font-size: var(--tisa-fs-control, 13px); }
+.bdc-selectall .button-link { margin-inline-start: 6px; font-weight: 700; }
+.bdc-selectall .bdc-clear { font-weight: 400; color: var(--tisa-danger, #B5453A); }
+
+/* حالت‌های عملیات: انتخاب فقط با حاشیه؛ رنگ در حاشیهٔ چپ */
+.bdc-actions h2 { margin-top: 0; }
+.bdc-modes { display: flex; flex-direction: column; gap: var(--tisa-sp-2, 8px); margin: 0 0 var(--tisa-sp-3, 12px); padding: 0; border: 0; }
+.bdc-mode { display: flex; align-items: center; gap: 7px; padding: var(--tisa-sp-2, 8px) var(--tisa-sp-3, 12px); border: 1px solid var(--tisa-border, #E3E1DA); border-inline-start-width: 3px; border-radius: var(--tisa-r-xs, 6px); background: var(--tisa-surface, #fff); cursor: pointer; font-size: var(--tisa-fs-control, 13px); }
+.bdc-mode:hover { border-color: var(--tisa-border-strong, #C9DCD7); }
+.bdc-mode-trash        { border-inline-start-color: var(--tisa-success, #1A7F37); }
+.bdc-mode-delete_media { border-inline-start-color: var(--tisa-danger, #B5453A); }
+.bdc-mode:has(input:checked) { background: var(--tisa-surface-2, #FAFAF8); border-color: var(--tisa-border-strong, #C9DCD7); }
+.bdc-mode input:disabled + span { opacity: .5; }
+
+.bdc-mode-hint { margin: 0 0 var(--tisa-sp-3, 12px); padding: var(--tisa-sp-2, 8px) var(--tisa-sp-3, 12px); border: 1px solid transparent; border-inline-start: 3px solid var(--tisa-primary, #0E7C6B); border-radius: var(--tisa-r-xs, 6px); background: var(--tisa-surface-2, #FAFAF8); color: var(--tisa-ink, #1F2A2E); font-size: var(--tisa-fs-control, 13px); }
+.bdc-mode-hint.is-danger { background: var(--tisa-danger-soft, #FBECEA); border-inline-start-color: var(--tisa-danger, #B5453A); color: var(--tisa-danger-ink, #8E3128); }
+.bdc-confirm { padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px); border: 1px solid var(--tisa-danger-soft, #FBECEA); border-inline-start: 3px solid var(--tisa-danger, #B5453A); border-radius: var(--tisa-r-xs, 6px); background: var(--tisa-danger-soft, #FBECEA); }
+.bdc-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tisa-sp-2, 8px); }
+
+/* تنها جای قرمزِ پر: خودِ دکمهٔ مخرب، وقتی واقعاً فعال است */
+.bdc-danger:not(:disabled) { background: var(--tisa-danger, #B5453A) !important; border-color: var(--tisa-danger, #B5453A) !important; color: var(--tisa-on-primary, #fff) !important; }
+.bdc-danger:not(:disabled):hover { background: var(--tisa-danger-ink, #8E3128) !important; border-color: var(--tisa-danger-ink, #8E3128) !important; }
+
+/* پیشرفت + لاگ */
+.bdc-progress-wrap { margin-top: var(--tisa-sp-4, 16px); }
+.bdc-progress { height: 10px; overflow: hidden; border-radius: var(--tisa-r-pill, 999px); background: var(--tisa-surface-3, #EFEBE1); }
+.bdc-bar { height: 100%; width: 0; background: var(--tisa-primary, #0E7C6B); transition: width .25s ease; }
+.bdc-progress-text { margin: var(--tisa-sp-2, 8px) 0 0; font-size: var(--tisa-fs-control, 13px); font-weight: 600; }
+.bdc-log { margin-top: var(--tisa-sp-3, 12px); max-height: 280px; overflow: auto; padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px); border-radius: var(--tisa-r-sm, 10px); background: var(--tisa-log-bg, #1D2327); color: var(--tisa-log-fg, #C3C4C7); font-family: var(--tisa-mono, ui-monospace, Consolas, Monaco, monospace); font-size: var(--tisa-fs-meta, 12px); line-height: 1.7; direction: ltr; text-align: left; }
+.bdc-log .ok   { color: var(--tisa-log-ok, #68DE7C); }
+.bdc-log .skip { color: var(--tisa-log-warn, #F0C33C); }
+.bdc-log .fail { color: var(--tisa-log-fail, #FF8085); }
+
+.bdc-notes ul { margin: 0; padding-inline-start: 20px; }
+.bdc-notes li { margin-bottom: 6px; }
+.bdc-hint { font-size: var(--tisa-fs-control, 13px); color: var(--tisa-muted, #77828A); }
+.bdc-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.bdc-runid { font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); font-size: var(--tisa-fs-tiny, 11px); color: var(--tisa-muted, #77828A); }
+
+body.tisa-compact .bdc-card { padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px); }
+
+@media screen and (max-width: 782px) { .bdc-filter-grid { grid-template-columns: 1fr; } }
