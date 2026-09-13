@@ -1,5 +1,10 @@
 # 🧩 `tisacase-hub` — ساخته شد
 
+**لینک مستقیم زیپ (نسخهٔ ۱٫۰٫۱):**
+`https://raw.githubusercontent.com/ImTheAlireza/PluginCheckup/arena/01a09973-plugincheckup/tisacase-hub.zip`
+صفحهٔ ریلیز (توضیحات): `https://github.com/ImTheAlireza/PluginCheckup/releases/tag/v1.0.1`
+
+
 > نصب‌کردنی: `tisacase-hub.zip` (ریشهٔ مخزن) · منبع: `plugins/tisacase-hub/` · استایل مرجع: `design/tisacase-ui.css`
 > شناخت افزونه‌ها: `PLUGIN_MAP.md` · تصمیم‌ها و قراردادها: `DESIGN_PLAN.md`
 
