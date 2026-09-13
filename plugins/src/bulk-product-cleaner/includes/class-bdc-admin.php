@@ -116,24 +116,22 @@ class BDC_Admin {
 
 		$active = self::current_tab();
 		?>
-		<div class="wrap bdc-wrap">
-			<h1 class="bdc-title">
-				<span aria-hidden="true">🧹</span>
-				<?php esc_html_e( 'حذف انبوه محصولات پیش‌نویس', 'bulk-product-cleaner' ); ?>
-			</h1>
-
-			<nav class="nav-tab-wrapper bdc-tabs" aria-label="<?php esc_attr_e( 'بخش‌های افزونه', 'bulk-product-cleaner' ); ?>">
+		<div class="wrap bdc-wrap tisa-wrap" dir="rtl">
+			<header class="bdc-hero">
+				<div class="bdc-hero__row">
+					<span class="bdc-hero__mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg></span>
+					<div class="bdc-hero__txt">
+						<h1 class="bdc-title"><?php esc_html_e( 'حذف انبوه محصولات پیش‌نویس', 'bulk-product-cleaner' ); ?></h1>
+						<p class="bdc-hero__sub"><?php esc_html_e( 'پاک‌سازی محصولات و تصویرهای یتیم، با پشتیبان و بازیابی', 'bulk-product-cleaner' ); ?></p>
+					</div>
+				</div>
+			<nav class="bdc-tabs" aria-label="<?php esc_attr_e( 'بخش‌های افزونه', 'bulk-product-cleaner' ); ?>">
 				<?php foreach ( self::tabs() as $slug => $label ) : ?>
 					<a
 						href="<?php echo esc_url( self::tab_url( $slug ) ); ?>"
-						class="nav-tab <?php echo $slug === $active ? 'nav-tab-active' : ''; ?>"
+						class="bdc-tab <?php echo $slug === $active ? 'is-active' : ''; ?>"
 						<?php echo $slug === $active ? 'aria-current="page"' : ''; ?>
 					>
-						<?php if ( self::TAB_CLEANER === $slug ) : ?>
-							<span aria-hidden="true">🗑️</span>
-						<?php else : ?>
-							<span aria-hidden="true">♻️</span>
-						<?php endif; ?>
 						<?php echo esc_html( $label ); ?>
 						<?php if ( self::TAB_BACKUPS === $slug ) : ?>
 							<?php $count = BDC_Backup::count_runs(); ?>
@@ -144,6 +142,7 @@ class BDC_Admin {
 					</a>
 				<?php endforeach; ?>
 			</nav>
+			</header>
 
 			<div class="bdc-tab-body">
 				<?php
@@ -536,8 +535,8 @@ class BDC_Admin {
 			</div>
 
 			<p class="bdc-filter-actions">
-				<button type="submit" class="button button-primary"><?php esc_html_e( 'اعمال فیلتر', 'bulk-product-cleaner' ); ?></button>
-				<a class="button" href="<?php echo esc_url( self::tab_url( self::TAB_CLEANER ) ); ?>"><?php esc_html_e( 'پاک کردن', 'bulk-product-cleaner' ); ?></a>
+				<button type="submit" class="button bdc-btn bdc-btn--primary"><?php esc_html_e( 'اعمال فیلتر', 'bulk-product-cleaner' ); ?></button>
+				<a class="button bdc-btn bdc-btn--ghost" href="<?php echo esc_url( self::tab_url( self::TAB_CLEANER ) ); ?>"><?php esc_html_e( 'پاک کردن', 'bulk-product-cleaner' ); ?></a>
 			</p>
 		</form>
 		<?php
@@ -578,10 +577,10 @@ class BDC_Admin {
 			</p>
 
 			<p class="bdc-buttons">
-				<button type="button" class="button" id="bdc-dry"><?php esc_html_e( 'پیش‌نمایش (بدون حذف)', 'bulk-product-cleaner' ); ?></button>
-				<button type="button" class="button button-primary bdc-danger" id="bdc-run" disabled><?php esc_html_e( 'شروع عملیات', 'bulk-product-cleaner' ); ?></button>
-				<button type="button" class="button" id="bdc-stop" hidden><?php esc_html_e( 'توقف', 'bulk-product-cleaner' ); ?></button>
-				<a class="button" href="<?php echo esc_url( self::tab_url( self::TAB_BACKUPS ) ); ?>">
+				<button type="button" class="button bdc-btn bdc-btn--secondary" id="bdc-dry"><?php esc_html_e( 'پیش‌نمایش (بدون حذف)', 'bulk-product-cleaner' ); ?></button>
+				<button type="button" class="button bdc-btn bdc-btn--danger bdc-danger" id="bdc-run" disabled><?php esc_html_e( 'شروع عملیات', 'bulk-product-cleaner' ); ?></button>
+				<button type="button" class="button bdc-btn bdc-btn--secondary" id="bdc-stop" hidden><?php esc_html_e( 'توقف', 'bulk-product-cleaner' ); ?></button>
+				<a class="button bdc-btn bdc-btn--ghost" href="<?php echo esc_url( self::tab_url( self::TAB_BACKUPS ) ); ?>">
 					<?php esc_html_e( 'مشاهده پشتیبان‌ها', 'bulk-product-cleaner' ); ?>
 				</a>
 			</p>
@@ -698,10 +697,10 @@ class BDC_Admin {
 									<?php if ( ! empty( $run['restored'] ) ) : ?>
 										<span class="bdc-badge bdc-badge-draft"><?php esc_html_e( 'بازیابی‌شده', 'bulk-product-cleaner' ); ?></span>
 									<?php endif; ?>
-									<button type="button" class="button button-primary bdc-restore" data-run="<?php echo esc_attr( $run['run_id'] ); ?>">
+									<button type="button" class="button bdc-btn bdc-btn--primary bdc-btn--sm bdc-restore" data-run="<?php echo esc_attr( $run['run_id'] ); ?>">
 										<?php esc_html_e( 'بازیابی', 'bulk-product-cleaner' ); ?>
 									</button>
-									<button type="button" class="button bdc-drop" data-run="<?php echo esc_attr( $run['run_id'] ); ?>">
+									<button type="button" class="button bdc-btn bdc-btn--ghost bdc-btn--sm bdc-drop" data-run="<?php echo esc_attr( $run['run_id'] ); ?>">
 										<?php esc_html_e( 'حذف پشتیبان', 'bulk-product-cleaner' ); ?>
 									</button>
 								</td>
