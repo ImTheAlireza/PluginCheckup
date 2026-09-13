@@ -57,7 +57,7 @@ body.woocommerce_page_bdc-cleaner #wpcontent { background: var(--tisa-bg, #F4F2E
 .bdc-tab + .bdc-tab { margin-inline-start: var(--tisa-sp-4, 16px); }
 .bdc-tab:hover { color: var(--tisa-on-primary, #fff); }
 .bdc-tab.is-active { color: var(--tisa-on-primary, #fff); border-bottom-color: var(--tisa-on-primary, #fff); }
-.bdc-tab:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(255, 255, 255, .45); border-radius: 6px; }
+.bdc-tab:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(255, 255, 255, .45); border-radius: var(--tisa-r-xs, 6px); }
 .bdc-tab-count {
 	display: inline-block; min-width: 18px; padding: 0 6px; border-radius: var(--tisa-r-pill, 999px);
 	background: rgba(255, 255, 255, .18); color: var(--tisa-on-primary, #fff); font-size: var(--tisa-fs-tiny, 11px); line-height: 18px; text-align: center;
@@ -174,7 +174,7 @@ body.woocommerce_page_bdc-cleaner #wpcontent { background: var(--tisa-bg, #F4F2E
 .bdc-notes ul { margin: 0; padding-inline-start: 20px; color: var(--tisa-ink-soft, #45555C); font-size: var(--tisa-fs-control, 13px); line-height: 1.9; }
 .bdc-notes li { margin-bottom: 4px; }
 .bdc-hint { margin: 0 0 var(--tisa-sp-3, 12px); font-size: var(--tisa-fs-control, 13px); color: var(--tisa-muted, #77828A); }
-.bdc-hint code { padding: 1px 6px; border-radius: 4px; background: var(--tisa-surface-3, #F6F5F1); font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); direction: ltr; unicode-bidi: embed; }
+.bdc-hint code { padding: 1px 6px; border-radius: var(--tisa-r-xs, 4px); background: var(--tisa-surface-3, #F6F5F1); font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); direction: ltr; unicode-bidi: embed; }
 .bdc-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .bdc-runid { font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); font-size: var(--tisa-fs-tiny, 11px); color: var(--tisa-muted, #77828A); direction: ltr; unicode-bidi: embed; }
 
