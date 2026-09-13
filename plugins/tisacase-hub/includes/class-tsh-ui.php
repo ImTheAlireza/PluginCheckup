@@ -39,12 +39,8 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 				'hide_scattered' => 1,
 				'style_plugins'  => 1,
 				'style_product_screens' => 1,
-				'system_shortcuts'      => 0,
-				'show_unregistered'     => 0,
 				'menu_position'         => 'top',
 				'menu_position_custom'  => '',
-				'show_counts'    => 1,
-				'cache_ttl'      => 300,
 				'hidden'         => array(),
 			);
 		}
@@ -154,7 +150,7 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 					self::$screens = $cached;
 				} else {
 					$screens = TSH_Registry::screens();
-					foreach ( array( 'toplevel_page_' . TSH_SLUG, TSH_SLUG . '_page_' . TSH_SLUG . '-settings', TSH_SLUG . '_page_' . TSH_SLUG . '-health' ) as $own ) {
+					foreach ( array( 'toplevel_page_' . TSH_SLUG, TSH_SLUG . '_page_' . TSH_SLUG . '-settings' ) as $own ) {
 						$screens[ $own ] = 'hub';
 					}
 					self::$screens = array(
@@ -243,12 +239,10 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 						'rest'   => '',
 						'screen' => $screen,
 						'i18n'   => array(
-							'refreshing' => __( 'در حال تازه‌سازی…', 'tisacase-hub' ),
 							'pinned'     => __( 'سنجاق شد', 'tisacase-hub' ),
 							'unpinned'   => __( 'از سنجاق خارج شد', 'tisacase-hub' ),
 							'error'      => __( 'خطا در ارتباط با سرور.', 'tisacase-hub' ),
 							'saved'      => __( 'ذخیره شد', 'tisacase-hub' ),
-							'noResult'   => __( 'نتیجه‌ای نبود', 'tisacase-hub' ),
 							'copied'     => __( 'کپی شد', 'tisacase-hub' ),
 							'tools'      => __( 'ابزار', 'tisacase-hub' ),
 							'match'      => __( 'نتیجه', 'tisacase-hub' ),
@@ -475,8 +469,6 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 			self::$settings = null;
 			self::$screens  = null;
 			delete_transient( 'tsh_screen_map' );
-			delete_transient( 'tsh_health' );
-			TSH_Counts::flush();
 		}
 	}
 }

@@ -29,7 +29,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			self::$cap = (string) apply_filters( 'tisacase_hub_cap', 'manage_woocommerce' );
 
 			add_action( 'admin_menu', array( __CLASS__, 'menu' ), 5 );
-			add_action( 'admin_menu', array( __CLASS__, 'cleanup_scattered' ), 99 );
+			add_action( 'admin_print_styles', array( __CLASS__, 'hide_scattered' ), 5 );
 
 			// نگاشت اسکرین‌ها به فهرست افزونه‌ها وابسته است؛ با هر تغییر کش می‌رود.
 			add_action( 'activated_plugin', array( 'TSH_UI', 'flush' ) );
@@ -42,8 +42,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 
 			add_action( 'wp_ajax_tsh_pin', array( __CLASS__, 'ajax_pin' ) );
 			add_action( 'wp_ajax_tsh_prefs', array( __CLASS__, 'ajax_prefs' ) );
-			add_action( 'wp_ajax_tsh_counts', array( __CLASS__, 'ajax_counts' ) );
-			add_action( 'wp_ajax_tsh_health', array( __CLASS__, 'ajax_health' ) );
 		}
 
 		/**
@@ -60,7 +58,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				: add_menu_page( __( 'اختصاصی تیساکیس', 'tisacase-hub' ), __( 'اختصاصی تیساکیس', 'tisacase-hub' ), self::$cap, TSH_SLUG, array( __CLASS__, 'render_hub' ), $icon, $position );
 
 			add_submenu_page( TSH_SLUG, __( 'ابزارها', 'tisacase-hub' ), __( 'ابزارها', 'tisacase-hub' ), self::$cap, TSH_SLUG, array( __CLASS__, 'render_hub' ) );
-			add_submenu_page( TSH_SLUG, __( 'سلامت افزونه‌ها', 'tisacase-hub' ), __( 'سلامت افزونه‌ها', 'tisacase-hub' ), self::$cap, TSH_SLUG . '-health', array( __CLASS__, 'render_health' ) );
 			add_submenu_page( TSH_SLUG, __( 'ظاهر و تنظیمات', 'tisacase-hub' ), __( 'ظاهر و تنظیمات', 'tisacase-hub' ), self::$cap, TSH_SLUG . '-settings', array( __CLASS__, 'render_settings' ) );
 
 			// عمداً هیچ ورودی‌ای داخل منوی ووکامرس ثبت نمی‌شود: هاب یک گزینهٔ مستقل در
@@ -119,27 +116,50 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			}
 			return (string) apply_filters( 'tisacase_hub_menu_position', $pos, $key );
 		}
-
 		/**
-		 * مخفی کردن آیتم‌های پخش‌شده در ووکامرس/محصولات.
+		 * مخفی‌کردن ورودی‌های پراکندهٔ افزونه‌ها از منوی وردپرس.
 		 *
-		 * فقط «نمایش در منو» حذف می‌شود؛ page_callback هر افزونه سر جایش است،
-		 * پس URL مستقیم و بوک‌مارک‌ها سالم می‌مانند. با خاموش کردن گزینه یا
-		 * غیرفعال‌کردن هاب، همه‌چیز برمی‌گردد.
+		 * این کار عمداً فقط ظاهری است: هیچ درای از $menu/$submenu کم نمی‌شود.
+		 * وردپرس مسیرِ `admin.php?page=…` را از همان آرایهٔ منو پیدا می‌کند، پس
+		 * remove_submenu_page() صفحه را می‌کُشد و URL مستقیم با خطای «شما اجازهٔ
+		 * دسترسی به این برگه را ندارید» رد می‌شود. اینجا آیتم سر جایش می‌ماند و
+		 * تنها با CSS دیده نمی‌شود؛ با CSS-بلاک‌شدن هم صفحه باز است.
 		 *
 		 * @return void
 		 */
-		public static function cleanup_scattered() {
-			if ( ! TSH_UI::setting( 'hide_scattered' ) ) {
+		public static function hide_scattered() {
+			if ( is_network_admin() || is_user_admin() || ! TSH_UI::setting( 'hide_scattered' ) ) {
 				return;
 			}
-			foreach ( TSH_Registry::menu_entries() as $entry ) {
-				if ( 'top' === $entry['parent'] ) {
-					remove_menu_page( $entry['slug'] );
-				} else {
-					remove_submenu_page( $entry['parent'], $entry['slug'] );
-				}
+			$css = self::scattered_css();
+			if ( '' === $css ) {
+				return;
 			}
+			echo '<style id="tisa-hide-scattered">' . $css . '</style>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		}
+
+		/**
+		 * قاعدهٔ CSS برای هر آیتم منویی که افزونه‌های ما ثبت کرده‌اند.
+		 *
+		 * @return string
+		 */
+		private static function scattered_css() {
+			$out = array();
+			foreach ( TSH_Registry::menu_entries() as $entry ) {
+				$slug = (string) $entry['slug'];
+				if ( '' === $slug || ! preg_match( '/^[A-Za-z0-9_.\-\/?&=]+$/', $slug ) ) {
+					continue;
+				}
+				if ( 'top' === $entry['parent'] ) {
+					$out[] = '#adminmenu #toplevel_page_' . $slug . '{display:none!important}';
+					continue;
+				}
+				// قاعدهٔ اول li را می‌کَنَد؛ دومی فقط لینک را (مرورگری که :has ندارد).
+				// جدا نوشته می‌شوند، چون یک سلکتور نامعتبر کل rule را باطل می‌کند.
+				$out[] = '#adminmenu .wp-submenu li:has(> a[href*="' . $slug . '"]){display:none!important}';
+				$out[] = '#adminmenu .wp-submenu li> a[href*="' . $slug . '"]{display:none!important}';
+			}
+			return implode( '', $out );
 		}
 
 		/**
@@ -210,11 +230,9 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			}
 			$out['accent'] = TSH_UI::normalize_hex( $accent );
 
-			foreach ( array( 'compact', 'hide_scattered', 'style_plugins', 'style_product_screens', 'system_shortcuts', 'show_unregistered', 'show_counts' ) as $bool ) {
+			foreach ( array( 'compact', 'hide_scattered', 'style_plugins', 'style_product_screens' ) as $bool ) {
 				$out[ $bool ] = empty( $in[ $bool ] ) ? 0 : 1;
 			}
-			$ttl                = isset( $in['cache_ttl'] ) ? (int) $in['cache_ttl'] : $defaults['cache_ttl'];
-			$out['cache_ttl'] = max( 0, min( 86400, $ttl ) );
 
 			// این کلید در فرم نیست (از روی کارت‌ها عوض می‌شود) → دست نخورد.
 			$pos_keys = array_keys( self::positions() );
@@ -253,42 +271,14 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		 * @param bool $refresh شمارنده‌ها را دوباره حساب کند.
 		 * @return array
 		 */
-		private static function hub_data( $refresh = false ) {
-			if ( $refresh ) {
-				TSH_Counts::flush();
-			}
+		private static function hub_data() {
 			$data = TSH_Registry::grouped();
 			return array(
 				'groups'   => $data['groups'],
 				'all'      => $data['all'],
 				'pins'     => self::pins(),
-				'health'   => TSH_Health::summary(),
-				'unreg'    => TSH_UI::setting( 'show_unregistered' ) ? TSH_Registry::unregistered() : array(),
 				'settings' => TSH_UI::settings(),
-				'counts_at' => TSH_Counts::last_updated(),
-				'shortcuts' => TSH_UI::setting( 'system_shortcuts' ) ? TSH_Registry::shortcuts() : array(),
-				'env'      => self::env(),
-			);
-		}
-
-		/**
-		 * صفحهٔ سلامت.
-		 *
-		 * @return void
-		 */
-		public static function render_health() {
-			if ( ! current_user_can( self::$cap ) ) {
-				wp_die( esc_html__( 'دسترسی ندارید.', 'tisacase-hub' ) );
-			}
-			$refresh = ! empty( $_GET['refresh'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			self::view(
-				'health.php',
-				array(
-					'checks'   => TSH_Health::all( $refresh ),
-					'summary'  => TSH_Health::summary(),
-					'env'      => self::env(),
-					'settings' => TSH_UI::settings(),
-				)
+				'hidden'   => (array) TSH_UI::setting( 'hidden', array() ),
 			);
 		}
 
@@ -310,7 +300,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 					'font'     => TSH_UI::font_status(),
 					'hidden'   => $hidden,
 					'items'    => $all,
-					'unreg'    => TSH_UI::setting( 'show_unregistered' ) ? TSH_Registry::unregistered() : array(),
 					'env'      => self::env(),
 				)
 			);
@@ -352,7 +341,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			$in  = is_array( $raw ) ? $raw : array();
 
 			// جعبه‌های تیک‌دار نیستم؛ نبودنشان یعنی خاموش.
-			foreach ( array( 'compact', 'hide_scattered', 'style_plugins', 'style_product_screens', 'system_shortcuts', 'show_unregistered', 'show_counts' ) as $flag ) {
+			foreach ( array( 'compact', 'hide_scattered', 'style_plugins', 'style_product_screens' ) as $flag ) {
 				$in[ $flag ] = isset( $in[ $flag ] ) ? 1 : 0;
 			}
 
@@ -391,17 +380,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				$back = admin_url( 'admin.php?page=' . TSH_SLUG );
 			}
 
-			if ( 'health' === $task ) {
-				delete_transient( 'tsh_health' );
-				wp_safe_redirect( add_query_arg( 'refresh', '1', $back ) );
-				exit;
-			}
-
-			if ( 'refresh' === $task ) {
-				TSH_Counts::flush();
-				wp_safe_redirect( add_query_arg( 'tsh_msg', 'counts', $back ) );
-				exit;
-			}
 
 			$items = TSH_Registry::items();
 			if ( ! isset( $items[ $key ] ) ) {
@@ -461,8 +439,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 					}
 					$msg = 'activated';
 				}
-				TSH_Counts::flush();
-				delete_transient( 'tsh_health' );
 				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => $msg, 'tsh_item' => $key ), $back ) );
 				exit;
 			}
@@ -509,7 +485,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			if ( ! current_user_can( self::$cap ) ) {
 				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
 			}
-			$allow = array( 'accent', 'compact', 'show_counts', 'hide_scattered', 'style_plugins', 'style_product_screens', 'system_shortcuts', 'show_unregistered' );
+			$allow = array( 'accent', 'compact' );
 			$saved = TSH_UI::settings();
 			$done  = array();
 			foreach ( $allow as $k ) {
@@ -534,44 +510,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				TSH_UI::flush();
 			}
 			wp_send_json_success( array( 'saved' => $done, 'vars' => TSH_UI::vars() ) );
-		}
-
-		/**
-		 * شمارنده‌ها را دوباره حساب می‌کند.
-		 *
-		 * @return void
-		 */
-		public static function ajax_counts() {
-			check_ajax_referer( 'tsh_hub', 'nonce' );
-			if ( ! current_user_can( self::$cap ) ) {
-				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
-			}
-			wp_send_json_success(
-				array(
-					'counts' => TSH_Counts::refresh_all(),
-					'at'     => TSH_Counts::last_updated(),
-				)
-			);
-		}
-
-		/**
-		 * گزارش سلامت را دوباره می‌سازد.
-		 *
-		 * @return void
-		 */
-		public static function ajax_health() {
-			check_ajax_referer( 'tsh_hub', 'nonce' );
-			if ( ! current_user_can( self::$cap ) ) {
-				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
-			}
-			delete_transient( 'tsh_health' );
-			$checks = TSH_Health::all( true );
-			wp_send_json_success(
-				array(
-					'summary' => TSH_Health::summary(),
-					'rows'    => count( $checks ),
-				)
-			);
 		}
 
 		/* * * * * * * * * * * ابزارها * * * * * * * * * * * */
@@ -632,7 +570,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				'activated'   => array( 'success', __( 'افزونه فعال شد.', 'tisacase-hub' ) ),
 				'deactivated' => array( 'success', __( 'افزونه غیرفعال شد.', 'tisacase-hub' ) ),
 				'hidden'      => array( 'info', __( 'نمایش کارت به‌روز شد. از «ظاهر و تنظیمات» می‌توانید برگردانید.', 'tisacase-hub' ) ),
-				'counts'      => array( 'info', __( 'شمارنده‌ها تازه شد.', 'tisacase-hub' ) ),
 				'saved'       => array( 'success', __( 'تنظیمات ذخیره شد و روی همهٔ صفحه‌ها اعمال می‌شود.', 'tisacase-hub' ) ),
 				'notfound'    => array( 'error', sprintf( /* translators: %s: dir */ __( 'پوشهٔ افزونه (%s) روی این سرور نیست.', 'tisacase-hub' ), $err ) ),
 				'failed'      => array( 'error', sprintf( /* translators: %s: error */ __( 'فعال‌سازی نشد: %s', 'tisacase-hub' ), $err ) ),
@@ -660,7 +597,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				add_option( TSH_OPTION, TSH_UI::defaults() );
 			}
 			delete_transient( 'tsh_health' );
-			TSH_Counts::flush();
 		}
 
 		/**
@@ -670,7 +606,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		 */
 		public static function deactivate() {
 			delete_transient( 'tsh_health' );
-			TSH_Counts::flush();
 		}
 	}
 

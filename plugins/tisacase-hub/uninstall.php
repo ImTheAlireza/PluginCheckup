@@ -8,21 +8,7 @@
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
 delete_option( 'tisacase_hub_settings' );
-delete_transient( 'tsh_health' );
-delete_option( 'tsh_counts_at' );
-
-foreach ( array(
-	'bdc_drafts',
-	'sku_missing',
-	'desc_backups',
-	'bpm_runs',
-	'pm_rules',
-	'wcsp_exceptions',
-	'tracking_codes',
-	'orders_30d',
-) as $t ) {
-	delete_transient( 'tsh_count_' . $t );
-}
+delete_transient( 'tsh_screen_map' );
 
 $users = get_users( array( 'fields' => 'ID', 'number' => 0 ) );
 foreach ( (array) $users as $uid ) {

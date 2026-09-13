@@ -19,19 +19,6 @@
 	min-width: 0;
 }
 
-.tisa-hero-chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--tisa-sp-2, 8px);
-	margin-top: var(--tisa-sp-3, 12px);
-}
-
-.tisa-hero .tisa-hero-chips .tisa-chip {
-	background: rgba(255, 255, 255, .15);
-	border-color: rgba(255, 255, 255, .25);
-	color: #fff;
-}
-
 /* --- بدنهٔ کارت لانچر --- */
 .tisa-hub-card {
 	overflow: hidden;
@@ -153,10 +140,6 @@
 	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
 }
 
-.tisa-plugin-card.is-nopage {
-	background: var(--tisa-surface-2, #FAFAF8);
-}
-
 .tisa-plugin-card mark {
 	padding: 0 2px;
 	border-radius: 3px;
@@ -175,94 +158,8 @@
 }
 
 /* --- ردیف میان‌بُرهای وردپرس (افزونه نیستند؛ برای همین کارت نمی‌شوند) --- */
-.tisa-shortcuts {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--tisa-sp-2, 8px) var(--tisa-sp-4, 16px);
-	margin-top: var(--tisa-sp-5, 24px);
-	padding-top: var(--tisa-sp-4, 16px);
-	border-block-start: 1px dashed var(--tisa-border, #E3E1DA);
-	font-size: var(--tisa-fs-meta, 12px);
-}
-
-.tisa-shortcuts a {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	color: var(--tisa-muted, #77828A);
-	text-decoration: none;
-	white-space: nowrap;
-}
-
-.tisa-shortcuts a:hover {
-	color: var(--tisa-primary-ink, #0A5F52);
-}
-
-.tisa-shortcuts svg {
-	width: 15px;
-	height: 15px;
-	opacity: .8;
-}
 
 /* --- نوار سلامت --- */
-.tisa-health {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
-	gap: var(--tisa-sp-3, 12px);
-}
-
-.tisa-health > a {
-	display: flex;
-	gap: var(--tisa-sp-3, 12px);
-	align-items: center;
-	padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px);
-	border: 1px solid var(--tisa-border, #E3E1DA);
-	border-inline-start-width: 4px;
-	border-radius: var(--tisa-r, 14px);
-	background: var(--tisa-surface, #fff);
-	color: inherit;
-	text-decoration: none;
-	transition: box-shadow var(--tisa-t, 150ms), transform var(--tisa-t, 150ms);
-}
-
-.tisa-health > a:hover {
-	box-shadow: var(--tisa-shadow-sm, 0 1px 2px rgba(31, 42, 46, .05));
-	transform: translateY(-1px);
-}
-
-.tisa-health .is-crit {
-	border-inline-start-color: var(--tisa-danger, #B5453A);
-	background: var(--tisa-danger-soft, #FBECEA);
-}
-
-.tisa-health .is-warn {
-	border-inline-start-color: #D98B0B;
-	background: var(--tisa-warning-soft, #FCF3D7);
-}
-
-.tisa-health .is-ok {
-	border-inline-start-color: var(--tisa-success, #1A7F37);
-}
-
-.tisa-health b {
-	display: block;
-	font-family: var(--tisa-num-font, var(--tisa-font));
-	font-size: var(--tisa-fs-hero, 26px);
-	font-weight: 800;
-	line-height: 1.1;
-	font-variant-numeric: tabular-nums lining-nums;
-	font-feature-settings: var(--tisa-num-feat, "tnum" 1);
-	letter-spacing: -.4px;
-	color: var(--tisa-text, #2A3439);
-	direction: ltr;
-}
-
-.tisa-health span {
-	font-size: var(--tisa-fs-meta, 12px);
-	line-height: 1.55;
-	color: var(--tisa-muted, #77828A);
-}
 
 /* --- ردیف سیستم‌اطلاعات --- */
 .tisa-sysbar {
@@ -461,8 +358,8 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 		padding: var(--tisa-sp-4, 16px);
 	}
 
-	.tisa-health {
-		grid-template-columns: 1fr;
+	.tisa-hub-footnote {
+		margin-top: var(--tisa-sp-3, 12px);
 	}
 }
 
@@ -470,8 +367,55 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 
 	.tisa-pin,
 	.tisa-accent__sw,
-	.tisa-health > a,
 	.tisa-plugin-card {
 		transition-duration: .01ms !important;
 	}
+}
+
+/* ==========================================================================
+   لانچرِ کم‌حرف (v1.1) — فقط دیدن و باز کردن
+   ========================================================================== */
+
+/* --- هیرو تک‌خطیِ صفحهٔ لانچر --- */
+.tisa-hero--slim {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px);
+}
+
+.tisa-hero--slim .tisa-hero-txt {
+	flex: 1 1 240px;
+	min-width: 0;
+}
+
+.tisa-hero--slim .tisa-lead {
+	margin: 2px 0 0;
+}
+
+.tisa-hero--slim .tisa-hero-actions {
+	margin-inline-start: auto;
+}
+
+/* --- خطِ «چند کارت مخفی است» زیر گرید --- */
+.tisa-hub-footnote {
+	margin: var(--tisa-sp-4, 16px) 0 0;
+	opacity: .78;
+}
+
+.tisa-hub-footnote a {
+	text-decoration: underline;
+}
+
+/* --- کارتی که صفحه‌اش قفلِ دسترسیِ خودِ افزونه است --- */
+.tisa-btn.is-disabled {
+	color: var(--tisa-muted, #77828A) !important;
+	background: var(--tisa-sand-2, #EFEBE1) !important;
+	border-color: transparent !important;
+	cursor: not-allowed;
+	box-shadow: none !important;
+}
+
+.tisa-plugin-card.is-nocap .tisa-plugin-card__title {
+	opacity: .72;
 }

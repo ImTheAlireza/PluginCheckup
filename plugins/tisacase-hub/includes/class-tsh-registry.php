@@ -37,7 +37,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				'products' => __( 'محصول و محتوا', 'tisacase-hub' ),
 				'pricing'  => __( 'قیمت‌گذاری', 'tisacase-hub' ),
 				'orders'   => __( 'سفارش و ارسال', 'tisacase-hub' ),
-				'system'   => __( 'ابزارهای سیستمی', 'tisacase-hub' ),
 			);
 		}
 
@@ -70,7 +69,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 						'screen' => 'woocommerce_page_bdc-cleaner',
 					),
 				),
-				'count' => 'bdc_drafts',
 			);
 
 			$items['desc'] = array(
@@ -99,7 +97,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 						'screen' => 'toplevel_page_tisacase-desc',
 					),
 				),
-				'count' => 'desc_backups',
 			);
 
 			$items['importer'] = array(
@@ -118,7 +115,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 						'slug'   => 'tisa-product-importer',
 					),
 				),
-				'count' => '',
 			);
 
 			$items['skubar'] = array(
@@ -128,11 +124,9 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				'icon'  => 'hash',
 				'dir'   => 'wc-sku-prefix-bar',
 				'cap'   => 'edit_products',
-				'no_page' => true,
-				'note'  => __( 'صفحهٔ مستقل ندارد: نوار SKU روی لیست محصولات می‌نشیند.', 'tisacase-hub' ),
 				'pages' => array(
 					array(
-						'label'  => __( 'لیست محصولات (جای نوار SKU)', 'tisacase-hub' ),
+						'label'  => __( 'لیست محصولات', 'tisacase-hub' ),
 						'path'   => 'edit.php?post_type=product',
 						'screen' => 'edit-product',
 					),
@@ -140,7 +134,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				// صفحهٔ ویرایش محصول عمداً در فهرست نیست: آن صفحه مال خودِ ووکامرس است و
 				// دست‌زدن به جدول واریاسیون‌ها/پنل داده ریسک دارد. با فیلتر باز می‌شود.
 				'screens' => (array) apply_filters( 'tisacase_hub_skubar_screens', array( 'edit-product' ) ),
-				'count'   => 'sku_missing',
 			);
 
 			$items['tcbpm'] = array(
@@ -169,7 +162,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 						'screen' => 'product_page_tisacase-bulk-price-manager',
 					),
 				),
-				'count' => 'bpm_runs',
 			);
 
 			$items['pm'] = array(
@@ -188,7 +180,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 						'slug'   => 'tisacase-pricing-manager',
 					),
 				),
-				'count' => 'pm_rules',
 			);
 
 			$items['package'] = array(
@@ -207,7 +198,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 						'slug'   => 'wcsp-settings',
 					),
 				),
-				'count' => 'wcsp_exceptions',
 			);
 
 			$items['tracking'] = array(
@@ -233,7 +223,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 						'slug'   => 'bwt-cleanup',
 					),
 				),
-				'count' => 'tracking_codes',
 			);
 
 			$items['phones'] = array(
@@ -250,55 +239,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 						'screen' => 'woocommerce_page_tisacase-order-phone-exporter',
 						'parent' => 'woocommerce',
 						'slug'   => 'tisacase-order-phone-exporter',
-					),
-				),
-				'count' => 'orders_30d',
-			);
-
-			$items['hub-plugins'] = array(
-				'title' => __( 'افزونه‌ها', 'tisacase-hub' ),
-				'desc'  => __( 'مدیریت کلاسیک وردپرس: فعال/غیرفعال، به‌روزرسانی و ویرایش.', 'tisacase-hub' ),
-				'group' => 'system',
-				'icon'  => 'plug',
-				'dir'   => '',
-				'cap'   => 'activate_plugins',
-				'system' => true,
-				'pages' => array(
-					array(
-						'label' => __( 'افزونه‌های نصب‌شده', 'tisacase-hub' ),
-						'path'  => 'plugins.php',
-					),
-				),
-			);
-
-			$items['hub-wc'] = array(
-				'title' => __( 'نمای کلی ووکامرس', 'tisacase-hub' ),
-				'desc'  => __( 'داشبورد اصلی فروشگاه؛ برای مقایسه و دسترسی سریع.', 'tisacase-hub' ),
-				'group' => 'system',
-				'icon'  => 'chart',
-				'dir'   => '',
-				'cap'   => 'manage_woocommerce',
-				'system' => true,
-				'pages' => array(
-					array(
-						'label' => __( 'باز کردن', 'tisacase-hub' ),
-						'path'  => 'admin.php?page=wc-admin',
-					),
-				),
-			);
-
-			$items['hub-orders'] = array(
-				'title' => __( 'سفارش‌ها', 'tisacase-hub' ),
-				'desc'  => __( 'لیست سفارش‌ها — مبدأ اکثر کارهایی که این ابزارها انجام می‌دهند.', 'tisacase-hub' ),
-				'group' => 'system',
-				'icon'  => 'archive',
-				'dir'   => '',
-				'cap'   => 'manage_woocommerce',
-				'system' => true,
-				'pages' => array(
-					array(
-						'label' => __( 'باز کردن', 'tisacase-hub' ),
-						'path'  => 'edit.php?post_type=shop_order',
 					),
 				),
 			);
@@ -337,7 +277,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 					'icon'   => isset( $parsed['icon'] ) ? $parsed['icon'] : 'plug',
 					'dir'    => $dir,
 					'cap'    => isset( $parsed['cap'] ) ? $parsed['cap'] : 'manage_woocommerce',
-					'count'  => '',
 					'pages'  => array(),
 					'source' => 'header',
 				);
@@ -458,8 +397,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 			$state = 'missing';
 			if ( $basename ) {
 				$state = is_plugin_active( $basename ) ? 'active' : 'inactive';
-			} elseif ( ! empty( $item['system'] ) ) {
-				$state = 'system';
 			}
 
 			$pages = array();
@@ -471,7 +408,12 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				$pages[] = $page;
 			}
 
-			$cap = isset( $item['cap'] ) ? $item['cap'] : 'manage_woocommerce';
+			// دسترسی همان چیزی است که خودِ افزونه روی آیتم منوی خودش گذاشته است؛
+			// اگر منو هنوز ثبت نشده باشد، به پیش‌فرض registry برمی‌گردیم.
+			$cap = self::page_cap( $item );
+			if ( '' === $cap ) {
+				$cap = isset( $item['cap'] ) ? $item['cap'] : 'manage_woocommerce';
+			}
 
 			$item['key']        = $key;
 			$item['pages']      = $pages;
@@ -479,9 +421,9 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 			$item['state']      = $state;
 			$item['version']    = isset( $data['Version'] ) ? (string) $data['Version'] : '';
 			$item['name']       = isset( $data['Name'] ) ? (string) $data['Name'] : ( isset( $item['title'] ) ? $item['title'] : '' );
+			$item['cap_name']   = $cap;
 			$item['can']        = current_user_can( $cap );
 			$item['can_manage'] = current_user_can( 'activate_plugins' );
-			$item['count']      = ( $state === 'active' && ! empty( $item['count'] ) ) ? TSH_Counts::get( $item['count'] ) : null;
 			$item['screens']    = isset( $item['screens'] ) ? (array) $item['screens'] : array();
 			foreach ( $pages as $page ) {
 				if ( ! empty( $page['screen'] ) && ! in_array( $page['screen'], $item['screens'], true ) ) {
@@ -516,11 +458,6 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				if ( in_array( $key, (array) $hidden, true ) ) {
 					continue;
 				}
-				// میان‌بُرهای وردپرس «افزونهٔ شما» نیستند؛ در گرید نمی‌نشینند
-				// (نمایششان فقط با گزینهٔ system_shortcuts و آن هم به‌صورت یک ردیف لینک).
-				if ( ! empty( $item['system'] ) ) {
-					continue;
-				}
 				$group = isset( $item['group'] ) && isset( $out[ $item['group'] ] ) ? $item['group'] : 'products';
 				$out[ $group ]['items'][] = $item;
 			}
@@ -534,59 +471,41 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 		}
 
 	/**
-	 * میان‌بُرهای سیستمی (افزونه‌ها / نمای کلی ووکامرس / سفارش‌ها).
+	 * دسترسیِ واقعیِ صفحهٔ افزونه، خوانده‌شده از آرایهٔ منوی وردپرس.
 	 *
-	 * این‌ها افزونهٔ شما نیستند، پس در گرید نمی‌آیند؛ فقط وقتی گزینهٔ
-	 * `system_shortcuts` روشن باشد به‌صورت یک ردیف لینکِ کوچک نمایش داده می‌شوند.
-	 *
-	 * @return array<int,array>
+	 * @param array $item آیتم.
+	 * @return string کلید دسترسی ('' یعنی پیدا نشد).
 	 */
-	public static function shortcuts() {
-		$items  = self::items();
-		$out    = array();
-		$hidden = (array) TSH_UI::setting( 'hidden', array() );
-		foreach ( array_keys( $items ) as $key ) {
-			if ( empty( $items[ $key ]['system'] ) || in_array( $key, $hidden, true ) ) {
+	public static function page_cap( $item ) {
+		if ( empty( $item['pages'] ) ) {
+			return '';
+		}
+		global $menu, $submenu;
+		if ( ! is_array( $menu ) ) {
+			return '';
+		}
+		foreach ( (array) $item['pages'] as $page ) {
+			if ( empty( $page['slug'] ) ) {
 				continue;
 			}
-			$out[] = self::resolve( $key, $items );
+			$parent = isset( $page['parent'] ) ? $page['parent'] : '';
+			if ( 'top' === $parent || '' === $parent ) {
+				foreach ( (array) $menu as $row ) {
+					if ( isset( $row[2] ) && false !== strpos( (string) $row[2], $page['slug'] ) ) {
+						return isset( $row[1] ) ? (string) $row[1] : '';
+					}
+				}
+				continue;
+			}
+			$rows = isset( $submenu[ $parent ] ) ? (array) $submenu[ $parent ] : array();
+			foreach ( $rows as $row ) {
+				if ( isset( $row[2] ) && false !== strpos( (string) $row[2], $page['slug'] ) ) {
+					return isset( $row[1] ) ? (string) $row[1] : '';
+				}
+			}
 		}
-		return $out;
+		return '';
 	}
-
-	/**
-	 * افزونه‌های تیساکیس که هنوز در هاب ثبت نشده‌اند (یادآور تمیز).
-		 *
-		 * @return array<int,array>
-		 */
-		public static function unregistered() {
-			$items = self::items();
-			$dirs  = array();
-			foreach ( $items as $item ) {
-				if ( ! empty( $item['dir'] ) ) {
-					$dirs[ $item['dir'] ] = true;
-				}
-			}
-			$found = array();
-			foreach ( self::plugins() as $basename => $data ) {
-				$dir    = dirname( $basename );
-				$author = ( isset( $data['Author'] ) ? $data['Author'] : '' ) . ' ' . ( isset( $data['TextDomain'] ) ? $data['TextDomain'] : '' ) . ' ' . $dir;
-				if ( isset( $dirs[ $dir ] ) ) {
-					continue;
-				}
-				if ( ! preg_match( '/tisa|تیسا/i', $author ) ) {
-					continue;
-				}
-				$found[] = array(
-					'basename' => $basename,
-					'dir'      => $dir,
-					'name'     => $data['Name'],
-					'version'  => isset( $data['Version'] ) ? $data['Version'] : '',
-					'active'   => is_plugin_active( $basename ),
-				);
-			}
-			return $found;
-		}
 
 		/**
 		 * فهرست اسکرین‌هایی که هاب در آن‌ها استایل تزریق می‌کند.

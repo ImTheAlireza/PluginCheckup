@@ -1,9 +1,9 @@
 /**
  * TisaCase Hub — رفتار صفحهٔ لانچر و تنظیمات.
  *
- * بدون jQuery، بدون وابستگی: جستجو، ناوبری کیبورد، سنجاق، تازه‌سازی شمارش‌ها،
- * رنگ برند و چگالی. هیچ‌کدام برای کار کردن لازم نیستند (HTML کامل رندر شده
- و فقط با این‌ها چابک‌تر می‌شود) — یعنی اگر JS خاموش باشد صفحه کامل کار می‌کند.
+ * بدون jQuery، بدون وابستگی: جستجو، ناوبری کیبورد، سنجاق، رنگ برند و چگالی.
+ * هیچ‌کدام برای کار کردن لازم نیستند — صفحه کامل در HTML رندر می‌شود و اگر JS
+ خاموش باشد هم «باز کردن» کار می‌کند.
  */
 ( function () {
 	'use strict';
@@ -150,7 +150,7 @@
 		if ( counter ) {
 			counter.textContent = q
 				? ( n + ' / ' + cards.length )
-				: cards.length + ' ' + ( cfg.i18n && cfg.i18n.items ? cfg.i18n.items : '' );
+				: cards.length + ' ' + ( cfg.i18n && cfg.i18n.tools ? cfg.i18n.tools : '' );
 		}
 		focusCard( q ? 0 : -1, !! scroll );
 	}
@@ -164,7 +164,7 @@
 			if ( 'Enter' === e.key ) {
 				var list = vis();
 				var card = list[ at ] || list[ 0 ];
-				var link = card && ( $( '.tisa-plugin-card__link', card ) || $( '.tisa-btn--primary[href]', card ) );
+				var link = card && $( '[data-open]', card );
 				if ( link && link.href ) { e.preventDefault(); window.open( link.href, '_blank', 'noopener' ); }
 			}
 		} );
@@ -252,34 +252,7 @@
 		} );
 	}
 
-	/* ---------------------------------------------------------------- 4) شمارش‌ها */
-
-	var refresh = $( '#tsh-refresh' );
-	if ( refresh ) {
-		refresh.addEventListener( 'click', function () {
-			refresh.classList.add( 'is-busy' );
-			refresh.disabled = true;
-			var badges = $$( '[data-count]' );
-			badges.forEach( function ( b ) { b.classList.add( 'tisa-skeleton' ); } );
-			post( 'tsh_counts', {} ).then( function ( res ) {
-				var data = ( res && res.data && res.data.counts ) || {};
-				badges.forEach( function ( b ) {
-					var key = b.getAttribute( 'data-count' );
-					var num = $( '.tisa-num', b );
-					if ( num && data[ key ] ) { num.textContent = String( data[ key ].value ); }
-					b.classList.remove( 'tisa-skeleton' );
-				} );
-				refresh.classList.remove( 'is-busy' );
-				refresh.disabled = false;
-			} ).catch( function () {
-				badges.forEach( function ( b ) { b.classList.remove( 'tisa-skeleton' ); } );
-				refresh.classList.remove( 'is-busy' );
-				refresh.disabled = false;
-			} );
-		} );
-	}
-
-	/* ---------------------------------------------------------------- 5) کپی قطعهٔ کد */
+	/* ---------------------------------------------------------------- 4) کپی قطعهٔ کد */
 
 	var copy = $( '#tsh-copy' );
 	if ( copy ) {

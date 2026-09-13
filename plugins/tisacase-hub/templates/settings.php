@@ -55,7 +55,6 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 		</div>
 		<div class="tisa-hero-actions">
 			<a class="tisa-btn tisa-btn--sm" href="<?php echo esc_url( admin_url( 'admin.php?page=' . TSH_SLUG ) ); ?>"><?php esc_html_e( '← ابزارها', 'tisacase-hub' ); ?></a>
-			<a class="tisa-btn tisa-btn--sm" href="<?php echo esc_url( admin_url( 'admin.php?page=' . TSH_SLUG . '-health' ) ); ?>"><?php esc_html_e( 'گزارش سلامت', 'tisacase-hub' ); ?></a>
 		</div>
 	</header>
 
@@ -162,45 +161,8 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 
 		<div class="tisa-setrow">
 			<div class="tisa-setrow__text">
-				<b class="tisa-h3"><?php esc_html_e( 'شمارنده‌های روی کارت‌ها', 'tisacase-hub' ); ?></b>
-				<p class="tisa-meta"><?php esc_html_e( 'تعداد پیش‌نویس‌ها، SKUهای بدون پیشوند، اجراهای ثبت‌شده و … با کش. اگر سایت بزرگ است، کش را بالا ببرید.', 'tisacase-hub' ); ?></p>
-			</div>
-			<div class="tisa-setrow__ctrl">
-				<label class="tisa-switch">
-					<input type="checkbox" name="<?php echo esc_attr( $opt ); ?>[show_counts]" value="1" <?php checked( ! empty( $settings['show_counts'] ) ); ?>>
-					<span class="tisa-switch__track" aria-hidden="true"></span>
-					<span><?php esc_html_e( 'نمایش', 'tisacase-hub' ); ?></span>
-				</label>
-				<label class="tisa-field" style="margin:0">
-					<span class="tisa-label"><?php esc_html_e( 'کش (ثانیه) — صفر یعنی بدون کش', 'tisacase-hub' ); ?></span>
-					<input type="number" name="<?php echo esc_attr( $opt ); ?>[cache_ttl]" class="tisa-input tisa-input--number tisa-input--w-sm" min="0" max="86400" step="60" value="<?php echo esc_attr( (string) $settings['cache_ttl'] ); ?>">
-				</label>
-			</div>
-		</div>
-
-		<div class="tisa-setrow">
-			<div class="tisa-setrow__text">
-				<b class="tisa-h3"><?php esc_html_e( 'ردیف میان‌بُرهای وردپرس', 'tisacase-hub' ); ?></b>
-				<p class="tisa-meta"><?php esc_html_e( 'افزونه‌ها / نمای کلی ووکامرس / سفارش‌ها. این‌ها افزونهٔ شما نیستند، پس کارت نمی‌شوند؛ اگر روشنشان کنید فقط یک ردیف لینک در پایین لانچر می‌آید.', 'tisacase-hub' ); ?></p>
-			</div>
-			<div class="tisa-setrow__ctrl">
-				<label class="tisa-switch">
-					<input type="checkbox" name="<?php echo esc_attr( $opt ); ?>[system_shortcuts]" value="1" <?php checked( ! empty( $settings['system_shortcuts'] ) ); ?>>
-					<span class="tisa-switch__track" aria-hidden="true"></span>
-					<span><?php esc_html_e( 'نمایش ردیف', 'tisacase-hub' ); ?></span>
-				</label>
-			</div>
-		</div>
-
-		<div class="tisa-setrow">
-			<div class="tisa-setrow__text">
 				<b class="tisa-h3"><?php esc_html_e( 'کارت‌های مخفی‌شده', 'tisacase-hub' ); ?></b>
 				<p class="tisa-meta"><?php esc_html_e( 'مخفی کردن یعنی فقط در لانچر دیده نشود؛ افزونه در «افزونه‌ها»ی وردپرس دست‌نخورده است.', 'tisacase-hub' ); ?></p>
-				<label class="tisa-switch" style="margin-top:var(--tisa-sp-2)">
-					<input type="checkbox" name="<?php echo esc_attr( $opt ); ?>[show_unregistered]" value="1" <?php checked( ! empty( $settings['show_unregistered'] ) ); ?>>
-					<span class="tisa-switch__track" aria-hidden="true"></span>
-					<span><?php esc_html_e( 'یادآور افزونه‌های تیساکیسیِ ثبت‌نشده را نشان بده', 'tisacase-hub' ); ?></span>
-				</label>
 			</div>
 			<div class="tisa-setrow__ctrl">
 				<?php if ( ! $hidden ) : ?>

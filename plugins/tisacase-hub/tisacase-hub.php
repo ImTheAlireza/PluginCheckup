@@ -3,7 +3,7 @@
  * Plugin Name:          اختصاصی تیساکیس (TisaCase Hub)
  * Plugin URI:           https://tisacase.com/
  * Description:           منوی واحد برای همهٔ افزونه‌های اختصاصی، تزریق زبان طراحی مشترک در صفحات آن‌ها، و پایش سلامت/امنیت. افزونه‌ها را اجرا، فعال/غیرفعال و یکدست می‌کند.
- * Version:              1.0.2
+ * Version:              1.1.0
  * Requires at least:    5.8
  * Requires PHP:         7.4
  * Author:               TisaCase
@@ -12,7 +12,7 @@
  * License URI:          https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:          tisacase-hub
  * Domain Path:          /languages
- * TisaCase Hub:         title="اختصاصی تیساکیس"; icon=grid; group=system; self=yes
+ * TisaCase Hub:         title="اختصاصی تیساکیس"; icon=grid; self=yes
  *
  * @package TisaCase_Hub
  */
@@ -20,7 +20,7 @@
 defined( 'ABSPATH' ) || exit;
 
 if ( ! defined( 'TSH_VERSION' ) ) {
-	define( 'TSH_VERSION', '1.0.2' );
+	define( 'TSH_VERSION', '1.1.0' );
 }
 if ( ! defined( 'TSH_FILE' ) ) {
 	define( 'TSH_FILE', __FILE__ );
@@ -47,8 +47,6 @@ if ( ! defined( 'TSH_SLUG' ) ) {
 
 require_once TSH_DIR . 'includes/class-tsh-view.php';
 require_once TSH_DIR . 'includes/class-tsh-registry.php';
-require_once TSH_DIR . 'includes/class-tsh-counts.php';
-require_once TSH_DIR . 'includes/class-tsh-health.php';
 require_once TSH_DIR . 'includes/class-tsh-ui.php';
 require_once TSH_DIR . 'includes/class-tsh-admin.php';
 require_once TSH_DIR . 'includes/tpl-card.php';
