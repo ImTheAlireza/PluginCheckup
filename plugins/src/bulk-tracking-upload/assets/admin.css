@@ -1,0 +1,48 @@
+/* Bulk Tracking Upload — استایل ادمین (v2.2 · زبان طراحی TisaCase)
+   فقط دو صفحهٔ آپلود و پاک‌سازی. دکمه/جدول/نوتیس بومی را هاب با tisa-scope می‌پوشاند.
+   مهندسی رنگ: یک دکمهٔ اصلی در هر صفحه؛ قرمزِ پر فقط روی «پاک کردن همه». */
+
+.bwt-wrap { max-width: 920px; font-variant-numeric: tabular-nums; }
+.bwt-lead { color: var(--tisa-muted, #77828A); }
+
+.bwt-card {
+	margin: var(--tisa-sp-4, 16px) 0;
+	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r, 14px);
+	background: var(--tisa-surface, #fff);
+}
+.bwt-card--error { border-inline-start: 3px solid var(--tisa-danger, #B5453A); }
+.bwt-card-title { margin: 0 0 var(--tisa-sp-2, 8px); }
+.bwt-card-h { margin: 0 0 var(--tisa-sp-2, 8px); font-size: var(--tisa-fs-h3, 16px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
+.bwt-card-h--danger { color: var(--tisa-danger-ink, #8E3128); }
+.bwt-hint { margin: var(--tisa-sp-2, 8px) 0 0; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+
+.bwt-sample {
+	display: block;
+	padding: var(--tisa-sp-3, 12px);
+	border-radius: var(--tisa-r-sm, 10px);
+	background: var(--tisa-surface-2, #FAFAF8);
+	color: var(--tisa-ink, #1F2A2E);
+	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
+	font-size: var(--tisa-fs-meta, 12px);
+	line-height: 1.8;
+	direction: ltr; text-align: left;
+}
+
+.bwt-scroll { max-height: 350px; overflow: auto; border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-sm, 10px); }
+.bwt-table { margin: 0; border: 0; }
+.bwt-ltr { direction: ltr; text-align: left; }
+.bwt-code { font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); font-size: var(--tisa-fs-meta, 12px); }
+.bwt-reason { color: var(--tisa-danger-ink, #8E3128); }
+
+.bwt-form .bwt-label { display: block; margin-bottom: 4px; font-weight: 600; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.bwt-ids { width: 300px; max-width: 100%; }
+.bwt-actions { margin: var(--tisa-sp-3, 12px) 0 0; }
+.bwt-sep { margin: var(--tisa-sp-5, 24px) 0; border: 0; border-top: 1px solid var(--tisa-border, #E3E1DA); }
+
+/* تنها قرمزِ پر */
+.button.button-danger { background: var(--tisa-danger, #B5453A) !important; border-color: var(--tisa-danger, #B5453A) !important; color: var(--tisa-on-primary, #fff) !important; }
+.button.button-danger:hover { background: var(--tisa-danger-ink, #8E3128) !important; border-color: var(--tisa-danger-ink, #8E3128) !important; }
+
+body.tisa-compact .bwt-card { padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px); }
