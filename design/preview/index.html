@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TisaCase UI — پیش‌نمایش زبان طراحی مشترک</title>
+
+<!-- ⬇︎ همین فایل، همان چیزی است که داخل tisacase-hub/assets/tisacase-ui.css منتشر می‌شود -->
+<link rel="stylesheet" href="../tisacase-ui.css" id="ui-css">
+
+<style>
+/* ==========================================================================
+   فقط برای این صفحهٔ پیش‌نمایش: شبیه‌سازی پوستهٔ پیشخوان وردپرس
+   ========================================================================== */
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+	background: #F0F0F1;
+	color: #1F2A2E;
+	font: 14px/1.7 "Vazirmatn", "IRANSans", -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
+}
+body.tisa-scope { background: #F4F2EC; }
+
+/* --- نوار بالا و منوی کناری (شبیه‌سازی) --- */
+.demo-topbar {
+	position: sticky; top: 0; z-index: 50;
+	display: flex; align-items: center; gap: 14px;
+	height: 44px; padding: 0 18px;
+	background: #1D2327; color: #C3C4C7; font-size: 13px;
+}
+body.tisa-scope .demo-topbar { background: #06302B; color: #BFE3DC; }
+.demo-topbar b { color: #fff; font-weight: 700; }
+.demo-topbar .demo-switch { margin-inline-start: auto; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.demo-shell { display: flex; min-height: calc(100vh - 44px); }
+.demo-menu {
+	flex: 0 0 178px; background: #2C3338; color: #F0F0F1; padding: 10px 0 40px; font-size: 13.5px;
+}
+body.tisa-scope .demo-menu { background: #14312C; }
+.demo-menu a { display: block; padding: 8px 14px; color: inherit; text-decoration: none; opacity: .82; }
+.demo-menu a:hover { opacity: 1; }
+.demo-menu .is-current { background: #2271b1; opacity: 1; font-weight: 700; }
+body.tisa-scope .demo-menu .is-current { background: linear-gradient(90deg, #0A5F52, #0E7C6B); box-shadow: inset 3px 0 0 #129786; }
+.demo-content { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 900px) { .demo-menu { display: none; } }
+
+/* --- ابزارهای صفحهٔ پیش‌نمایش --- */
+.demo-main { max-width: 1240px; margin: 0 auto; padding: 0 22px 80px; }
+.demo-band { margin: 46px 0 0; padding: 0; }
+.demo-band > h2 {
+	display: flex; align-items: center; gap: 10px;
+	margin: 0 0 6px; font-size: 17px; font-weight: 800; color: #1F2A2E;
+}
+.demo-band > h2 span.n {
+	display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+	background: #0E7C6B; color: #fff; font-size: 11px; font-weight: 700;
+}
+.demo-band > p.sub { margin: 0 0 16px; color: #77828A; font-size: 12.5px; }
+.demo-box { background: #fff; border: 1px solid #E3E1DA; border-radius: 14px; padding: 20px 22px; }
+.demo-box + .demo-box { margin-top: 14px; }
+.demo-box > h3 { margin: 0 0 14px; font-size: 12px; font-weight: 700; color: #77828A; letter-spacing: .2px; }
+.demo-flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.demo-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 1000px) { .demo-2col { grid-template-columns: 1fr; } }
+
+/* --- پیش‌نمایش توکن‌ها --- */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 10px; }
+.swatch { border: 1px solid #E3E1DA; border-radius: 10px; overflow: hidden; }
+.swatch i { display: block; height: 44px; }
+.swatch div { padding: 7px 9px; font-size: 10.5px; line-height: 1.5; color: #2A3439; }
+.swatch code { display: block; font: 10px/1.4 ui-monospace, Consolas, monospace; color: #77828A; direction: ltr; }
+.scale { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; }
+.radius-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.radius-row b { width: 64px; height: 44px; background: #E8F0EE; border: 2px solid #0E7C6B; display: grid; place-items: center; font: 10px ui-monospace, monospace; color: #0A5F52; }
+.space-row { display: flex; gap: 6px; align-items: flex-end; }
+.space-row i { display: block; width: 18px; background: linear-gradient(#0E7C6B, #129786); border-radius: 3px; }
+
+/* --- مقایسهٔ قبل/بعد: شبیه‌سازی استایل خام وردپرس --- */
+.wpd { font: 13px/1.6 "Segoe UI", Tahoma, sans-serif; }
+:where(.wpd) h1 { font-size: 23px; font-weight: 400; margin: 0 0 12px; color: #1d2327; }
+:where(.wpd) h2 { font-size: 16px; margin: 0 0 10px; }
+:where(.wpd) p { margin: 0 0 10px; }
+:where(.wpd) .button {
+	display: inline-block; min-height: 30px; padding: 0 10px; margin: 0;
+	border: 1px solid #2271b1; border-radius: 3px; background: #f6f7f7;
+	box-shadow: 0 1px 0 #2271b1; color: #2271b1; font-size: 13px; line-height: 2.15;
+	text-decoration: none; cursor: pointer; font-family: inherit;
+}
+:where(.wpd) .button-primary { background: #2271b1; border-color: #2271b1; color: #fff; box-shadow: 0 1px 0 #135e96; }
+:where(.wpd) .button.button-large { min-height: 34px; padding: 0 14px; font-size: 14px; }
+:where(.wpd) .notice { margin: 10px 0; padding: 1px 12px; background: #fff; border: 1px solid #c3c4c7; border-left-width: 4px; box-shadow: 0 1px 1px rgba(0,0,0,.04); }
+:where(.wpd) .notice-success { border-left-color: #00a32a; }
+:where(.wpd) .notice-warning { border-left-color: #dba617; }
+:where(.wpd) .notice-error { border-left-color: #d63638; }
+:where(.wpd) .widefat { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #dcdcde; }
+:where(.wpd) .widefat th { text-align: left; padding: 8px 10px; border-bottom: 1px solid #dcdcde; }
+:where(.wpd) .widefat td { padding: 8px 10px; border-bottom: 1px solid #f0f0f1; }
+:where(.wpd) .widefat.striped tbody tr:nth-child(odd) { background: #f6f7f7; }
+:where(.wpd) .nav-tab-wrapper { margin: 0 0 12px; padding-top: 9px; border-bottom: 1px solid #c3c4c7; }
+:where(.wpd) .nav-tab { display: inline-block; padding: 6px 10px; border: 1px solid #dcdcde; border-bottom: 0; background: #c3c4c7; color: #50575e; text-decoration: none; border-radius: 3px 3px 0 0; }
+:where(.wpd) .nav-tab-active { background: #fff; color: #1d2327; border-color: #c3c4c7; }
+:where(.wpd) input[type=text], :where(.wpd) input[type=number], :where(.wpd) select {
+	padding: 0 8px; min-height: 30px; border: 1px solid #8c8f94; border-radius: 3px; background: #fff; font-size: 14px;
+}
+:where(.wpd) .form-table { width: 100%; border-collapse: collapse; }
+:where(.wpd) .form-table th { width: 200px; text-align: left; padding: 15px 10px 15px 0; font-weight: 600; vertical-align: top; }
+:where(.wpd) .form-table td { padding: 10px 10px 10px 0; }
+:where(.wpd) .wp-panel { background: #fff; border: 1px solid #dcdcde; padding: 20px; margin-bottom: 14px; }
+.tag-before, .tag-after { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.tag-before { background: #fbeaea; color: #8a2424; }
+.tag-after { background: #e5f4e7; color: #1a7f37; }
+
+/* --- مودال --- */
+.demo-modal-open { position: static; }
+/* --- اسکرول نرم --- */
+html { scroll-behavior: smooth; scroll-padding-top: 60px; }
+.demo-toc { position: sticky; top: 44px; z-index: 40; display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 0; background: linear-gradient(#F0F0F1 70%, rgba(240,240,241,0)); }
+body.tisa-scope .demo-toc { background: linear-gradient(#F4F2EC 70%, rgba(244,242,236,0)); }
+.demo-toc a { padding: 5px 11px; border-radius: 999px; background: #fff; border: 1px solid #E3E1DA; color: #2A3439; font-size: 11.5px; text-decoration: none; }
+.demo-toc a:hover { border-color: #0E7C6B; color: #0A5F52; }
+</style>
+</head>
+
+<body class="tisa-scope">
+
+<!-- ================= پوستهٔ شبیه‌سازی‌شدهٔ وردپرس ================= -->
+<div class="demo-topbar">
+	<span>⌂ <b>پیشخوان وردپرس</b> (شبیه‌سازی)</span>
+	<span>سلام، علیرضا</span>
+	<span>ووکامرس ۹٫۵ · PHP ۸٫۲</span>
+	<span class="demo-switch">
+		<span>افزونهٔ <b>tisacase-hub</b>:</span>
+		<button type="button" class="tisa-btn tisa-btn--primary tisa-btn--sm" id="hub-toggle" aria-pressed="true">روشن</button>
+		<span class="tisa-tiny" id="hub-hint">با خاموش‌کردن، صفحه‌ها به استایل خودشان برمی‌گردند — بدون شکستگی</span>
+	</span>
+</div>
+
+<div class="demo-shell">
+	<nav class="demo-menu" aria-label="منوی پیشخوان">
+		<a href="#"> پیشخوان</a>
+		<a href="#"> نوشته‌ها</a>
+		<a href="#"> برگه‌ها</a>
+		<a href="#">رسانه</a>
+		<a href="#"> دیدگاه‌ها</a>
+		<a href="#"> ووکامرس</a>
+		<a href="#"> محصولات</a>
+		<a href="#" class="is-current">◧ اختصاصی تیساکیس</a>
+		<a href="#"> افزونه‌ها</a>
+		<a href="#"> کاربران</a>
+		<a href="#"> ابزارها</a>
+		<a href="#"> تنظیمات</a>
+	</nav>
+
+	<main class="demo-content">
+	<div class="tisa-wrap">
+
+		<!-- ================= ۰) هیرو ================= -->
+		<header class="tisa-hero">
+			<div class="row">
+				<span class="tisa-hero-mark" aria-hidden="true">
+					<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M3 12h18M3 17h11"/></svg>
+				</span>
+				<div>
+					<h1 class="tisa-hero-title">زبان طراحی مشترک تیساکیس</h1>
+					<p class="tisa-lead">
+						یک منبع حقیقت برای رنگ، گوشه، اندازهٔ متن و کامپوننت‌ها — که افزونهٔ
+						<span style="color:#fff;font-weight:700">tisacase-hub</span> روی همهٔ اسکرین‌های TisaCase تزریق می‌کند.
+						مبنای پالت: همان teal + sand افزونهٔ «قوانین توضیحات محصول» که از قبل توکن‌دار بود.
+					</p>
+				</div>
+			</div>
+			<div class="tisa-hero-actions">
+				<a class="tisa-btn tisa-btn--sm" style="background:rgba(255,255,255,.16);color:#fff" href="#hub">صفحهٔ هاب ↓</a>
+				<a class="tisa-btn tisa-btn--sm" style="background:rgba(255,255,255,.16);color:#fff" href="#compare">قبل / بعد ↓</a>
+			</div>
+		</header>
+
+		<div class="demo-toc">
+			<a href="#tokens">۱ توکن‌ها</a>
+			<a href="#buttons">۲ دکمه</a>
+			<a href="#forms">۳ فرم</a>
+			<a href="#cards">۴ کارت</a>
+			<a href="#badges">۵ بج و وضعیت</a>
+			<a href="#notices">۶ اطلاع‌رسان</a>
+			<a href="#tabs">۷ تب</a>
+			<a href="#table">۸ جدول</a>
+			<a href="#process">۹ پیشرفت و لاگ</a>
+			<a href="#modal">۱۰ مودال</a>
+			<a href="#compare">۱۱ قبل/بعد</a>
+			<a href="#hub">۱۲ صفحهٔ هاب</a>
+			<a href="#notes">۱۳ یادداشت‌ها</a>
+		</div>
+
+		<!-- ================= ۱) توکن‌ها ================= -->
+		<section class="demo-band" id="tokens">
+			<h2><span class="n">۱</span> توکن‌ها <span class="tisa-badge tisa-badge--primary">:root</span></h2>
+			<p class="sub">هیچ افزونه‌ای حق نوشتن هگز خام در CSS را ندارد. هر رنگ = یک متغیر با fallback.</p>
+
+			<div class="demo-box">
+				<h3>پالت</h3>
+				<div class="swatches">
+					<div class="swatch"><i style="background:#0E7C6B"></i><div>primary<code>--tisa-primary</code><code>#0E7C6B</code></div></div>
+					<div class="swatch"><i style="background:#0A5F52"></i><div>primary-ink<code>--tisa-primary-ink</code><code>#0A5F52</code></div></div>
+					<div class="swatch"><i style="background:#064E46"></i><div>brand deep<code>--tisa-primary-deep</code><code>#064E46</code></div></div>
+					<div class="swatch"><i style="background:#129786"></i><div>brand bright<code>--tisa-primary-bright</code><code>#129786</code></div></div>
+					<div class="swatch"><i style="background:#E8F0EE"></i><div>primary soft<code>--tisa-primary-soft</code><code>#E8F0EE</code></div></div>
+					<div class="swatch"><i style="background:#F4F2EC"></i><div>sand / bg<code>--tisa-bg</code><code>#F4F2EC</code></div></div>
+					<div class="swatch"><i style="background:#1F2A2E"></i><div>ink<code>--tisa-ink</code><code>#1F2A2E</code></div></div>
+					<div class="swatch"><i style="background:#77828A"></i><div>muted<code>--tisa-muted</code><code>#77828A</code></div></div>
+					<div class="swatch"><i style="background:#E3E1DA"></i><div>border<code>--tisa-border</code><code>#E3E1DA</code></div></div>
+					<div class="swatch"><i style="background:#1A7F37"></i><div>success<code>--tisa-success</code><code>#1A7F37</code></div></div>
+					<div class="swatch"><i style="background:#8A6116"></i><div>warning<code>--tisa-warning</code><code>#8A6116</code></div></div>
+					<div class="swatch"><i style="background:#B5453A"></i><div>danger<code>--tisa-danger</code><code>#B5453A</code></div></div>
+					<div class="swatch"><i style="background:#135E96"></i><div>info<code>--tisa-info</code><code>#135E96</code></div></div>
+					<div class="swatch"><i style="background:#1D2327"></i><div>log surface<code>#1D2327</code><code>برای لاگ ترمینال</code></div></div>
+				</div>
+			</div>
+
+			<div class="demo-box">
+				<h3>مقیاس تایپ — ۷ اندازه، همهٔ کسری‌ها (13.5px, 12.5px, 11.5px) حذف شدند</h3>
+				<div class="scale">
+					<span style="font-size:26px;font-weight:800">۲۶ هیرو</span>
+					<span style="font-size:20px;font-weight:800">۲۰ عنوان صفحه</span>
+					<span style="font-size:16px;font-weight:700">۱۶ عنوان بخش</span>
+					<span style="font-size:14px">۱۴ بدنه</span>
+					<span style="font-size:13px">۱۳ کنترل/جدول</span>
+					<span style="font-size:12px;color:#77828A">۱۲ متا</span>
+					<span style="font-size:11px;color:#9AA3A9">۱۱ تاینی</span>
+				</div>
+				<p class="tisa-meta" style="margin:14px 0 0">
+					اعداد و SKUها همیشه <code class="tisa-mono">--tisa-mono</code> + <code class="tisa-mono">tabular-nums</code> + <code class="tisa-mono">dir=ltr</code>
+					تا در جدول‌ها زیر هم قرار بگیرند: <span class="tisa-num">۱٬۲۳۴٬۰۰۰ = 1,234,000</span>
+				</p>
+			</div>
+
+			<div class="demo-2col">
+				<div class="demo-box">
+					<h3>گوشه‌ها — قانون: دکمه ۱۰ · کارت ۱۶ · هیرو ۲۰ · بج پیل</h3>
+					<div class="radius-row">
+						<b style="border-radius:6px">6</b>
+						<b style="border-radius:10px">10</b>
+						<b style="border-radius:14px">14</b>
+						<b style="border-radius:16px">16</b>
+						<b style="border-radius:20px">20</b>
+						<b style="border-radius:999px">pill</b>
+					</div>
+					<p class="tisa-meta" style="margin:12px 0 0">
+						قبلاً: <span class="tisa-mono">8/10/6/11</span> (BDC) · <span class="tisa-mono">16/13/11</span> (پکیج) ·
+						<span class="tisa-mono">20/7</span> (SKU) · <span class="tisa-mono">6/10</span> (قیمت‌گذاری)
+					</p>
+				</div>
+				<div class="demo-box">
+					<h3>فاصله — مضرب ۴</h3>
+					<div class="space-row">
+						<i style="height:4px"></i><i style="height:8px"></i><i style="height:12px"></i><i style="height:16px"></i><i style="height:24px"></i><i style="height:32px"></i><i style="height:48px"></i>
+					</div>
+					<p class="tisa-meta" style="margin:12px 0 0">
+						<code class="tisa-mono">4 · 8 · 12 · 16 · 24 · 32 · 48</code>
+						<br>سایه: <code class="tisa-mono">--tisa-shadow-sm / --tisa-shadow / --tisa-shadow-lg</code>
+						<br>فوکوس: <code class="tisa-mono">--tisa-ring</code> (حلقهٔ ۳پیکسلی تیل به‌جای آبی وردپرس)
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۲) دکمه ================= -->
+		<section class="demo-band" id="buttons">
+			<h2><span class="n">۲</span> دکمه‌ها <span class="tisa-badge tisa-badge--primary">ارتفاع ۳۶ · گوشه ۱۰</span></h2>
+			<p class="sub">گونه‌های محدود: primary / secondary / ghost / danger / danger-ghost / success / link. هیچ دکمهٔ تک‌رنگِ دیگری مجاز نیست.</p>
+			<div class="demo-box">
+				<h3>گونه‌ها</h3>
+				<div class="demo-flex">
+					<button class="tisa-btn tisa-btn--primary">ذخیره تنظیمات</button>
+					<button class="tisa-btn">دستور پیش‌فرض</button>
+					<button class="tisa-btn tisa-btn--secondary">پیش‌نمایش</button>
+					<button class="tisa-btn tisa-btn--ghost">لغو</button>
+					<button class="tisa-btn tisa-btn--danger">حذف پشتیبان</button>
+					<button class="tisa-btn tisa-btn--danger-ghost">پاک کردن همه</button>
+					<button class="tisa-btn tisa-btn--success">بازیابی</button>
+					<a class="tisa-btn tisa-btn--link" href="#">راهنما</a>
+				</div>
+			</div>
+			<div class="demo-box">
+				<h3>اندازه · آیکون · حالت‌ها</h3>
+				<div class="demo-flex">
+					<button class="tisa-btn tisa-btn--sm tisa-btn--primary">کوچک ۳۰</button>
+					<button class="tisa-btn tisa-btn--primary">متوسط ۳۶</button>
+					<button class="tisa-btn tisa-btn--lg tisa-btn--primary">بزرگ ۴۴</button>
+					<button class="tisa-btn tisa-btn--primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> افزودن محصول</button>
+					<button class="tisa-btn tisa-btn--secondary is-busy">در حال پردازش</button>
+					<button class="tisa-btn tisa-btn--primary" disabled>غیرفعال</button>
+					<span class="tisa-btn-group">
+						<button class="tisa-btn tisa-btn--secondary">پیش‌نویس</button>
+						<button class="tisa-btn tisa-btn--secondary">انتشار</button>
+						<button class="tisa-btn tisa-btn--secondary">زباله‌دان</button>
+					</span>
+					<button class="tisa-btn tisa-btn--icon tisa-btn--secondary" title="تازه‌سازی">⟳</button>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۳) فرم ================= -->
+		<section class="demo-band" id="forms">
+			<h2><span class="n">۳</span> فرم‌ها، سوییچ و کارت‌انتخابی</h2>
+			<p class="sub">سوییچِ یکدست جایگزین چک‌باکس خام + متن می‌شود؛ و رادیوهای «حالت حذف» BDC جای خود را به <code class="tisa-mono">.tisa-choice</code> می‌دهند.</p>
+			<div class="demo-2col">
+				<div class="demo-box">
+					<h3>فیلدها</h3>
+					<div class="tisa-field">
+						<label>کلمهٔ کلیدی عنوان</label>
+						<input class="tisa-input" value="قاب">
+						<span class="tisa-hint">با ویرگول جدا کنید: «قاب، کاور»</span>
+					</div>
+					<div class="tisa-field">
+						<label>قیمت پکیج (به ازای هر عدد)</label>
+						<div class="tisa-input-group">
+							<input class="tisa-input tisa-input--number" value="45000">
+							<span class="tisa-input-group__addon">تومان</span>
+						</div>
+					</div>
+					<div class="tisa-field is-error">
+						<label>درصد افزایش</label>
+						<input class="tisa-input tisa-input--number" value="999">
+						<span class="tisa-field-error">مقدار باید بین ۰ تا ۵۰۰ باشد.</span>
+					</div>
+					<div class="tisa-field">
+						<label>حالت تطبیق</label>
+						<select class="tisa-select"><option>شامل بودن</option><option>شروع شدن با</option></select>
+					</div>
+					<label class="tisa-switch">
+						<input type="checkbox" checked>
+						<span class="tisa-switch__track"></span>
+						<span>محصولات بی‌قانون هم پاک شوند</span>
+					</label>
+				</div>
+				<div class="demo-box">
+					<h3>کارت انتخابی (حالت حذف)</h3>
+					<div class="tisa-grid" style="gap:8px">
+						<label class="tisa-choice is-selected">
+							<input type="radio" name="mode" checked>
+							<span>
+								<span class="tisa-choice__title">انتقال به زباله‌دان — پیش‌فرض امن</span>
+								<span class="tisa-choice__desc">هیچ فایلی حذف نمی‌شود؛ قابل بازگشت از خود وردپرس.</span>
+							</span>
+						</label>
+						<label class="tisa-choice">
+							<input type="radio" name="mode">
+							<span>
+								<span class="tisa-choice__title">حذف دائم با نگه‌داشتن تصاویر</span>
+								<span class="tisa-choice__desc">رکورد محصول می‌رود، فایل‌ها در هاست می‌مانند.</span>
+							</span>
+						</label>
+						<label class="tisa-choice">
+							<input type="radio" name="mode">
+							<span>
+								<span class="tisa-choice__title">حذف دائم + تصاویر</span>
+								<span class="tisa-choice__desc">تصویر مشترک با محصول دیگر هرگز حذف نمی‌شود.</span>
+							</span>
+						</label>
+					</div>
+					<p class="tisa-meta" style="margin:12px 0 0">
+						<div class="demo-flex" style="gap:14px">
+							<label class="tisa-check"><input type="checkbox" checked> انتخاب همهٔ ۵۱۲ مورد</label>
+							<label class="tisa-check"><input type="checkbox"> فقط بدون قیمت</label>
+						</div>
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۴) کارت ================= -->
+		<section class="demo-band" id="cards">
+			<h2><span class="n">۴</span> کارت، سربرگ بخش و آمار</h2>
+			<div class="tisa-card tisa-card--accent">
+				<div class="tisa-card-head">
+					<div>
+						<h3 class="tisa-h2">پیش‌نمایش تغییرات</h3>
+						<span class="tisa-meta">۳۸۴ شیء در ۲۱۶ محصول مادر · ۱۶۸ رد شده</span>
+					</div>
+					<div class="tisa-row">
+						<span class="tisa-badge tisa-badge--warning">تأیید نشده</span>
+						<button class="tisa-btn tisa-btn--secondary tisa-btn--sm">بررسی دوباره</button>
+					</div>
+				</div>
+				<div class="tisa-card-body">
+					<div class="tisa-stats">
+						<div class="tisa-stat"><span class="tisa-stat__num">۳۸۴</span><span class="tisa-stat__lbl">قابل تغییر</span></div>
+						<div class="tisa-stat"><span class="tisa-stat__num">۱۶۸</span><span class="tisa-stat__lbl">رد شده</span></div>
+						<div class="tisa-stat tisa-stat--muted"><span class="tisa-stat__num">۲۱۶</span><span class="tisa-stat__lbl">محصول مادر</span></div>
+						<div class="tisa-stat tisa-stat--danger"><span class="tisa-stat__num">۳</span><span class="tisa-stat__lbl">خطا</span></div>
+					</div>
+					<p class="tisa-lead">قبل از هر عملیات مخرب، پیش‌نمایش اجباری است و با توکن HMAC امضا می‌شود؛ اگر تنظیمات عوض شود، اجرا ۴۰۹ می‌گیرد.</p>
+				</div>
+				<div class="tisa-card-foot">
+					<button class="tisa-btn tisa-btn--primary">اجرای گروهی</button>
+					<button class="tisa-btn tisa-btn--ghost">انصراف</button>
+					<span class="tisa-spacer"></span>
+					<span class="tisa-tiny">آخرین اجرا: ۱۴۰۵/۰۶/۲۱ ۱۴:۰۲</span>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۵) بج ================= -->
+		<section class="demo-band" id="badges">
+			<h2><span class="n">۵</span> بج · چیپ · وضعیت</h2>
+			<div class="demo-box">
+				<div class="demo-flex">
+					<span class="tisa-badge">پیش‌فرض</span>
+					<span class="tisa-badge tisa-badge--primary">پیش‌نویس</span>
+					<span class="tisa-badge tisa-badge--success">منتشر</span>
+					<span class="tisa-badge tisa-badge--warning">در انتظار</span>
+					<span class="tisa-badge tisa-badge--danger">زباله‌دان</span>
+					<span class="tisa-badge tisa-badge--info">خصوصی</span>
+					<span class="tisa-badge tisa-badge--outline">v12.4.0</span>
+					<span class="tisa-count">۵۱۲</span>
+					<span class="tisa-chip">IP1</span>
+					<span class="tisa-chip is-active">SAM</span>
+					<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px"><i class="tisa-dot tisa-dot--on"></i> فعال</span>
+					<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px"><i class="tisa-dot"></i> غیرفعال</span>
+					<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px"><i class="tisa-dot tisa-dot--warn"></i> نیازمند بررسی</span>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۶) نوتیس ================= -->
+		<section class="demo-band" id="notices">
+			<h2><span class="n">۶</span> اطلاع‌رسان‌ها</h2>
+			<div class="tisa-notice tisa-notice--info"><span class="tisa-notice__icon">ℹ</span><div><b>پیش‌نمایش (Dry Run):</b> ۵۱۲ محصول و ۱٬۲۴۸ تصویر شناسایی شد؛ ۳۴ تصویر مشترک حفظ می‌شود.</div></div>
+			<div class="tisa-notice tisa-notice--success"><span class="tisa-notice__icon">✓</span><div><b>انجام شد.</b> ۵۱۲ محصول حذف شد، پشتیبان <code class="tisa-mono">bdc-20260913-1402-a91f</code> ساخته شد.</div></div>
+			<div class="tisa-notice tisa-notice--warning"><span class="tisa-notice__icon">!</span><div><b>نیمه‌کاره ماند.</b> ۳۲۰ مورد پردازش شد؛ برای ادامهٔ همان اجرا دکمهٔ «ادامه» را بزنید.</div></div>
+			<div class="tisa-notice tisa-notice--danger"><span class="tisa-notice__icon">✕</span><div><b>قفل همزمانی:</b> عملیات دیگری در حال اجراست (۴۰۹).</div></div>
+		</section>
+
+		<!-- ================= ۷) تب ================= -->
+		<section class="demo-band" id="tabs">
+			<h2><span class="n">۷</span> تب‌ها و کنترل قطعه‌ای</h2>
+			<div class="demo-box">
+				<div class="tisa-tabs" role="tablist">
+					<button class="tisa-tab is-active" role="tab">حذف انبوه</button>
+					<button class="tisa-tab" role="tab">پشتیبان و بازیابی <span class="tisa-count">۸</span></button>
+					<button class="tisa-tab" role="tab">راهنما</button>
+				</div>
+				<p class="tisa-meta">هر افزونه‌ای که چند تب دارد از همین الگو استفاده می‌کند و تب فعال در URL نگه داشته می‌شود.</p>
+				<div class="tisa-segmented" style="margin-top:8px">
+					<button class="tisa-segmented__item is-active">اجرای گروهی</button>
+					<button class="tisa-segmented__item">زمان‌بندی‌شده</button>
+					<button class="tisa-segmented__item">بازگردانی</button>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۸) جدول ================= -->
+		<section class="demo-band" id="table">
+			<h2><span class="n">۸</span> جدول</h2>
+			<div class="tisa-table-scroll">
+				<table class="tisa-table">
+					<thead>
+						<tr>
+							<th style="width:34px"><span class="tisa-sr-only">انتخاب</span></th>
+							<th>تصویر</th>
+							<th>محصول</th>
+							<th>SKU</th>
+							<th>وضعیت</th>
+							<th class="is-num">قیمت</th>
+							<th class="is-num">تصاویر</th>
+							<th>کارها</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><input type="checkbox" checked></td>
+							<td class="tisa-cell-thumb"><span class="tisa-thumb tisa-thumb--empty">—</span></td>
+							<td class="tisa-cell-strong">قاب گوشی سامسونگ A55</td>
+							<td><span class="tisa-num">SAM05512</span></td>
+							<td><span class="tisa-badge tisa-badge--primary">پیش‌نویس</span></td>
+							<td class="is-num">۲۴۵,۰۰۰</td>
+							<td class="is-num">۴</td>
+							<td><div class="tisa-row-actions"><a href="#">ویرایش</a><span>·</span><a href="#" style="color:var(--tisa-danger)">حذف</a></div></td>
+						</tr>
+						<tr class="is-selected">
+							<td><input type="checkbox" checked></td>
+							<td class="tisa-cell-thumb"><span class="tisa-thumb tisa-thumb--empty">۲</span></td>
+							<td class="tisa-cell-strong">قاب گوشی آیفون ۱۵ پرو مکس</td>
+							<td><span class="tisa-num">IP15PM0042</span></td>
+							<td><span class="tisa-badge tisa-badge--primary">پیش‌نویس</span></td>
+							<td class="is-num">۳۱۸,۰۰۰</td>
+							<td class="is-num">۲</td>
+							<td><div class="tisa-row-actions"><a href="#">ویرایش</a><span>·</span><a href="#" style="color:var(--tisa-danger)">حذف</a></div></td>
+						</tr>
+						<tr>
+							<td><input type="checkbox"></td>
+							<td class="tisa-cell-thumb"><span class="tisa-thumb tisa-thumb--empty">—</span></td>
+							<td class="tisa-cell-strong">محصول چاپی — تیشرت طرح اختصاصی</td>
+							<td><span class="tisa-num">CH000991</span></td>
+							<td><span class="tisa-badge tisa-badge--warning">در انتظار</span></td>
+							<td class="is-num">۰</td>
+							<td class="is-num">۱</td>
+							<td><div class="tisa-row-actions"><a href="#">ویرایش</a></div></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div class="tisa-card" style="margin-top:14px">
+				<div class="tisa-empty">
+					<span class="tisa-empty__icon">◎</span>
+					<b class="tisa-h3">محصولی با این فیلترها پیدا نشد</b>
+					<span class="tisa-meta">محدودهٔ تاریخ را بازبینی کنید یا فیلترها را پاک کنید.</span>
+					<button class="tisa-btn tisa-btn--secondary tisa-btn--sm">پاک کردن فیلترها</button>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۹) پیشرفت ================= -->
+		<section class="demo-band" id="process">
+			<h2><span class="n">۹</span> پیشرفت، لاگ و اسکن</h2>
+			<div class="demo-2col">
+				<div class="demo-box">
+					<h3>نوار پیشرفت دسته‌ای</h3>
+					<div class="tisa-progress"><div class="tisa-progress__bar" style="width:68%"></div></div>
+					<div class="tisa-progress-text"><span>در حال پردازش دستهٔ ۹ از ۱۳…</span><span class="tisa-num">۳۶۰/۵۱۲</span></div>
+					<div class="tisa-progress is-indeterminate" style="margin-top:16px"><div class="tisa-progress__bar"></div></div>
+					<p class="tisa-meta" style="margin:8px 0 0">حالت نامعین برای «ساخت پشتیبان» — چون تعداد هنوز معلوم نیست.</p>
+				</div>
+				<div class="demo-box">
+					<h3>لاگ عملیات</h3>
+					<div class="tisa-log">
+						<div><span class="ok">OK</span> #5521 IP15PM0042 deleted · 4 images · 1.8 MB freed</div>
+						<div><span class="ok">OK</span> #5520 SAM05512 deleted · 2 images · 0.6 MB freed</div>
+						<div><span class="skip">SKIP</span> #5519 image shared with #4102 — kept</div>
+						<div><span class="fail">ERR</span> #5518 WooCommerce returned: Invalid product ID</div>
+						<div>batch 9/13 done in 5.8s → next batch size 64</div>
+					</div>
+					<div class="tisa-skeleton" style="height:32px;margin-top:10px"></div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۱۰) مودال ================= -->
+		<section class="demo-band" id="modal">
+			<h2><span class="n">۱۰</span> مودال تأیید</h2>
+			<p class="sub">برای عملیات‌های برگشت‌ناپذیر — به‌جای <code class="tisa-mono">confirm()</code> مرورگر.</p>
+			<div class="demo-box">
+				<button class="tisa-btn tisa-btn--danger" id="open-modal">حذف همهٔ کدهای رهگیری</button>
+				<span class="tisa-meta">Esc یا کلیک بیرون، مودال را می‌بندد.</span>
+			</div>
+		</section>
+		<div class="tisa-modal" id="modal" hidden>
+			<div class="tisa-modal__backdrop" data-close></div>
+			<div class="tisa-modal__panel" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+				<div class="tisa-modal__head"><h3 class="tisa-h3" id="mtitle">مطمئنید؟</h3><button class="tisa-btn tisa-btn--icon tisa-btn--ghost" data-close>✕</button></div>
+				<div class="tisa-modal__body">
+					<div class="tisa-notice tisa-notice--danger" style="margin:0"><span class="tisa-notice__icon">✕</span><div>
+						<b>۱٬۲۰۴ کد رهگیری</b> برای همیشه حذف می‌شود. این عملیات غیرقابل بازگشت است — پشتیبانی در این افزونه ساخته نمی‌شود.
+					</div></div>
+				</div>
+				<div class="tisa-modal__foot">
+					<button class="tisa-btn tisa-btn--danger" data-close>بله، حذف کن</button>
+					<button class="tisa-btn tisa-btn--ghost" data-close>انصراف</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- ================= ۱۱) قبل/بعد ================= -->
+		<section class="demo-band" id="compare">
+			<h2><span class="n">۱۱</span> لایهٔ نرمال‌ساز: همان مارک‌آپ، ظاهر واحد</h2>
+			<p class="sub">
+				این مهم‌ترین بخش است: افزونه‌هایی مثل BDC، قیمت گروهی، قیمت‌گذاری و ایمپورتر از کلاس‌های خودِ وردپرس
+				(<code class="tisa-mono">.button</code>، <code class="tisa-mono">.widefat</code>، <code class="tisa-mono">.notice</code>، <code class="tisa-mono">.nav-tab</code>) استفاده می‌کنند.
+				هاب فقط <code class="tisa-mono">body.tisa-scope</code> را اضافه می‌کند → <b>بدون تغییر یک خط HTML</b>، آن صفحه‌ها هماهنگ می‌شوند.
+			</p>
+			<div class="demo-2col">
+				<div class="demo-box">
+					<h3><span class="tag-before">بدون هاب</span> همان کد افزونهٔ شما</h3>
+					<div class="wpd">
+						<div class="notice notice-success"><p>۵۱۲ محصول حذف شد.</p></div>
+						<div class="notice notice-error"><p>پوشهٔ پشتیبان قابل نوشتن نیست.</p></div>
+						<div class="wp-panel">
+							<h2>حذف انبوه پیش‌نویس</h2>
+							<p><button class="button button-primary button-large">شروع حذف</button> <button class="button">پیش‌نمایش</button></p>
+							<table class="widefat striped"><thead><tr><th>محصول</th><th>SKU</th><th>قیمت</th></tr></thead>
+							<tbody><tr><td>قاب سامسونگ A55</td><td>SAM05512</td><td>245,000</td></tr>
+							<tr><td>قاب آیفون ۱۵ پرو</td><td>IP15P0042</td><td>318,000</td></tr></tbody></table>
+							<p><a href="#" class="button-link-delete">حذف پشتیبان</a></p>
+						</div>
+					</div>
+				</div>
+				<div class="demo-box">
+					<h3><span class="tag-after">با هاب</span> بدون هیچ تغییری در افزونه</h3>
+					<div class="wpd tisa-scope">
+						<div class="notice notice-success"><p>۵۱۲ محصول حذف شد.</p></div>
+						<div class="notice notice-error"><p>پوشهٔ پشتیبان قابل نوشتن نیست.</p></div>
+						<div class="tisa-card" style="margin:0">
+							<h2 class="tisa-h2">حذف انبوه پیش‌نویس</h2>
+							<p><button class="button button-primary button-large">شروع حذف</button> <button class="button">پیش‌نمایش</button></p>
+							<div class="tisa-table-scroll" style="border:0">
+							<table class="widefat"><thead><tr><th>محصول</th><th>SKU</th><th>قیمت</th></tr></thead>
+							<tbody><tr><td>قاب سامسونگ A55</td><td><span class="tisa-num">SAM05512</span></td><td class="is-num">245,000</td></tr>
+							<tr><td>قاب آیفون ۱۵ پرو</td><td><span class="tisa-num">IP15P0042</span></td><td class="is-num">318,000</td></tr></tbody></table>
+							</div>
+							<p style="margin:12px 0 0"><a href="#" class="button-link-delete">حذف پشتیبان</a></p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۱۲) صفحهٔ هاب ================= -->
+		<section class="demo-band" id="hub">
+			<h2><span class="n">۱۲</span> «اختصاصی تیساکیس» — صفحهٔ لانچر</h2>
+			<p class="sub">
+				کارت‌ها از <code class="tisa-mono">apply_filters('tisacase_hub_items', [])</code> ساخته می‌شوند؛ هر افزونه خودش را ثبت می‌کند.
+				کلیک = باز شدن همان صفحهٔ افزونه در تب جدید. نوار جستجو زنده کار می‌کند (کلید <code class="tisa-mono">/</code>).
+			</p>
+
+			<div class="tisa-card" style="padding:20px 22px">
+				<div class="tisa-hub-toolbar">
+					<div class="tisa-hub-search">
+						<span class="tisa-hub-search__icon">⌕</span>
+						<input type="search" id="hub-q" class="tisa-input" placeholder="جستجوی ابزار…  ( / )" autocomplete="off">
+					</div>
+					<span class="tisa-chip is-active">همه</span>
+					<span class="tisa-chip">محصول</span>
+					<span class="tisa-chip">قیمت</span>
+					<span class="tisa-chip">سفارش</span>
+					<span class="tisa-spacer"></span>
+					<span class="tisa-badge tisa-badge--success"><i class="tisa-dot tisa-dot--on"></i> ۸ فعال</span>
+					<span class="tisa-badge tisa-badge--outline">۱ غیرفعال</span>
+					<a class="tisa-btn tisa-btn--secondary tisa-btn--sm" href="#">افزونه‌ها</a>
+				</div>
+
+				<div class="tisa-hub-group">
+					<h3 class="tisa-hub-group__title">محصول و محتوا</h3>
+					<div class="tisa-hub-grid" data-grid>
+
+						<article class="tisa-plugin-card is-hot">
+							<div class="tisa-plugin-card__top">
+								<span class="tisa-plugin-card__icon">🗑</span>
+								<div><h4 class="tisa-plugin-card__title"><a class="tisa-plugin-card__link" href="#" target="_blank" rel="noopener">حذف انبوه پیش‌نویس</a></h4>
+								<span class="tisa-plugin-card__ver">v12.4.0 · bdc</span></div>
+							</div>
+							<p class="tisa-plugin-card__desc">حذف دسته‌جمعی پیش‌نویس‌ها و تصویرهایشان، با پشتیبان کامل و بازیابی تا ۹۰ روز.</p>
+							<div class="tisa-plugin-card__foot">
+								<span class="tisa-badge tisa-badge--primary"><span class="tisa-count">۵۱۲</span> پیش‌نویس</span>
+								<span class="tisa-btn tisa-btn--sm tisa-btn--secondary">باز کردن ↗</span>
+							</div>
+						</article>
+
+						<article class="tisa-plugin-card">
+							<div class="tisa-plugin-card__top">
+								<span class="tisa-plugin-card__icon">✍️</span>
+								<div><h4 class="tisa-plugin-card__title"><a class="tisa-plugin-card__link" href="#" target="_blank" rel="noopener">قوانین توضیحات محصول</a></h4>
+								<span class="tisa-plugin-card__ver">v1.4.1 · tisacase-desc</span></div>
+							</div>
+							<p class="tisa-plugin-card__desc">درج خودکار توضیحات چاپی (CH/SB) و هشدار قاب، با پیش‌نمایش و بازگردانی.</p>
+							<div class="tisa-plugin-card__foot">
+								<span class="tisa-badge tisa-badge--success"><i class="tisa-dot tisa-dot--on"></i> همگام</span>
+								<span class="tisa-btn tisa-btn--sm tisa-btn--secondary">باز کردن ↗</span>
+							</div>
+						</article>
+
+						<article class="tisa-plugin-card">
+							<div class="tisa-plugin-card__top">
+								<span class="tisa-plugin-card__icon">📦</span>
+								<div><h4 class="tisa-plugin-card__title"><a class="tisa-plugin-card__link" href="#" target="_blank" rel="noopener">افزودن/شارژ محصول از تلگرام</a></h4>
+								<span class="tisa-plugin-card__ver">v0.6.5 · importer</span></div>
+							</div>
+							<p class="tisa-plugin-card__desc">product.zip ربات را به محصول متغیر پیش‌نویس تبدیل می‌کند؛ SKU و واریاسیون‌ها خودکار.</p>
+							<div class="tisa-plugin-card__foot">
+								<span class="tisa-badge tisa-badge--warning">۱ باگ امنیتی</span>
+								<span class="tisa-btn tisa-btn--sm tisa-btn--secondary">باز کردن ↗</span>
+							</div>
+						</article>
+
+						<article class="tisa-plugin-card">
+							<div class="tisa-plugin-card__top">
+								<span class="tisa-plugin-card__icon">#️⃣</span>
+								<div><h4 class="tisa-plugin-card__title"><a class="tisa-plugin-card__link" href="#" target="_blank" rel="noopener">نوار پیشوند SKU</a></h4>
+								<span class="tisa-plugin-card__ver">v1.4.0 · wcspb</span></div>
+							</div>
+							<p class="tisa-plugin-card__desc">سری‌های SKU، تولید SKU بعدی، چک تکراری و REST برای ربات. صفحهٔ مستقل ندارد؛ در لیست محصولات است.</p>
+							<div class="tisa-plugin-card__foot">
+								<span class="tisa-badge tisa-badge--outline">۱۴ سری</span>
+								<span class="tisa-btn tisa-btn--sm tisa-btn--secondary">لیست محصولات ↗</span>
+							</div>
+						</article>
+					</div>
+				</div>
+
+				<div class="tisa-hub-group">
+					<h3 class="tisa-hub-group__title">قیمت‌گذاری</h3>
+					<div class="tisa-hub-grid" data-grid>
+						<article class="tisa-plugin-card">
+							<div class="tisa-plugin-card__top">
+								<span class="tisa-plugin-card__icon">🏷</span>
+								<div><h4 class="tisa-plugin-card__title"><a class="tisa-plugin-card__link" href="#" target="_blank" rel="noopener">قیمت گروهی (ووکامرس)</a></h4>
+								<span class="tisa-plugin-card__ver">v2.1.0 · tcbpm</span></div>
+							</div>
+							<p class="tisa-plugin-card__desc">افزایش/کاهش/set قیمت عادی، فروش ویژه و عمده؛ پیش‌نمایش اجباری، لاگ و بازگردانی.</p>
+							<div class="tisa-plugin-card__foot">
+								<span class="tisa-badge tisa-badge--info">۱ در صف کرون</span>
+								<span class="tisa-btn tisa-btn--sm tisa-btn--secondary">باز کردن ↗</span>
+							</div>
+						</article>
+
+						<article class="tisa-plugin-card is-warn">
+							<div class="tisa-plugin-card__top">
+								<span class="tisa-plugin-card__icon">⚡</span>
+								<div><h4 class="tisa-plugin-card__title"><a class="tisa-plugin-card__link" href="#" target="_blank" rel="noopener">قیمت‌گذاری داینامیک</a></h4>
+								<span class="tisa-plugin-card__ver">v1.0.1 · pricing-manager</span></div>
+							</div>
+							<p class="tisa-plugin-card__desc">قانون سراسری/دسته‌ای/محصولی بدون بازنویسی دیتابیس؛ حفظ قیمت همکاری و فروش واقعی.</p>
+							<div class="tisa-plugin-card__foot">
+								<span class="tisa-badge tisa-badge--warning">تداخل با «پکیج ویژه»</span>
+								<span class="tisa-btn tisa-btn--sm tisa-btn--secondary">باز کردن ↗</span>
+							</div>
+						</article>
+
+						<article class="tisa-plugin-card">
+							<div class="tisa-plugin-card__top">
+								<span class="tisa-plugin-card__icon">🎁</span>
+								<div><h4 class="tisa-plugin-card__title"><a class="tisa-plugin-card__link" href="#" target="_blank" rel="noopener">پکیج ویژه قاب</a></h4>
+								<span class="tisa-plugin-card__ver">v1.2.0 · wcsp</span></div>
+							</div>
+							<p class="tisa-plugin-card__desc">چک‌باکس پکیج با قیمت ثابت به‌ازای هر عدد + داشبورد فروش ۱۴ روز اخیر.</p>
+							<div class="tisa-plugin-card__foot">
+								<span class="tisa-badge tisa-badge--primary">۱٬۳۰۴ فروش</span>
+								<span class="tisa-btn tisa-btn--sm tisa-btn--secondary">باز کردن ↗</span>
+							</div>
+						</article>
+					</div>
+				</div>
+
+				<div class="tisa-hub-group">
+					<h3 class="tisa-hub-group__title">سفارش و ارسال</h3>
+					<div class="tisa-hub-grid" data-grid>
+						<article class="tisa-plugin-card is-warn">
+							<div class="tisa-plugin-card__top">
+								<span class="tisa-plugin-card__icon">🚚</span>
+								<div><h4 class="tisa-plugin-card__title"><a class="tisa-plugin-card__link" href="#" target="_blank" rel="noopener">آپلود کد رهگیری</a></h4>
+								<span class="tisa-plugin-card__ver">v2.1 · bwt</span></div>
+							</div>
+							<p class="tisa-plugin-card__desc">آپلود CSV کد رهگیری + شورت‌کد پیگیری مشتری. نیازمند اصلاح دسترسی و batch.</p>
+							<div class="tisa-plugin-card__foot">
+								<span class="tisa-badge tisa-badge--danger">نشت اطلاعات</span>
+								<span class="tisa-btn tisa-btn--sm tisa-btn--danger-ghost">پاک کردن کدها ↗</span>
+							</div>
+						</article>
+
+						<article class="tisa-plugin-card is-inactive">
+							<div class="tisa-plugin-card__top">
+								<span class="tisa-plugin-card__icon">📞</span>
+								<div><h4 class="tisa-plugin-card__title"><a class="tisa-plugin-card__link" href="#" target="_blank" rel="noopener">خروجی شماره تماس</a></h4>
+								<span class="tisa-plugin-card__ver">v1.3.1 · غیرفعال</span></div>
+							</div>
+							<p class="tisa-plugin-card__desc">فایل‌های اکسل ده‌هزارتایی با فرمت 989xxxxxxxxx، بدون تکراری، با پاک‌سازی خودکار.</p>
+							<div class="tisa-plugin-card__foot">
+								<span class="tisa-badge"><i class="tisa-dot"></i> غیرفعال</span>
+								<span class="tisa-btn tisa-btn--sm tisa-btn--primary">فعال‌سازی</span>
+							</div>
+						</article>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= ۱۳) یادداشت ================= -->
+		<section class="demo-band" id="notes">
+			<h2><span class="n">۱۳</span> یادداشت‌های فنی و تصمیمات باقی‌مانده</h2>
+			<div class="demo-2col">
+				<div class="demo-box">
+					<h3>قراردادهایی که در همهٔ افزونه‌ها لازم‌الاجراست</h3>
+					<ul class="tisa-meta" style="margin:0;padding-inline-start:18px;line-height:2">
+						<li>ریشهٔ هر صفحه: <code class="tisa-mono">&lt;div class="wrap tisa-wrap"&gt;</code> و جهت <code class="tisa-mono">dir="rtl"</code></li>
+						<li>ممنوع: هگز خام، <code class="tisa-mono">!important</code>، <code class="tisa-mono">style="…"</code> درون‌خطی، فاصله‌های کسری</li>
+						<li>فقط خواسته‌های منطقی: <code class="tisa-mono">margin-inline-*</code> (نه <code class="tisa-mono">left/right</code>)</li>
+						<li>بریک‌پوینت واحد <code class="tisa-mono">782px</code> + احترام به <code class="tisa-mono">prefers-reduced-motion</code></li>
+						<li>فونت Vazirmatn محلی در <code class="tisa-mono">hub/assets/fonts/</code> — بدون CDN گوگل</li>
+						<li>هر کامپوننت جدید اول به این فایل اضافه می‌شود، بعد مصرف می‌شود</li>
+					</ul>
+				</div>
+				<div class="demo-box">
+					<h3>بقیهٔ کار بعد از تأیید این صفحه</h3>
+					<ul class="tisa-meta" style="margin:0;padding-inline-start:18px;line-height:2">
+						<li>ساخت <code class="tisa-mono">tisacase-hub</code>: منو + registry + رندر کارت‌ها + <code class="tisa-mono">body_class</code> و enqueue روی اسکرین‌های TisaCase</li>
+						<li>افزودن فیلتر <code class="tisa-mono">tisacase_hub_items</code> به ۹ افزونه (≈۵ خط هرکدام) + خط هدر <code class="tisa-mono">TisaCase Hub:</code></li>
+						<li>توکنی‌کردن ۴ CSS اختصاصی (توضیحات، پکیج ویژه، SKU bar، کد رهگیری) + حذف استایل درون‌خطی</li>
+						<li><code class="tisa-mono">remove_submenu_page</code> برای تمیز شدن منوی ووکامرس (روشن/خاموش از تنظیمات هاب)</li>
+						<li>رفتن هم‌زمان از F1 (نشت PII) و F6/F9 در همان ویرایش فایل‌ها</li>
+					</ul>
+				</div>
+			</div>
+		</section>
+
+	</div>
+	</main>
+</div>
+
+<script>
+(function () {
+	/* --- سوییچ روشن/خاموش بودن هاب --- */
+	var tgl = document.getElementById('hub-toggle'), link = document.getElementById('ui-css'), hint = document.getElementById('hub-hint');
+	tgl.addEventListener('click', function () {
+		var on = tgl.getAttribute('aria-pressed') === 'true';
+		tgl.setAttribute('aria-pressed', on ? 'false' : 'true');
+		tgl.textContent = on ? 'خاموش' : 'روشن';
+		tgl.className = 'tisa-btn tisa-btn--sm ' + (on ? 'tisa-btn--secondary' : 'tisa-btn--primary');
+		document.body.classList.toggle('tisa-scope', !on);
+		link.disabled = on;
+		hint.textContent = on
+			? 'حالا همان چیزی را می‌بینید که اگر هاب غیرفعال باشد می‌ماند: CSS اختصاصی هر افزونه + استایل پیش‌فرض وردپرس. هیچ صفحه‌ای نمی‌شکند.'
+			: 'زبان طراحی مشترک فعال است.';
+	});
+
+	/* --- جستجوی زنده در کارت‌های هاب --- */
+	var q = document.getElementById('hub-q');
+	q.addEventListener('input', function () {
+		var v = q.value.trim();
+		document.querySelectorAll('.tisa-plugin-card').forEach(function (c) {
+			c.style.display = (!v || c.textContent.indexOf(v) > -1) ? '' : 'none';
+		});
+	});
+	document.addEventListener('keydown', function (e) {
+		if (e.key === '/' && document.activeElement !== q) { e.preventDefault(); q.focus(); }
+	});
+
+	/* --- مودال --- */
+	var m = document.getElementById('modal');
+	document.getElementById('open-modal').addEventListener('click', function () { m.hidden = false; });
+	m.addEventListener('click', function (e) { if (e.target.closest('[data-close]')) m.hidden = true; });
+	document.addEventListener('keydown', function (e) { if (e.key === 'Escape') m.hidden = true; });
+
+	/* --- تب‌های نمایشی --- */
+	document.querySelectorAll('.tisa-tabs').forEach(function (tabs) {
+		tabs.addEventListener('click', function (e) {
+			var b = e.target.closest('.tisa-tab'); if (!b) return;
+			tabs.querySelectorAll('.tisa-tab').forEach(function (x) { x.classList.remove('is-active'); });
+			b.classList.add('is-active');
+		});
+	});
+	document.querySelectorAll('.tisa-segmented').forEach(function (s) {
+		s.addEventListener('click', function (e) {
+			var b = e.target.closest('.tisa-segmented__item'); if (!b) return;
+			s.querySelectorAll('.tisa-segmented__item').forEach(function (x) { x.classList.remove('is-active'); });
+			b.classList.add('is-active');
+		});
+	});
+	document.querySelectorAll('.tisa-chip').forEach(function (c) {
+		c.addEventListener('click', function () {
+			var sibs = Array.prototype.filter.call(c.parentNode.children, function (x) { return x.classList.contains('tisa-chip'); });
+			sibs.forEach(function (x) { x.classList.remove('is-active'); });
+			c.classList.add('is-active');
+		});
+	});
+})();
+</script>
+</body>
+</html>
