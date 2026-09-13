@@ -10,6 +10,7 @@
  * @var array  $unreg      افزونه‌های تیساکیسِ ثبت‌نشده
  * @var array  $settings   تنظیمات هاب
  * @var string $counts_at  ساعت آخرین محاسبهٔ شمارنده‌ها
+ * @var array  $shortcuts  میان‌بُرهای سیستمی (خالی وقتی گزینه‌شان خاموش است)
  * @var array  $env        اطلاعات محیط
  *
  * @package TisaCase_Hub
@@ -146,6 +147,21 @@ foreach ( $all as $it ) {
 					</div>
 				</div>
 			<?php endforeach; ?>
+
+			<?php if ( ! empty( $shortcuts ) ) : ?>
+				<div class="tisa-shortcuts">
+					<span class="tisa-meta"><?php esc_html_e( 'میان‌بُر وردپرس:', 'tisacase-hub' ); ?></span>
+					<?php foreach ( $shortcuts as $sc ) : ?>
+						<?php if ( empty( $sc['pages'][0]['url'] ) || empty( $sc['can'] ) ) : ?>
+							<?php continue; ?>
+						<?php endif; ?>
+						<a href="<?php echo esc_url( $sc['pages'][0]['url'] ); ?>" target="_blank" rel="noopener">
+							<?php echo TSH_View::icon( $sc['icon'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?><?php echo esc_html( $sc['title'] ); ?> ↗
+						</a>
+					<?php endforeach; ?>
+					<a class="tisa-btn--link" href="<?php echo esc_url( $settings_url ); ?>"><?php esc_html_e( 'خاموش‌کردن این ردیف', 'tisacase-hub' ); ?></a>
+				</div>
+			<?php endif; ?>
 
 			<div class="tisa-empty" id="tsh-empty" hidden>
 				<span class="tisa-empty__icon"><?php echo TSH_View::icon( 'search' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>

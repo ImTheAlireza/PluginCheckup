@@ -128,14 +128,18 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				'icon'  => 'hash',
 				'dir'   => 'wc-sku-prefix-bar',
 				'cap'   => 'edit_products',
+				'no_page' => true,
+				'note'  => __( 'صفحهٔ مستقل ندارد: نوار SKU روی لیست محصولات می‌نشیند.', 'tisacase-hub' ),
 				'pages' => array(
 					array(
-						'label'  => __( 'لیست محصولات', 'tisacase-hub' ),
+						'label'  => __( 'لیست محصولات (جای نوار SKU)', 'tisacase-hub' ),
 						'path'   => 'edit.php?post_type=product',
 						'screen' => 'edit-product',
 					),
 				),
-				'screens' => array( 'edit-product', 'product', 'add-product' ),
+				// صفحهٔ ویرایش محصول عمداً در فهرست نیست: آن صفحه مال خودِ ووکامرس است و
+				// دست‌زدن به جدول واریاسیون‌ها/پنل داده ریسک دارد. با فیلتر باز می‌شود.
+				'screens' => (array) apply_filters( 'tisacase_hub_skubar_screens', array( 'edit-product' ) ),
 				'count'   => 'sku_missing',
 			);
 
@@ -512,6 +516,11 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				if ( in_array( $key, (array) $hidden, true ) ) {
 					continue;
 				}
+				// میان‌بُرهای وردپرس «افزونهٔ شما» نیستند؛ در گرید نمی‌نشینند
+				// (نمایششان فقط با گزینهٔ system_shortcuts و آن هم به‌صورت یک ردیف لینک).
+				if ( ! empty( $item['system'] ) ) {
+					continue;
+				}
 				$group = isset( $item['group'] ) && isset( $out[ $item['group'] ] ) ? $item['group'] : 'products';
 				$out[ $group ]['items'][] = $item;
 			}
@@ -524,8 +533,29 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 			return array( 'groups' => $out, 'all' => $ordered );
 		}
 
-		/**
-		 * افزونه‌های تیساکیس که هنوز در هاب ثبت نشده‌اند (یادآور تمیز).
+	/**
+	 * میان‌بُرهای سیستمی (افزونه‌ها / نمای کلی ووکامرس / سفارش‌ها).
+	 *
+	 * این‌ها افزونهٔ شما نیستند، پس در گرید نمی‌آیند؛ فقط وقتی گزینهٔ
+	 * `system_shortcuts` روشن باشد به‌صورت یک ردیف لینکِ کوچک نمایش داده می‌شوند.
+	 *
+	 * @return array<int,array>
+	 */
+	public static function shortcuts() {
+		$items  = self::items();
+		$out    = array();
+		$hidden = (array) TSH_UI::setting( 'hidden', array() );
+		foreach ( array_keys( $items ) as $key ) {
+			if ( empty( $items[ $key ]['system'] ) || in_array( $key, $hidden, true ) ) {
+				continue;
+			}
+			$out[] = self::resolve( $key, $items );
+		}
+		return $out;
+	}
+
+	/**
+	 * افزونه‌های تیساکیس که هنوز در هاب ثبت نشده‌اند (یادآور تمیز).
 		 *
 		 * @return array<int,array>
 		 */

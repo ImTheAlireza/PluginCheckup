@@ -111,8 +111,8 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 
 		<div class="tisa-setrow">
 			<div class="tisa-setrow__text">
-				<b class="tisa-h3"><?php esc_html_e( 'لیست و ویرایش محصول را هم یکدست کن', 'tisacase-hub' ); ?></b>
-				<p class="tisa-meta"><?php esc_html_e( 'این صفحه‌ها متعلق به ووکامرس‌اند (نوار SKU آنجا زندگی می‌کند). اگر چیدمان جدول واریاسیون‌ها یا پنل دادهٔ محصول به‌هم ریخت، همین یکی را خاموش کنید — بقیهٔ صفحه‌ها یکدست می‌مانند.', 'tisacase-hub' ); ?></p>
+				<b class="tisa-h3"><?php esc_html_e( 'لیست محصولات را هم یکدست کن', 'tisacase-hub' ); ?></b>
+				<p class="tisa-meta"><?php esc_html_e( 'صفحهٔ edit.php?post_type=product مال خودِ ووکامرس است، ولی نوار SKU آنجا زندگی می‌کند. صفحهٔ ویرایش محصول عمداً دست‌خورده نمی‌شود (جدول واریاسیون‌ها و پنل دادهٔ محصول شکننده‌اند)؛ اگر آن را هم خواستید، با فیلتر tisacase_hub_skubar_screens باز می‌شود.', 'tisacase-hub' ); ?></p>
 			</div>
 			<div class="tisa-setrow__ctrl">
 				<label class="tisa-switch">
@@ -180,8 +180,27 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 
 		<div class="tisa-setrow">
 			<div class="tisa-setrow__text">
+				<b class="tisa-h3"><?php esc_html_e( 'ردیف میان‌بُرهای وردپرس', 'tisacase-hub' ); ?></b>
+				<p class="tisa-meta"><?php esc_html_e( 'افزونه‌ها / نمای کلی ووکامرس / سفارش‌ها. این‌ها افزونهٔ شما نیستند، پس کارت نمی‌شوند؛ اگر روشنشان کنید فقط یک ردیف لینک در پایین لانچر می‌آید.', 'tisacase-hub' ); ?></p>
+			</div>
+			<div class="tisa-setrow__ctrl">
+				<label class="tisa-switch">
+					<input type="checkbox" name="<?php echo esc_attr( $opt ); ?>[system_shortcuts]" value="1" <?php checked( ! empty( $settings['system_shortcuts'] ) ); ?>>
+					<span class="tisa-switch__track" aria-hidden="true"></span>
+					<span><?php esc_html_e( 'نمایش ردیف', 'tisacase-hub' ); ?></span>
+				</label>
+			</div>
+		</div>
+
+		<div class="tisa-setrow">
+			<div class="tisa-setrow__text">
 				<b class="tisa-h3"><?php esc_html_e( 'کارت‌های مخفی‌شده', 'tisacase-hub' ); ?></b>
 				<p class="tisa-meta"><?php esc_html_e( 'مخفی کردن یعنی فقط در لانچر دیده نشود؛ افزونه در «افزونه‌ها»ی وردپرس دست‌نخورده است.', 'tisacase-hub' ); ?></p>
+				<label class="tisa-switch" style="margin-top:var(--tisa-sp-2)">
+					<input type="checkbox" name="<?php echo esc_attr( $opt ); ?>[show_unregistered]" value="1" <?php checked( ! empty( $settings['show_unregistered'] ) ); ?>>
+					<span class="tisa-switch__track" aria-hidden="true"></span>
+					<span><?php esc_html_e( 'یادآور افزونه‌های تیساکیسیِ ثبت‌نشده را نشان بده', 'tisacase-hub' ); ?></span>
+				</label>
 			</div>
 			<div class="tisa-setrow__ctrl">
 				<?php if ( ! $hidden ) : ?>

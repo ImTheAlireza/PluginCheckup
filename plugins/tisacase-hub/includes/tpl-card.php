@@ -18,11 +18,17 @@ if ( ! function_exists( 'tsh_card' ) ) {
 	 * @return string HTML.
 	 */
 	function tsh_card( $item, $pins, $settings ) {
-		$state = isset( $item['state'] ) ? $item['state'] : 'missing';
-		$cls   = 'tisa-plugin-card';
-		$open  = ! empty( $item['pages'] ) && in_array( $state, array( 'active', 'system' ), true ) && ! empty( $item['can'] );
+		$state   = isset( $item['state'] ) ? $item['state'] : 'missing';
+		$cls     = 'tisa-plugin-card';
+		$no_page = ! empty( $item['no_page'] );
+		$open    = ! $no_page && ! empty( $item['pages'] ) && in_array( $state, array( 'active', 'system' ), true ) && ! empty( $item['can'] );
+
+		if ( $no_page ) {
+			$cls .= ' is-nopage';
+		}
 		$main  = ! empty( $item['pages'] ) ? $item['pages'][0]['url'] : '';
-		$rest  = $open ? array_slice( (array) $item['pages'], 1 ) : array();
+		// برای ابزاری که صفحهٔ مستقل ندارد، همان لینک را «پیوند» می‌گذاریم نه دکمهٔ «باز کردن».
+		$rest = $no_page ? array_slice( (array) $item['pages'], 0 ) : ( $open ? array_slice( (array) $item['pages'], 1 ) : array() );
 
 		if ( in_array( $state, array( 'inactive', 'missing' ), true ) ) {
 			$cls .= ' is-inactive';
@@ -80,6 +86,10 @@ if ( ! function_exists( 'tsh_card' ) ) {
 			</div>
 
 			<p class="tisa-plugin-card__desc"><?php echo esc_html( $item['desc'] ); ?></p>
+
+			<?php if ( $no_page && ! empty( $item['note'] ) ) : ?>
+				<p class="tisa-hint" style="margin:0"><?php echo esc_html( $item['note'] ); ?></p>
+			<?php endif; ?>
 
 			<?php if ( empty( $item['can'] ) ) : ?>
 				<p class="tisa-hint" style="color:var(--tisa-warning)"><?php esc_html_e( 'نقش شما به این ابزار دسترسی ندارد.', 'tisacase-hub' ); ?></p>

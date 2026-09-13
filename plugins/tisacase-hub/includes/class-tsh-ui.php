@@ -19,7 +19,7 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 	final class TSH_UI {
 
 		/** اسکرین‌هایی که مال همهٔ محصول‌هاست (نه فقط ابزارهای ما). */
-		const SHARED = array( 'edit-product', 'product', 'add-product' );
+		const SHARED = array( 'edit-product' );
 
 		/** @var array|null تنظیمات merge‌شدهٔ همین درخواست. */
 		private static $settings = null;
@@ -39,6 +39,8 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 				'hide_scattered' => 1,
 				'style_plugins'  => 1,
 				'style_product_screens' => 1,
+				'system_shortcuts'      => 0,
+				'show_unregistered'     => 0,
 				'menu_position'         => 'top',
 				'menu_position_custom'  => '',
 				'show_counts'    => 1,

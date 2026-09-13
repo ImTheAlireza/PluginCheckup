@@ -153,6 +153,10 @@
 	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
 }
 
+.tisa-plugin-card.is-nopage {
+	background: var(--tisa-surface-2, #FAFAF8);
+}
+
 .tisa-plugin-card mark {
 	padding: 0 2px;
 	border-radius: 3px;
@@ -168,6 +172,37 @@
 .tisa-plugin-card__foot {
 	position: relative;
 	z-index: 1;
+}
+
+/* --- ردیف میان‌بُرهای وردپرس (افزونه نیستند؛ برای همین کارت نمی‌شوند) --- */
+.tisa-shortcuts {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tisa-sp-2, 8px) var(--tisa-sp-4, 16px);
+	margin-top: var(--tisa-sp-5, 24px);
+	padding-top: var(--tisa-sp-4, 16px);
+	border-block-start: 1px dashed var(--tisa-border, #E3E1DA);
+	font-size: var(--tisa-fs-meta, 12px);
+}
+
+.tisa-shortcuts a {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--tisa-muted, #77828A);
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.tisa-shortcuts a:hover {
+	color: var(--tisa-primary-ink, #0A5F52);
+}
+
+.tisa-shortcuts svg {
+	width: 15px;
+	height: 15px;
+	opacity: .8;
 }
 
 /* --- نوار سلامت --- */

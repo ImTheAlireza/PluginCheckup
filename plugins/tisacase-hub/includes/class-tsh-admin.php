@@ -210,7 +210,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			}
 			$out['accent'] = TSH_UI::normalize_hex( $accent );
 
-			foreach ( array( 'compact', 'hide_scattered', 'style_plugins', 'style_product_screens', 'show_counts' ) as $bool ) {
+			foreach ( array( 'compact', 'hide_scattered', 'style_plugins', 'style_product_screens', 'system_shortcuts', 'show_unregistered', 'show_counts' ) as $bool ) {
 				$out[ $bool ] = empty( $in[ $bool ] ) ? 0 : 1;
 			}
 			$ttl                = isset( $in['cache_ttl'] ) ? (int) $in['cache_ttl'] : $defaults['cache_ttl'];
@@ -263,9 +263,10 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				'all'      => $data['all'],
 				'pins'     => self::pins(),
 				'health'   => TSH_Health::summary(),
-				'unreg'    => TSH_Registry::unregistered(),
+				'unreg'    => TSH_UI::setting( 'show_unregistered' ) ? TSH_Registry::unregistered() : array(),
 				'settings' => TSH_UI::settings(),
 				'counts_at' => TSH_Counts::last_updated(),
+				'shortcuts' => TSH_UI::setting( 'system_shortcuts' ) ? TSH_Registry::shortcuts() : array(),
 				'env'      => self::env(),
 			);
 		}
@@ -309,7 +310,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 					'font'     => TSH_UI::font_status(),
 					'hidden'   => $hidden,
 					'items'    => $all,
-					'unreg'    => TSH_Registry::unregistered(),
+					'unreg'    => TSH_UI::setting( 'show_unregistered' ) ? TSH_Registry::unregistered() : array(),
 					'env'      => self::env(),
 				)
 			);
@@ -351,7 +352,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			$in  = is_array( $raw ) ? $raw : array();
 
 			// جعبه‌های تیک‌دار نیستم؛ نبودنشان یعنی خاموش.
-			foreach ( array( 'compact', 'hide_scattered', 'style_plugins', 'style_product_screens', 'show_counts' ) as $flag ) {
+			foreach ( array( 'compact', 'hide_scattered', 'style_plugins', 'style_product_screens', 'system_shortcuts', 'show_unregistered', 'show_counts' ) as $flag ) {
 				$in[ $flag ] = isset( $in[ $flag ] ) ? 1 : 0;
 			}
 
@@ -508,7 +509,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			if ( ! current_user_can( self::$cap ) ) {
 				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
 			}
-			$allow = array( 'accent', 'compact', 'show_counts', 'hide_scattered', 'style_plugins', 'style_product_screens' );
+			$allow = array( 'accent', 'compact', 'show_counts', 'hide_scattered', 'style_plugins', 'style_product_screens', 'system_shortcuts', 'show_unregistered' );
 			$saved = TSH_UI::settings();
 			$done  = array();
 			foreach ( $allow as $k ) {
