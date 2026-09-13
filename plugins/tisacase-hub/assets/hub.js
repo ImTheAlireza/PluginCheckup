@@ -208,9 +208,11 @@
 	document.addEventListener( 'click', function ( e ) {
 		var no = e.target.closest && e.target.closest( '[data-confirm-no]' );
 		if ( no ) { e.preventDefault(); clearConfirm( no.closest( '.tisa-plugin-card' ) ); return; }
-		if ( ! ( e.target.closest && e.target.closest( '.tisa-confirmbar' ) ) ) {
-			cards.forEach( clearConfirm );
+		// کلیک روی خودِ ⏻ یا داخل نوار تأیید نباید تأیید را ببندد (وگرنه همان لحظه که باز می‌شد بسته می‌شد)
+		if ( e.target.closest && ( e.target.closest( '.tisa-confirmbar' ) || e.target.closest( '[data-confirm]' ) ) ) {
+			return;
 		}
+		cards.forEach( clearConfirm );
 	} );
 
 	document.addEventListener( 'keydown', function ( e ) {
