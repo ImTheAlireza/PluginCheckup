@@ -1,0 +1,442 @@
+@charset "UTF-8";
+/* ==========================================================================
+   TisaCase Hub — استایل اختصاصیِ خودِ صفحهٔ هاب
+   لایهٔ کامپوننت در tisacase-ui.css است؛ این فایل فقط چیزهایی را دارد که
+   «مخصوص لانچر»اند و هیچ افزونهٔ دیگری به آن‌ها نیاز ندارد.
+   همه‌جا var() با fallback — تا اگر هاب غیرفعال شد، چیزی نمی‌شکند.
+   ========================================================================== */
+
+/* --- چیدمان هیرو --- */
+.tisa-hero-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
+	min-width: 0;
+}
+
+.tisa-hero-row > div {
+	min-width: 0;
+}
+
+.tisa-hero-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tisa-sp-2, 8px);
+	margin-top: var(--tisa-sp-3, 12px);
+}
+
+.tisa-hero .tisa-hero-chips .tisa-chip {
+	background: rgba(255, 255, 255, .15);
+	border-color: rgba(255, 255, 255, .25);
+	color: #fff;
+}
+
+/* --- بدنهٔ کارت لانچر --- */
+.tisa-hub-card {
+	overflow: hidden;
+	padding: 0 !important;
+}
+
+.tisa-hub-card__top {
+	padding: var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px) 0;
+}
+
+.tisa-hub-card__body {
+	padding: var(--tisa-sp-5, 24px);
+	margin-top: var(--tisa-sp-4, 16px);
+	background: var(--tisa-surface-2, #FAFAF8);
+	border-block-start: 1px solid var(--tisa-border, #E3E1DA);
+}
+
+.tisa-hub-card__foot {
+	padding: var(--tisa-sp-3, 12px) var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px);
+	background: var(--tisa-surface-2, #FAFAF8);
+}
+
+/* --- نوار ابزار --- */
+.tisa-hub-count {
+	font-size: var(--tisa-fs-meta, 12px);
+	color: var(--tisa-muted, #77828A);
+	white-space: nowrap;
+}
+
+.tisa-kbd {
+	display: inline-block;
+	padding: 1px 6px;
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r-xs, 6px);
+	background: var(--tisa-surface-3, #F6F5F1);
+	box-shadow: 0 1px 0 rgba(0, 0, 0, .04);
+	font: 11px/1.6 var(--tisa-mono, ui-monospace, Consolas, monospace);
+	color: var(--tisa-muted, #77828A);
+	direction: ltr;
+}
+
+/* --- انتخاب رنگ برند --- */
+.tisa-accent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--tisa-sp-2, 8px);
+}
+
+.tisa-accent__sw {
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: 2px solid #fff;
+	border-radius: 50%;
+	box-shadow: 0 0 0 1px var(--tisa-border, #E3E1DA);
+	cursor: pointer;
+	transition: transform var(--tisa-t, 150ms cubic-bezier(.4, 0, .2, 1)), box-shadow var(--tisa-t, 150ms cubic-bezier(.4, 0, .2, 1));
+}
+
+.tisa-accent__sw:hover {
+	transform: scale(1.12);
+}
+
+.tisa-accent__sw.is-on {
+	box-shadow: 0 0 0 2px var(--tisa-primary, #0E7C6B);
+}
+
+.tisa-accent__custom {
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	min-height: 0;
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r-xs, 6px);
+	background: none;
+	cursor: pointer;
+}
+
+/* --- کارت افزونه --- */
+.tisa-pin {
+	position: absolute;
+	inset-block-start: 8px;
+	inset-inline-end: 8px;
+	z-index: 2;
+	display: grid;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--tisa-muted-2, #9AA3A9);
+	font-size: 13px;
+	line-height: 1;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity var(--tisa-t, 150ms cubic-bezier(.4, 0, .2, 1)), background var(--tisa-t, 150ms), color var(--tisa-t, 150ms);
+}
+
+.tisa-plugin-card:hover .tisa-pin,
+.tisa-plugin-card:focus-within .tisa-pin,
+.tisa-plugin-card.is-pinned .tisa-pin,
+.tisa-plugin-card.is-focused .tisa-pin {
+	opacity: 1;
+}
+
+.tisa-pin:hover {
+	background: var(--tisa-primary-soft, #E8F0EE);
+	color: var(--tisa-primary-ink, #0A5F52);
+}
+
+.tisa-plugin-card.is-pinned .tisa-pin {
+	color: var(--tisa-warning-ink, #8A6116);
+}
+
+.tisa-plugin-card.is-focused {
+	border-color: var(--tisa-primary, #0E7C6B);
+	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
+}
+
+.tisa-plugin-card mark {
+	padding: 0 2px;
+	border-radius: 3px;
+	background: #FFF2A8;
+	color: inherit;
+}
+
+.tisa-plugin-card .tisa-code {
+	font-size: var(--tisa-fs-tiny, 11px);
+}
+
+/* لینک عنوان، کل کارت را پوشش می‌دهد؛ دکمه‌های فوت باید رو بیفتند */
+.tisa-plugin-card__foot {
+	position: relative;
+	z-index: 1;
+}
+
+/* --- نوار سلامت --- */
+.tisa-health {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+	gap: var(--tisa-sp-3, 12px);
+}
+
+.tisa-health > a {
+	display: flex;
+	gap: var(--tisa-sp-3, 12px);
+	align-items: center;
+	padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-inline-start-width: 4px;
+	border-radius: var(--tisa-r, 14px);
+	background: var(--tisa-surface, #fff);
+	color: inherit;
+	text-decoration: none;
+	transition: box-shadow var(--tisa-t, 150ms), transform var(--tisa-t, 150ms);
+}
+
+.tisa-health > a:hover {
+	box-shadow: var(--tisa-shadow-sm, 0 1px 2px rgba(31, 42, 46, .05));
+	transform: translateY(-1px);
+}
+
+.tisa-health .is-crit {
+	border-inline-start-color: var(--tisa-danger, #B5453A);
+	background: var(--tisa-danger-soft, #FBECEA);
+}
+
+.tisa-health .is-warn {
+	border-inline-start-color: #D98B0B;
+	background: var(--tisa-warning-soft, #FCF3D7);
+}
+
+.tisa-health .is-ok {
+	border-inline-start-color: var(--tisa-success, #1A7F37);
+}
+
+.tisa-health b {
+	display: block;
+	font-family: var(--tisa-num-font, var(--tisa-font));
+	font-size: var(--tisa-fs-hero, 26px);
+	font-weight: 800;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: var(--tisa-num-feat, "tnum" 1);
+	letter-spacing: -.4px;
+	color: var(--tisa-text, #2A3439);
+	direction: ltr;
+}
+
+.tisa-health span {
+	font-size: var(--tisa-fs-meta, 12px);
+	line-height: 1.55;
+	color: var(--tisa-muted, #77828A);
+}
+
+/* --- ردیف سیستم‌اطلاعات --- */
+.tisa-sysbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tisa-sp-1, 4px) var(--tisa-sp-4, 16px);
+	align-items: center;
+	padding-top: var(--tisa-sp-3, 12px);
+	border-block-start: 1px solid var(--tisa-border, #E3E1DA);
+	font-size: var(--tisa-fs-meta, 12px);
+	color: var(--tisa-muted, #77828A);
+}
+
+.tisa-sysbar .is-sep {
+	opacity: .5;
+}
+
+/* --- گزارش سلامت --- */
+.tisa-check {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tisa-sp-4, 16px);
+	align-items: flex-start;
+	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
+	border-block-start: 1px solid var(--tisa-border, #E3E1DA);
+}
+
+.tisa-check:first-child {
+	border-block-start: 0;
+}
+
+.tisa-check__mark {
+	flex: 0 0 auto;
+	display: grid;
+	place-items: center;
+	width: 34px;
+	height: 34px;
+	border-radius: var(--tisa-r-sm, 10px);
+	background: var(--tisa-surface-3, #F6F5F1);
+	color: var(--tisa-muted, #77828A);
+}
+
+.tisa-check__mark svg {
+	width: 18px;
+	height: 18px;
+}
+
+.tisa-check.is-crit .tisa-check__mark {
+	background: var(--tisa-danger-soft, #FBECEA);
+	color: var(--tisa-danger, #B5453A);
+}
+
+.tisa-check.is-warn .tisa-check__mark {
+	background: var(--tisa-warning-soft, #FCF3D7);
+	color: var(--tisa-warning, #8A6116);
+}
+
+.tisa-check.is-ok .tisa-check__mark {
+	background: var(--tisa-success-soft, #E5F4E7);
+	color: var(--tisa-success, #1A7F37);
+}
+
+.tisa-check__body {
+	flex: 1 1 340px;
+	min-width: 0;
+}
+
+.tisa-check__title {
+	margin: 0 0 2px;
+	font-size: var(--tisa-fs-body, 14px);
+	font-weight: 700;
+	color: var(--tisa-ink, #1F2A2E);
+}
+
+.tisa-check__list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tisa-sp-2, 8px);
+	margin: var(--tisa-sp-3, 12px) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.tisa-check__list li {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tisa-sp-2, 8px);
+	padding: 5px var(--tisa-sp-3, 12px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r-sm, 10px);
+	background: var(--tisa-surface-2, #FAFAF8);
+	font-size: var(--tisa-fs-tiny, 11px);
+}
+
+.tisa-check__fix {
+	margin: var(--tisa-sp-2, 8px) 0 0;
+	padding: var(--tisa-sp-2, 8px) var(--tisa-sp-3, 12px);
+	border-radius: var(--tisa-r-xs, 6px);
+	background: var(--tisa-primary-tint, #F2FBF8);
+	color: var(--tisa-primary-ink, #0A5F52);
+	font-size: var(--tisa-fs-meta, 12px);
+	line-height: 1.7;
+}
+
+/* --- بلوک کد راهنما --- */
+.tisa-codebox {
+	position: relative;
+	display: block;
+	overflow: auto;
+	max-height: 260px;
+	margin: 0;
+	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
+	border: 1px solid #2A3238;
+	border-radius: var(--tisa-r, 14px);
+	background: #1D2327;
+	color: #D7E7E2;
+	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
+	font-size: var(--tisa-fs-meta, 12px);
+	line-height: 1.85;
+	text-align: start;
+	direction: ltr;
+	white-space: pre;
+}
+
+.tisa-codebox__copy {
+	position: absolute;
+	inset-block-start: 10px;
+	inset-inline-end: 10px;
+}
+
+/* --- ردیف تنظیمات --- */
+.tisa-setrow {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tisa-sp-4, 16px);
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--tisa-sp-4, 16px) 0;
+	border-block-start: 1px solid var(--tisa-border, #E3E1DA);
+}
+
+.tisa-setrow:first-of-type {
+	border-block-start: 0;
+	padding-block-start: 0;
+}
+
+.tisa-setrow__text {
+	flex: 1 1 320px;
+	min-width: 0;
+}
+
+.tisa-setrow__ctrl {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--tisa-sp-3, 12px);
+	align-items: center;
+}
+
+/* --- افزونه‌های ثبت‌نشده --- */
+.tisa-note {
+	margin-top: var(--tisa-sp-4, 16px);
+	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
+	border: 1px dashed var(--tisa-border-strong, #C9DCD7);
+	border-radius: var(--tisa-r-lg, 16px);
+	background: var(--tisa-primary-tint, #F2FBF8);
+}
+
+/* --- پوستهٔ ادمینِ صفحه‌های هاب (فقط اینجا؛ body class را TSH_UI می‌گذارد) --- */
+body.tisa-hub-page #wpcontent {
+	padding-inline-start: 0;
+	background: var(--tisa-bg, #F4F2EC);
+}
+
+body.tisa-hub-page #wpbody-content {
+	padding-bottom: var(--tisa-sp-7, 48px);
+}
+
+body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
+	max-width: 1240px;
+	margin-inline: auto;
+	margin-block-start: var(--tisa-sp-5, 24px);
+	padding-inline: var(--tisa-sp-5, 24px);
+}
+
+@media screen and (max-width: 960px) {
+	body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
+		padding-inline: var(--tisa-sp-4, 16px);
+	}
+}
+
+@media screen and (max-width: 782px) {
+
+	.tisa-hub-card__top,
+	.tisa-hub-card__body {
+		padding: var(--tisa-sp-4, 16px);
+	}
+
+	.tisa-health {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.tisa-pin,
+	.tisa-accent__sw,
+	.tisa-health > a,
+	.tisa-plugin-card {
+		transition-duration: .01ms !important;
+	}
+}

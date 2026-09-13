@@ -328,3 +328,32 @@ function tisa_ui_body_class( $classes ) {
 `body.tisa-compact` (کاهش فاصله/گوشه/ارتفاع کنترل‌ها) و یک `wp_add_inline_style` که `--tisa-primary*` را از تنظیمات هاب بازنویسی می‌کند. نتیجه: انتخاب یک رنگ در هاب، هر ۹ افزونه را rebrand می‌کند.
 
 پیش‌نمایش زنده: `design/preview/index.html` → بخش‌های ۲ (اعداد) و ۱۲ (هاب: جستجو، `↑↓`، `Enter`، سنجاق، پنل سلامت، رنگ برند، چگالی).
+
+
+---
+
+## ۹) نسخهٔ ۱٫۰٫۰ — چیزی که ساخته شد (هاب واقعی)
+
+مخزن: `plugins/tisacase-hub/` · زیپ: `tisacase-hub.zip` · راهنما: `HUB.md`
+
+| فایل | نقش |
+|------|-----|
+| `tisacase-hub.php` | هدر افزونه، ثابت‌ها، `tsh_ver()` (کش‌شکن در WP_DEBUG)، بارگذاری کلاس‌ها |
+| `includes/class-tsh-registry.php` | کاتالوگ ۹ افزونه + ۳ میان‌بُر سیستمی؛ کشف خودکار از هدر `TisaCase Hub:`؛ فیلتر `tisacase_hub_items`؛ تولید `screens()` / `page_slugs()` / `menu_entries()` |
+| `includes/class-tsh-ui.php` | تنظیمات، دامنهٔ اسکرین (`scope()`)، `admin_enqueue_scripts` با اولویت ۱، `body_class`، مشتق‌سازی پالت از یک هگز، `@font-face` خودکار از `assets/fonts/` |
+| `includes/class-tsh-admin.php` | منو/ساب‌منو، مخفی‌کردن آیتم‌های پخش‌شده (اولویت ۹۹)، فعال/غیرفعال‌سازی، مخفی‌کردن کارت، ذخیرهٔ تنظیمات با admin-post (نه options.php تا shop manager هم برود)، ۴ endpoint ajax |
+| `includes/class-tsh-counts.php` | ۸ شمارندهٔ کش‌شده با `$wpdb->prepare` / API ووکامرس |
+| `includes/class-tsh-health.php` | ۱۰ بررسی ایستا (nopriv، guard در AJAX، REST باز، `extractTo`، uninstall، CDN قلم، هاردکد CSS، i18n، HPOS، خودِ بسته) با کش امضا‌مبتنی بر mtime |
+| `includes/class-tsh-view.php` + `tpl-card.php` | آیکون‌های SVG خطی، `num()`، رندر کارت |
+| `assets/tisacase-ui.css` | همان فایل مرجع `design/` (توکن‌ها + کامپوننت‌ها + نرمال‌ساز + قرارداد اعداد ۰٫۲ + `body.tisa-compact`) |
+| `assets/hub.css` / `assets/hub.js` | فقط لایهٔ لانچر: پوستهٔ ادمین صفحهٔ هاب، سنجاق، جستجو، کیبورد، رنگ برند، ⟳ شمارنده‌ها |
+| `templates/hub.php` / `settings.php` / `health.php` | رندر با escape کامل؛ هیچ `echo` خام از ورودی کاربر |
+| `uninstall.php` | پاک‌کردن `tisacase_hub_settings`، کش‌ها، متای `tisacase_hub_pins` |
+
+**تصمیم‌های فنی که در متن این سند بازتعریف شد:**
+- دامنهٔ استایل با **هر دو** روش ست می‌شود: `screen id` دقیق (از registry) و پسوند `_page_<slug>` — تا اگر وردپرس نام والد را جور دیگری ساخت (`product_page_x` / `edit_page_x`)، باز هم درست باشد.
+- صفحه‌های مشترکِ ووکامرس (`edit-product`، `product`، `add-product`) کلید جدا دارند: `style_product_screens`. اگر جدول واریاسیون‌ها به‌هم ریخت، فقط همان خاموش می‌شود.
+- تنظیمات با `admin_post` ذخیره می‌شود (نه `options.php`)، چون `options.php` پشت `manage_options` می‌نشیند و shop manager را رد می‌کند.
+- `register_setting` هم ثبت شده تا مسیر استاندارد وردپرسی بسته باشد.
+
+**بررسی‌هایی که روی همین ماشین شد (بدون `php`):** `tools/php-check.py` (توازن `{}`, `<?php ?>`, جفت `if/endforeach`، تعداد آرگومان `add_*_page`) روی ۱۲ فایل تمیز؛ `node --check` روی `hub.js`؛ توازن آکولاد CSS (۲۹۹/۲۹۹ و ۶۲/۶۲)؛ ممیز تطبیق selectors بین `hub.js` و قالب‌ها (۱۲ selector، صفر مورد جاافتاده). اجرای واقعی روی هاست شماست.

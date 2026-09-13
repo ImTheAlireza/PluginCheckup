@@ -1,0 +1,652 @@
+<?php
+/**
+ * کاتالوگ افزونه‌های اختصاصی: چه چیزی، کجا باز می‌شود، روی چه اسکرین‌هایی استایل تزریق شود.
+ *
+ * هر آیتم می‌تواند از سه مسیر وارد شود (به ترتیب اولویت):
+ *  ۱) فیلتر `tisacase_hub_items` (افزونه خودش را ثبت کند — دقیق‌ترین حالت)
+ *  ۲) هدر `TisaCase Hub:` در فایل اصلی افزونه (بدون کد، فقط یک خط)
+ *  ۳) فهرست پیش‌فرض همین کلاس (افزونه‌های فعلی تیساکیس)
+ *
+ * @package TisaCase_Hub
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+if ( ! class_exists( 'TSH_Registry' ) ) {
+
+	/**
+	 * ثبت و resolve آیتم‌های هاب.
+	 */
+	final class TSH_Registry {
+
+		const FILTER = 'tisacase_hub_items';
+
+		/** @var array|null آیتم‌های resolve‌شده در همین درخواست. */
+		private static $items = null;
+
+		/** @var array|null خروجی get_plugins() برای همین درخواست. */
+		private static $plugins = null;
+
+		/**
+		 * گروه‌های نمایشی.
+		 *
+		 * @return array<string,string>
+		 */
+		public static function groups() {
+			return array(
+				'products' => __( 'محصول و محتوا', 'tisacase-hub' ),
+				'pricing'  => __( 'قیمت‌گذاری', 'tisacase-hub' ),
+				'orders'   => __( 'سفارش و ارسال', 'tisacase-hub' ),
+				'system'   => __( 'ابزارهای سیستمی', 'tisacase-hub' ),
+			);
+		}
+
+		/**
+		 * فهرست پیش‌فرضِ افزونه‌های تیساکیس.
+		 *
+		 * @return array<string,array>
+		 */
+		private static function defaults() {
+			$items = array();
+
+			$items['bdc'] = array(
+				'title' => __( 'حذف انبوه پیش‌نویس', 'tisacase-hub' ),
+				'desc'  => __( 'پاک‌سازی محصولات پیش‌نویس و تصویرهای یتیم، با پشتیبان و بازیابی.', 'tisacase-hub' ),
+				'group' => 'products',
+				'icon'  => 'trash',
+				'dir'   => 'bulk-product-cleaner',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'پاک‌ساز', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=bdc-cleaner',
+						'screen' => 'woocommerce_page_bdc-cleaner',
+						'parent' => 'woocommerce',
+						'slug'   => 'bdc-cleaner',
+					),
+					array(
+						'label'  => __( 'پشتیبان و بازیابی', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=bdc-cleaner&tab=backups',
+						'screen' => 'woocommerce_page_bdc-cleaner',
+					),
+				),
+				'count' => 'bdc_drafts',
+			);
+
+			$items['desc'] = array(
+				'title' => __( 'قوانین توضیحات محصول', 'tisacase-hub' ),
+				'desc'  => __( 'درج خودکار توضیحات چاپی و هشدار قاب، با اسکن و بازگردانی.', 'tisacase-hub' ),
+				'group' => 'products',
+				'icon'  => 'doc',
+				'dir'   => 'tisacase-product-description',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'تنظیمات', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-desc',
+						'screen' => 'toplevel_page_tisacase-desc',
+						'parent' => 'top',
+						'slug'   => 'tisacase-desc',
+					),
+					array(
+						'label'  => __( 'ابزارها', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-desc&tab=tools',
+						'screen' => 'toplevel_page_tisacase-desc',
+					),
+					array(
+						'label'  => __( 'بازگردانی', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-desc&tab=backups',
+						'screen' => 'toplevel_page_tisacase-desc',
+					),
+				),
+				'count' => 'desc_backups',
+			);
+
+			$items['importer'] = array(
+				'title' => __( 'افزودن/شارژ محصول از تلگرام', 'tisacase-hub' ),
+				'desc'  => __( 'تبدیل product.zip ربات به محصول متغیر پیش‌نویس؛ SKU و واریاسیون خودکار.', 'tisacase-hub' ),
+				'group' => 'products',
+				'icon'  => 'box',
+				'dir'   => 'tisa-product-importer',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'ایمپورت', 'tisacase-hub' ),
+						'path'   => 'edit.php?post_type=product&page=tisa-product-importer',
+						'screen' => 'product_page_tisa-product-importer',
+						'parent' => 'edit.php?post_type=product',
+						'slug'   => 'tisa-product-importer',
+					),
+				),
+				'count' => '',
+			);
+
+			$items['skubar'] = array(
+				'title' => __( 'نوار پیشوند SKU', 'tisacase-hub' ),
+				'desc'  => __( 'سری‌های SKU، SKU بعدی و چک تکراری روی لیست و ویرایش محصول. صفحهٔ مستقل ندارد.', 'tisacase-hub' ),
+				'group' => 'products',
+				'icon'  => 'hash',
+				'dir'   => 'wc-sku-prefix-bar',
+				'cap'   => 'edit_products',
+				'pages' => array(
+					array(
+						'label'  => __( 'لیست محصولات', 'tisacase-hub' ),
+						'path'   => 'edit.php?post_type=product',
+						'screen' => 'edit-product',
+					),
+				),
+				'screens' => array( 'edit-product', 'product', 'add-product' ),
+				'count'   => 'sku_missing',
+			);
+
+			$items['tcbpm'] = array(
+				'title' => __( 'قیمت گروهی', 'tisacase-hub' ),
+				'desc'  => __( 'افزایش/کاهش/set قیمت عادی، فروش ویژه و عمده؛ پیش‌نمایش، لاگ و بازگردانی.', 'tisacase-hub' ),
+				'group' => 'pricing',
+				'icon'  => 'tag',
+				'dir'   => 'tisacase-bulk-price-manager',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'اجرای گروهی', 'tisacase-hub' ),
+						'path'   => 'edit.php?post_type=product&page=tisacase-bulk-price-manager',
+						'screen' => 'product_page_tisacase-bulk-price-manager',
+						'parent' => 'edit.php?post_type=product',
+						'slug'   => 'tisacase-bulk-price-manager',
+					),
+					array(
+						'label'  => __( 'اجراهای قبلی', 'tisacase-hub' ),
+						'path'   => 'edit.php?post_type=product&page=tisacase-bulk-price-manager&tab=runs',
+						'screen' => 'product_page_tisacase-bulk-price-manager',
+					),
+					array(
+						'label'  => __( 'تنظیمات', 'tisacase-hub' ),
+						'path'   => 'edit.php?post_type=product&page=tisacase-bulk-price-manager&tab=settings',
+						'screen' => 'product_page_tisacase-bulk-price-manager',
+					),
+				),
+				'count' => 'bpm_runs',
+			);
+
+			$items['pm'] = array(
+				'title' => __( 'قیمت‌گذاری داینامیک', 'tisacase-hub' ),
+				'desc'  => __( 'قوانین درصدی بر اساس نقش کاربر/دسته؛ بدون نوشتن در دیتابیس.', 'tisacase-hub' ),
+				'group' => 'pricing',
+				'icon'  => 'bolt',
+				'dir'   => 'tisacase-pricing-manager',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'قوانین', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-pricing-manager',
+						'screen' => 'woocommerce_page_tisacase-pricing-manager',
+						'parent' => 'woocommerce',
+						'slug'   => 'tisacase-pricing-manager',
+					),
+				),
+				'count' => 'pm_rules',
+			);
+
+			$items['package'] = array(
+				'title' => __( 'پکیج ویژه قاب', 'tisacase-hub' ),
+				'desc'  => __( 'افزودن گزینهٔ پکیج به سبد بر اساس کلیدواژهٔ عنوان، با استثنای SKU.', 'tisacase-hub' ),
+				'group' => 'pricing',
+				'icon'  => 'layers',
+				'dir'   => 'case-special-package',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'تنظیمات پکیج', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=wcsp-settings',
+						'screen' => 'woocommerce_page_wcsp-settings',
+						'parent' => 'woocommerce',
+						'slug'   => 'wcsp-settings',
+					),
+				),
+				'count' => 'wcsp_exceptions',
+			);
+
+			$items['tracking'] = array(
+				'title' => __( 'آپلود کد رهگیری انبوه', 'tisacase-hub' ),
+				'desc'  => __( 'نگاشت اکسل/CSV به سفارش‌ها و درج کد رهگیری؛ به‌همراه پاک‌سازی گروهی.', 'tisacase-hub' ),
+				'group' => 'orders',
+				'icon'  => 'truck',
+				'dir'   => 'bulk-tracking-upload',
+				'cap'   => 'manage_options',
+				'pages' => array(
+					array(
+						'label'  => __( 'آپلود', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=bulk-tracking-upload',
+						'screen' => 'woocommerce_page_bulk-tracking-upload',
+						'parent' => 'woocommerce',
+						'slug'   => 'bulk-tracking-upload',
+					),
+					array(
+						'label'  => __( 'پاک کردن کدها', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=bwt-cleanup',
+						'screen' => 'woocommerce_page_bwt-cleanup',
+						'parent' => 'woocommerce',
+						'slug'   => 'bwt-cleanup',
+					),
+				),
+				'count' => 'tracking_codes',
+			);
+
+			$items['phones'] = array(
+				'title' => __( 'خروجی شماره تماس سفارش‌ها', 'tisacase-hub' ),
+				'desc'  => __( 'اکسل شماره تماس با فرمت 989xxxxxxxxx، بدون تکراری و با پاک‌سازی فایل موقت.', 'tisacase-hub' ),
+				'group' => 'orders',
+				'icon'  => 'phone',
+				'dir'   => 'tisacase-order-phone-exporter',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'خروجی گرفتن', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-order-phone-exporter',
+						'screen' => 'woocommerce_page_tisacase-order-phone-exporter',
+						'parent' => 'woocommerce',
+						'slug'   => 'tisacase-order-phone-exporter',
+					),
+				),
+				'count' => 'orders_30d',
+			);
+
+			$items['hub-plugins'] = array(
+				'title' => __( 'افزونه‌ها', 'tisacase-hub' ),
+				'desc'  => __( 'مدیریت کلاسیک وردپرس: فعال/غیرفعال، به‌روزرسانی و ویرایش.', 'tisacase-hub' ),
+				'group' => 'system',
+				'icon'  => 'plug',
+				'dir'   => '',
+				'cap'   => 'activate_plugins',
+				'system' => true,
+				'pages' => array(
+					array(
+						'label' => __( 'افزونه‌های نصب‌شده', 'tisacase-hub' ),
+						'path'  => 'plugins.php',
+					),
+				),
+			);
+
+			$items['hub-wc'] = array(
+				'title' => __( 'نمای کلی ووکامرس', 'tisacase-hub' ),
+				'desc'  => __( 'داشبورد اصلی فروشگاه؛ برای مقایسه و دسترسی سریع.', 'tisacase-hub' ),
+				'group' => 'system',
+				'icon'  => 'chart',
+				'dir'   => '',
+				'cap'   => 'manage_woocommerce',
+				'system' => true,
+				'pages' => array(
+					array(
+						'label' => __( 'باز کردن', 'tisacase-hub' ),
+						'path'  => 'admin.php?page=wc-admin',
+					),
+				),
+			);
+
+			$items['hub-orders'] = array(
+				'title' => __( 'سفارش‌ها', 'tisacase-hub' ),
+				'desc'  => __( 'لیست سفارش‌ها — مبدأ اکثر کارهایی که این ابزارها انجام می‌دهند.', 'tisacase-hub' ),
+				'group' => 'system',
+				'icon'  => 'archive',
+				'dir'   => '',
+				'cap'   => 'manage_woocommerce',
+				'system' => true,
+				'pages' => array(
+					array(
+						'label' => __( 'باز کردن', 'tisacase-hub' ),
+						'path'  => 'edit.php?post_type=shop_order',
+					),
+				),
+			);
+
+			return apply_filters( 'tisacase_hub_default_items', $items );
+		}
+
+		/**
+		 * کشف خودکار افزونه‌هایی که هدر TisaCase Hub: دارند.
+		 *
+		 * قالب هدر (همهٔ بخش‌ها اختیاری به‌جز page یا screens):
+		 * `TisaCase Hub: title="نام"; icon=tag; group=pricing; page=admin.php?page=x; screen=woocommerce_page_x; cap=manage_woocommerce; desc="توضیح"`
+		 *
+		 * @param array<string,array> $items آیتم‌های موجود (برای پر کردن جای خالی).
+		 * @return array<string,array>
+		 */
+		private static function discover( $items ) {
+			foreach ( self::plugins() as $basename => $data ) {
+				$raw = isset( $data['TisaCase Hub'] ) ? (string) $data['TisaCase Hub'] : '';
+				if ( '' === $raw ) {
+					continue;
+				}
+				$parsed = self::parse_header( $raw );
+				if ( empty( $parsed ) ) {
+					continue;
+				}
+				$dir = dirname( $basename );
+				$key = isset( $parsed['key'] ) ? sanitize_key( $parsed['key'] ) : sanitize_key( str_replace( '/', '-', $dir ) );
+				if ( 'yes' === ( isset( $parsed['self'] ) ? $parsed['self'] : '' ) ) {
+					continue; // خودِ هاب؛ در فهرست نمی‌آید.
+				}
+				$item = array(
+					'title'  => isset( $parsed['title'] ) ? $parsed['title'] : $data['Name'],
+					'desc'   => isset( $parsed['desc'] ) ? $parsed['desc'] : wp_strip_all_tags( (string) $data['Description'] ),
+					'group'  => isset( $parsed['group'] ) ? $parsed['group'] : 'products',
+					'icon'   => isset( $parsed['icon'] ) ? $parsed['icon'] : 'plug',
+					'dir'    => $dir,
+					'cap'    => isset( $parsed['cap'] ) ? $parsed['cap'] : 'manage_woocommerce',
+					'count'  => '',
+					'pages'  => array(),
+					'source' => 'header',
+				);
+				if ( ! empty( $parsed['page'] ) ) {
+					$item['pages'][] = array(
+						'label'  => __( 'باز کردن', 'tisacase-hub' ),
+						'path'   => $parsed['page'],
+						'screen' => isset( $parsed['screen'] ) ? $parsed['screen'] : '',
+						'parent' => isset( $parsed['parent'] ) ? $parsed['parent'] : '',
+						'slug'   => isset( $parsed['slug'] ) ? $parsed['slug'] : '',
+					);
+				}
+				if ( ! empty( $parsed['screens'] ) ) {
+					$item['screens'] = array_map( 'sanitize_key', explode( ',', $parsed['screens'] ) );
+				}
+				$items[ $key ] = isset( $items[ $key ] ) ? array_merge( $items[ $key ], $item ) : $item;
+			}
+			return $items;
+		}
+
+		/**
+		 * تجزیهٔ رشتهٔ هدر به زوج کلید/مقدار.
+		 *
+		 * @param string $raw متن هدر.
+		 * @return array<string,string>
+		 */
+		public static function parse_header( $raw ) {
+			$out   = array();
+			$parts = preg_split( '/;\s*/', trim( $raw ) );
+			foreach ( (array) $parts as $part ) {
+				if ( ! $part || false === strpos( $part, '=' ) ) {
+					continue;
+				}
+				list( $k, $v ) = explode( '=', $part, 2 );
+				$k = strtolower( trim( $k ) );
+				$v = trim( trim( $v ), " \t\"'" );
+				if ( '' === $k ) {
+					continue;
+				}
+				$out[ $k ] = 'page' === $k || 'screens' === $k ? $v : sanitize_text_field( $v );
+			}
+			return $out;
+		}
+
+		/**
+		 * آیتم‌های نهایی (پیش‌فرض + کشف‌شده + فیلتر).
+		 *
+		 * @param bool $refresh پاک کردن کش درخواستی.
+		 * @return array<string,array>
+		 */
+		public static function items( $refresh = false ) {
+			if ( null !== self::$items && ! $refresh ) {
+				return self::$items;
+			}
+			$items = self::discover( self::defaults() );
+			$items = apply_filters( self::FILTER, $items );
+			if ( ! is_array( $items ) ) {
+				$items = array();
+			}
+			foreach ( $items as $key => $item ) {
+				$items[ $key ]['key'] = $key;
+				if ( empty( $items[ $key ]['pages'] ) ) {
+					$items[ $key ]['pages'] = array();
+				}
+			}
+			self::$items = $items;
+			return self::$items;
+		}
+
+		/**
+		 * get_plugins() یک‌بار در هر درخواست.
+		 *
+		 * @return array<string,array>
+		 */
+		public static function plugins() {
+			if ( null !== self::$plugins ) {
+				return self::$plugins;
+			}
+			if ( ! function_exists( 'get_plugins' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+			self::$plugins = function_exists( 'get_plugins' ) ? get_plugins() : array();
+			return self::$plugins;
+		}
+
+		/**
+		 * پیدا کردن فایل اصلی افزونه از روی نام پوشه.
+		 *
+		 * @param string $dir نام پوشهٔ افزونه.
+		 * @return string basename یا رشتهٔ خالی.
+		 */
+		public static function basename_for( $dir ) {
+			if ( ! $dir ) {
+				return '';
+			}
+			foreach ( array_keys( self::plugins() ) as $basename ) {
+				if ( 0 === strpos( $basename, $dir . '/' ) ) {
+					return $basename;
+				}
+			}
+			return '';
+		}
+
+		/**
+		 * آیتم کامل‌شده با وضعیت فعلی (نسخه، فعال/غیرفعال، URL مطلق، دسترسی، شمارنده).
+		 *
+		 * @param string $key   کلید آیتم.
+		 * @param array  $items آیتم‌های خام.
+		 * @return array
+		 */
+		private static function resolve( $key, $items ) {
+			$item     = $items[ $key ];
+			$dir      = isset( $item['dir'] ) ? (string) $item['dir'] : '';
+			$basename = $dir ? self::basename_for( $dir ) : '';
+			$plugins  = self::plugins();
+			$data     = ( $basename && isset( $plugins[ $basename ] ) ) ? $plugins[ $basename ] : array();
+
+			$state = 'missing';
+			if ( $basename ) {
+				$state = is_plugin_active( $basename ) ? 'active' : 'inactive';
+			} elseif ( ! empty( $item['system'] ) ) {
+				$state = 'system';
+			}
+
+			$pages = array();
+			foreach ( (array) $item['pages'] as $page ) {
+				$page['url'] = admin_url( $page['path'] );
+				if ( empty( $page['label'] ) ) {
+					$page['label'] = __( 'باز کردن', 'tisacase-hub' );
+				}
+				$pages[] = $page;
+			}
+
+			$cap = isset( $item['cap'] ) ? $item['cap'] : 'manage_woocommerce';
+
+			$item['key']        = $key;
+			$item['pages']      = $pages;
+			$item['basename']   = $basename;
+			$item['state']      = $state;
+			$item['version']    = isset( $data['Version'] ) ? (string) $data['Version'] : '';
+			$item['name']       = isset( $data['Name'] ) ? (string) $data['Name'] : ( isset( $item['title'] ) ? $item['title'] : '' );
+			$item['can']        = current_user_can( $cap );
+			$item['can_manage'] = current_user_can( 'activate_plugins' );
+			$item['count']      = ( $state === 'active' && ! empty( $item['count'] ) ) ? TSH_Counts::get( $item['count'] ) : null;
+			$item['screens']    = isset( $item['screens'] ) ? (array) $item['screens'] : array();
+			foreach ( $pages as $page ) {
+				if ( ! empty( $page['screen'] ) && ! in_array( $page['screen'], $item['screens'], true ) ) {
+					$item['screens'][] = $page['screen'];
+				}
+			}
+			return $item;
+		}
+
+		/**
+		 * همهٔ آیتم‌ها، گروه‌بندی‌شده و آمادهٔ رندر.
+		 *
+		 * @return array<string,array> گروه => آیتم‌ها
+		 */
+		public static function grouped() {
+			$items   = self::items();
+			$hidden  = TSH_UI::setting( 'hidden', array() );
+			$out     = array();
+			$ordered = array();
+
+			foreach ( array_keys( $items ) as $key ) {
+				$ordered[ $key ] = self::resolve( $key, $items );
+			}
+
+			foreach ( self::groups() as $gkey => $glabel ) {
+				$out[ $gkey ] = array(
+					'label' => $glabel,
+					'items' => array(),
+				);
+			}
+			foreach ( $ordered as $key => $item ) {
+				if ( in_array( $key, (array) $hidden, true ) ) {
+					continue;
+				}
+				$group = isset( $item['group'] ) && isset( $out[ $item['group'] ] ) ? $item['group'] : 'products';
+				$out[ $group ]['items'][] = $item;
+			}
+			$out = array_filter(
+				$out,
+				static function ( $g ) {
+					return ! empty( $g['items'] );
+				}
+			);
+			return array( 'groups' => $out, 'all' => $ordered );
+		}
+
+		/**
+		 * افزونه‌های تیساکیس که هنوز در هاب ثبت نشده‌اند (یادآور تمیز).
+		 *
+		 * @return array<int,array>
+		 */
+		public static function unregistered() {
+			$items = self::items();
+			$dirs  = array();
+			foreach ( $items as $item ) {
+				if ( ! empty( $item['dir'] ) ) {
+					$dirs[ $item['dir'] ] = true;
+				}
+			}
+			$found = array();
+			foreach ( self::plugins() as $basename => $data ) {
+				$dir    = dirname( $basename );
+				$author = ( isset( $data['Author'] ) ? $data['Author'] : '' ) . ' ' . ( isset( $data['TextDomain'] ) ? $data['TextDomain'] : '' ) . ' ' . $dir;
+				if ( isset( $dirs[ $dir ] ) ) {
+					continue;
+				}
+				if ( ! preg_match( '/tisa|تیسا/i', $author ) ) {
+					continue;
+				}
+				$found[] = array(
+					'basename' => $basename,
+					'dir'      => $dir,
+					'name'     => $data['Name'],
+					'version'  => isset( $data['Version'] ) ? $data['Version'] : '',
+					'active'   => is_plugin_active( $basename ),
+				);
+			}
+			return $found;
+		}
+
+		/**
+		 * فهرست اسکرین‌هایی که هاب در آن‌ها استایل تزریق می‌کند.
+		 *
+		 * @return array<string,string> screen id => کلید آیتم
+		 */
+		public static function screens() {
+			$map = array();
+			foreach ( self::items() as $key => $item ) {
+				if ( empty( $item['pages'] ) && empty( $item['screens'] ) ) {
+					continue;
+				}
+				foreach ( (array) $item['pages'] as $page ) {
+					if ( ! empty( $page['screen'] ) ) {
+						$map[ $page['screen'] ] = $key;
+					}
+				}
+				if ( ! empty( $item['screens'] ) ) {
+					foreach ( (array) $item['screens'] as $screen ) {
+						$map[ $screen ] = $key;
+					}
+				}
+			}
+			return $map;
+		}
+
+		/**
+	 * اسلگ‌های `?page=` که باید استایل بگیرند، حتی اگر وردپرس نام والد را جور دیگری بسازد
+	 * (product_page_x و edit_page_x و woocommerce_page_x هر سه).
+	 *
+	 * @return array<string,string> page slug => کلید آیتم
+	 */
+		public static function page_slugs() {
+			$map = array();
+			foreach ( self::items() as $key => $item ) {
+				if ( empty( $item['pages'] ) ) {
+					continue;
+				}
+				foreach ( (array) $item['pages'] as $page ) {
+					if ( empty( $page['path'] ) || false === strpos( $page['path'], 'page=' ) ) {
+						continue;
+					}
+					$q = array();
+					parse_str( (string) wp_parse_url( $page['path'], PHP_URL_QUERY ), $q );
+					if ( empty( $q['page'] ) ) {
+						continue;
+					}
+					$map[ sanitize_key( $q['page'] ) ] = $key;
+				}
+			}
+			return $map;
+		}
+
+		/**
+	 * آیتم‌های منویی که باید مخفی شوند (وقتی گزینهٔ «تک‌ورودی» روشن است).
+		 *
+		 * @return array<int,array{parent:string,slug:string}>
+		 */
+		public static function menu_entries() {
+			$out = array();
+			foreach ( self::items() as $item ) {
+				if ( empty( $item['pages'] ) ) {
+					continue;
+				}
+				foreach ( $item['pages'] as $page ) {
+					if ( empty( $page['parent'] ) || empty( $page['slug'] ) ) {
+						continue;
+					}
+					$out[] = array(
+						'parent' => $page['parent'],
+						'slug'   => $page['slug'],
+					);
+				}
+			}
+			return $out;
+		}
+
+		/**
+		 * نام آیتم‌ها برای برچسب‌زدن در گزارش سلامت.
+		 *
+		 * @param string $dir پوشهٔ افزونه.
+		 * @return string
+		 */
+		public static function title_for_dir( $dir ) {
+			foreach ( self::items() as $item ) {
+				if ( ! empty( $item['dir'] ) && $item['dir'] === $dir ) {
+					return $item['title'];
+				}
+			}
+			return $dir;
+		}
+	}
+}
