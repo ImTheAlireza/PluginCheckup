@@ -171,6 +171,7 @@ body.product_page_tisacase-desc #wpcontent { background: var(--tisa-bg, #F4F2EC)
 	border: 0;
 }
 
+.tc-wrap .tc-tabs a.tc-tab,
 .tc-tab {
 	display: inline-flex;
 	align-items: center;
@@ -187,11 +188,13 @@ body.product_page_tisacase-desc #wpcontent { background: var(--tisa-bg, #F4F2EC)
 	transition: background .15s, color .15s;
 }
 
+.tc-wrap .tc-tabs a.tc-tab:hover,
 .tc-tab:hover {
 	background: rgba(255, 255, 255, .2);
 	color: var(--tisa-on-primary, #fff);
 }
 
+.tc-wrap .tc-tabs a.tc-tab.is-active,
 .tc-tab.is-active {
 	background: var(--tisa-surface, #fff);
 	color: var(--tisa-primary-ink, #0A5F52);
