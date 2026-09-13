@@ -96,6 +96,17 @@
 	--tisa-font: "Vazirmatn", "IRANSans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Tahoma, sans-serif;
 	--tisa-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Consolas, "Courier New", monospace;
 
+	/* ---- اعداد ----
+	   قاعدهٔ مجموعه: مونو فقط برای «کد» (SKU، شناسه، لاگ، نام فایل).
+	   مبلغ و کمیت با همان قلم رابط رندر می‌شوند تا رقم فارسی و لاتین هر دو
+	   هم‌عرض و هم‌وزن بمانند (tabular) — تحمیل مونو باعث شکستن قلم می‌شد.
+	*/
+	--tisa-num-font: var(--tisa-font);
+	--tisa-num-weight: 600;
+	--tisa-num-fs: var(--tisa-fs-control);
+	--tisa-num-lh: 1.5;
+	--tisa-num-feat: "tnum" 1, "lnum" 1;
+
 	/* ---- سازگاری نام قدیمی (--tc-*) تا افزونهٔ توضیحات نشکند ---- */
 	--tc-ink: var(--tisa-ink);
 	--tc-ink-soft: var(--tisa-muted);
@@ -245,11 +256,77 @@
 }
 
 .tisa-mono,
-.tisa-num {
+.tisa-code {
 	font-family: var(--tisa-mono);
-	font-variant-numeric: tabular-nums;
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: var(--tisa-num-feat);
 	direction: ltr;
 	unicode-bidi: isolate;
+	letter-spacing: 0;
+}
+
+/* عدد و مبلغ: قلم رابط + tabular — فارسی و لاتین هر دو درست */
+.tisa-num {
+	font-family: var(--tisa-num-font);
+	font-size: var(--tisa-num-fs);
+	font-weight: var(--tisa-num-weight);
+	line-height: var(--tisa-num-lh);
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: var(--tisa-num-feat);
+	direction: ltr;
+	unicode-bidi: isolate;
+	letter-spacing: 0;
+	white-space: nowrap;
+}
+
+.tisa-num--lg {
+	font-size: var(--tisa-fs-h2);
+	font-weight: 800;
+	letter-spacing: -.3px;
+}
+
+/* شمارش فارسی در متن (نه در جدول) */
+.tisa-num--fa {
+	direction: rtl;
+	unicode-bidi: normal;
+}
+
+/* مبلغ + واحد پول: واحد کوچک و کم‌رنگ، رقم هم‌تراز */
+.tisa-money {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 4px;
+	white-space: nowrap;
+}
+
+.tisa-money__v {
+	font-family: var(--tisa-num-font);
+	font-size: var(--tisa-num-fs);
+	font-weight: var(--tisa-num-weight);
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: var(--tisa-num-feat);
+	direction: ltr;
+	unicode-bidi: isolate;
+	letter-spacing: 0;
+}
+
+.tisa-money__cur {
+	font-family: var(--tisa-font);
+	font-size: var(--tisa-fs-tiny);
+	font-weight: 600;
+	color: var(--tisa-muted);
+	letter-spacing: 0;
+}
+
+/* رقم‌های درشتِ تیتروار */
+.tisa-figure {
+	font-family: var(--tisa-num-font);
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: var(--tisa-num-feat);
+	font-variant-emoji: text;
+	direction: ltr;
+	unicode-bidi: isolate;
+	letter-spacing: -.4px;
 }
 
 /* ==================================================================
@@ -653,10 +730,17 @@
 	box-shadow: var(--tisa-ring);
 }
 
-.tisa-input--number,
+.tisa-input--number {
+	font-family: var(--tisa-num-font);
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: var(--tisa-num-feat);
+	direction: ltr;
+	text-align: left;
+	letter-spacing: 0;
+}
+
 .tisa-input--code {
 	font-family: var(--tisa-mono);
-	font-variant-numeric: tabular-nums;
 	direction: ltr;
 	text-align: left;
 }
@@ -715,8 +799,14 @@
 	background: var(--tisa-surface-3);
 	color: var(--tisa-muted);
 	font-size: var(--tisa-fs-meta);
-	font-family: var(--tisa-mono);
+	font-family: var(--tisa-font);
+	font-weight: 600;
 	white-space: nowrap;
+}
+
+.tisa-input-group__addon--code {
+	font-family: var(--tisa-mono);
+	font-weight: 400;
 }
 
 /* --- چک‌باکس و رادیو --- */
@@ -906,6 +996,8 @@ html[dir="ltr"] .tisa-choice.is-selected {
 .tisa-count {
 	display: inline-block;
 	min-width: 20px;
+	font-variant-numeric: tabular-nums lining-nums;
+	letter-spacing: 0;
 	padding: 0 6px;
 	border-radius: var(--tisa-r-pill);
 	background: var(--tisa-primary);
@@ -1159,13 +1251,41 @@ html[dir="ltr"] .tisa-choice.is-selected {
 	background: var(--tisa-primary-soft);
 }
 
+/* ستون عددی: سلول RTL می‌ماند تا «end» همان لبهٔ بیرونی جدول باشد،
+   و رقم داخل .tisa-num/.tisa-money ایزوله می‌شود تا جابه‌جا/not‌چیده نشود */
 .tisa-table td.is-num,
-.tisa-table th.is-num {
-	font-family: var(--tisa-mono);
-	font-variant-numeric: tabular-nums;
-	direction: ltr;
+.tisa-table th.is-num,
+.tisa-table td.is-money,
+.tisa-table th.is-money {
 	text-align: end;
 	white-space: nowrap;
+}
+
+.tisa-table td.is-num,
+.tisa-table td.is-money {
+	font-family: var(--tisa-num-font);
+	font-size: var(--tisa-num-fs);
+	font-weight: var(--tisa-num-weight);
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: var(--tisa-num-feat);
+	color: var(--tisa-ink);
+	letter-spacing: 0;
+}
+
+.tisa-table th.is-num,
+.tisa-table th.is-money {
+	font-family: var(--tisa-font);
+	font-variant-numeric: normal;
+	font-feature-settings: normal;
+}
+
+.tisa-table td.is-code {
+	font-family: var(--tisa-mono);
+	font-size: var(--tisa-fs-meta);
+	direction: ltr;
+	unicode-bidi: isolate;
+	text-align: start;
+	letter-spacing: 0;
 }
 
 .tisa-table .tisa-cell-strong {
@@ -1312,11 +1432,16 @@ html[dir="ltr"] .tisa-choice.is-selected {
 
 .tisa-stat__num {
 	display: block;
+	font-family: var(--tisa-num-font);
 	font-size: var(--tisa-fs-hero);
 	font-weight: 800;
 	line-height: 1.15;
+	letter-spacing: -.4px;
 	color: var(--tisa-primary-ink);
-	font-variant-numeric: tabular-nums;
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: var(--tisa-num-feat);
+	direction: ltr;
+	unicode-bidi: isolate;
 }
 
 .tisa-stat__lbl {
@@ -1534,6 +1659,8 @@ html[dir="ltr"] .tisa-choice.is-selected {
 	font-size: var(--tisa-fs-tiny);
 	color: var(--tisa-muted-2);
 	direction: ltr;
+	unicode-bidi: isolate;
+	letter-spacing: 0;
 }
 
 .tisa-plugin-card__desc {
@@ -1859,9 +1986,29 @@ body.tisa-scope #wpcontent {
 }
 
 .tisa-scope input[type=number] {
-	font-family: var(--tisa-mono);
+	font-family: var(--tisa-num-font);
+	font-variant-numeric: tabular-nums lining-nums;
+	font-feature-settings: var(--tisa-num-feat);
 	direction: ltr;
 	text-align: left;
+	letter-spacing: 0;
+}
+
+/* لاگ و جدول‌های وردپرسی: شناسه/کد با مونو، مبلغ با قلم رابط */
+.tisa-scope .widefat td code {
+	background: var(--tisa-surface-3);
+	border: 0;
+	border-radius: var(--tisa-r-xs);
+	padding: 2px 6px;
+	font-family: var(--tisa-mono);
+	font-size: var(--tisa-fs-meta);
+	direction: ltr;
+	unicode-bidi: isolate;
+}
+
+.tisa-scope .tisa-num,
+.tisa-scope .tisa-money__v {
+	white-space: nowrap;
 }
 
 .tisa-scope input[type=text]:focus,
@@ -2002,6 +2149,51 @@ body.tisa-scope #wpcontent {
 	border-color: var(--tisa-primary);
 	box-shadow: var(--tisa-ring);
 	outline: none;
+}
+
+/* ==================================================================
+   16) چگالی و رنگ سفارشی — همان چیزی که «تنظیمات هاب» تولید می‌کند
+   هاب این‌ها را با یک کلاس روی بدنه و یک inline style روی :root ست می‌کند؛
+   هیچ افزونه‌ای از وجودشان خبر ندارد.
+   ================================================================== */
+
+body.tisa-compact {
+	--tisa-sp-4: 12px;
+	--tisa-sp-5: 16px;
+	--tisa-sp-6: 20px;
+	--tisa-sp-7: 28px;
+	--tisa-r: 10px;
+	--tisa-r-lg: 12px;
+	--tisa-r-xl: 14px;
+	--tisa-ctl-h: 32px;
+	--tisa-fs-h1: 18px;
+	--tisa-fs-hero: 22px;
+	--tisa-num-fs: 12px;
+	--tisa-lh: 1.65;
+}
+
+body.tisa-compact .tisa-card,
+body.tisa-compact .tisa-card-body {
+	padding: var(--tisa-sp-4);
+}
+
+body.tisa-compact .tisa-table td {
+	padding: 8px var(--tisa-sp-3);
+}
+
+body.tisa-compact .tisa-hub-grid {
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: var(--tisa-sp-3);
+}
+
+/* حالت تک‌رنگ/کم‌رنگ برای پوسته‌های تیرهٔ ادمین */
+@media (prefers-contrast: more) {
+	.tisa-card,
+	.tisa-plugin-card,
+	.tisa-stat {
+		border-width: 2px;
+		border-color: #6B7280;
+	}
 }
 
 /* ==================================================================
