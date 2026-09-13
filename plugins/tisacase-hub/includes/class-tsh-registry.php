@@ -124,6 +124,7 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				'icon'  => 'hash',
 				'dir'   => 'wc-sku-prefix-bar',
 				'cap'   => 'edit_products',
+				'tip'   => __( 'این افزونه صفحهٔ مستقل ندارد؛ نوار SKU روی لیست محصولات می‌نشیند.', 'tisacase-hub' ),
 				'pages' => array(
 					array(
 						'label'  => __( 'لیست محصولات', 'tisacase-hub' ),

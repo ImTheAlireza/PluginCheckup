@@ -569,7 +569,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			$texts = array(
 				'activated'   => array( 'success', __( 'افزونه فعال شد.', 'tisacase-hub' ) ),
 				'deactivated' => array( 'success', __( 'افزونه غیرفعال شد.', 'tisacase-hub' ) ),
-				'hidden'      => array( 'info', __( 'نمایش کارت به‌روز شد. از «ظاهر و تنظیمات» می‌توانید برگردانید.', 'tisacase-hub' ) ),
+				'hidden'      => array( 'info', sprintf( /* translators: %s: settings url */ __( 'ردیف مخفی شد. %sبازگردانی%s', 'tisacase-hub' ), '<a href="' . esc_url( admin_url( 'admin.php?page=' . TSH_SLUG . '-settings' ) ) . '">', '</a>' ) ),
 				'saved'       => array( 'success', __( 'تنظیمات ذخیره شد و روی همهٔ صفحه‌ها اعمال می‌شود.', 'tisacase-hub' ) ),
 				'notfound'    => array( 'error', sprintf( /* translators: %s: dir */ __( 'پوشهٔ افزونه (%s) روی این سرور نیست.', 'tisacase-hub' ), $err ) ),
 				'failed'      => array( 'error', sprintf( /* translators: %s: error */ __( 'فعال‌سازی نشد: %s', 'tisacase-hub' ), $err ) ),
@@ -583,7 +583,15 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			printf(
 				'<div class="notice notice-%1$s is-dismissible" style="margin-top:12px"><p>%2$s</p></div>',
 				esc_attr( $cls ),
-				esc_html( $text )
+				wp_kses(
+					$text,
+					array(
+						'a'      => array( 'href' => array() ),
+						'b'      => array(),
+						'code'   => array(),
+						'span'   => array( 'class' => array() ),
+					)
+				)
 			);
 		}
 

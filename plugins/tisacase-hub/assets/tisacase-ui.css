@@ -130,6 +130,11 @@
    2) پایه
    ================================================================== */
 
+.tisa-wrap,
+.tisa-scope {
+	color-scheme: light;
+}
+
 .tisa-wrap {
 	box-sizing: border-box;
 	max-width: var(--tisa-max-w);
@@ -432,8 +437,20 @@
 	box-shadow: var(--tisa-shadow);
 }
 
-.tisa-hero * {
+/* فقط بچه‌های خودِ هیرو سفید می‌شوند — اگر JSِ افزونهٔ دیگری بنرش را
+   داخل هیرو درج کرد، رنگ و پس‌زمینهٔ خودش را نگه می‌دارد (بازخورد ۱٫۲). */
+.tisa-hero .tisa-hero-title,
+.tisa-hero .tisa-hero-txt,
+.tisa-hero .tisa-lead,
+.tisa-hero .tisa-hero-mark,
+.tisa-hero .tisa-hero-mark svg,
+.tisa-hero .tisa-hero-actions > * > * {
 	color: inherit;
+}
+
+.tisa-hero .notice {
+	max-width: none;
+	margin: var(--tisa-sp-3) 0 0;
 }
 
 .tisa-hero .tisa-hero-title {

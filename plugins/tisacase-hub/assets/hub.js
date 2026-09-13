@@ -1,9 +1,10 @@
 /**
  * TisaCase Hub — رفتار صفحهٔ لانچر و تنظیمات.
  *
- * بدون jQuery، بدون وابستگی: جستجو، ناوبری کیبورد، سنجاق، رنگ برند و چگالی.
- * هیچ‌کدام برای کار کردن لازم نیستند — صفحه کامل در HTML رندر می‌شود و اگر JS
- خاموش باشد هم «باز کردن» کار می‌کند.
+ * بدون jQuery، بدون وابستگی: جستجو، ناوبری کیبورد، سنجاق، تأیید درون‌خطی،
+ * پیش‌نمایش زندهٔ رنگ. هیچ‌کدام برای کار کردن لازم نیستند — صفحه کامل در HTML
+ * رندر می‌شود و اگر JS خاموش باشد هم «باز کردن»، «فعال‌سازی» و «مخفی‌کردن»
+ * کار می‌کنند (تأیید درون‌خطی در آن حالت ساده می‌شود: لینک مستقیم اجرا می‌کند).
  */
 ( function () {
 	'use strict';
@@ -26,14 +27,13 @@
 		} ).then( function ( r ) { return r.json(); } );
 	}
 
-	function t( key ) {
-		return ( cfg.i18n && cfg.i18n[ key ] ) ? cfg.i18n[ key ] : '';
-	}
+	/* ارقام: هر عددی که JS می‌نویسد باید همان قلم رابط و همان ارقامِ فارسیِ
+	   سمتِ سر باشد (قرارداد §۸ — در v1.1 شمارندهٔ JS لاتین می‌شد). */
+	var FA = [ '\u06F0', '\u06F1', '\u06F2', '\u06F3', '\u06F4', '\u06F5', '\u06F6', '\u06F7', '\u06F8', '\u06F9' ];
 
-	function esc( s ) {
-		return String( s ).replace( /[&<>"]/g, function ( c ) {
-			return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ c ];
-		} );
+	function faDigits( s ) {
+		if ( ! cfg.fa ) { return String( s ); }
+		return String( s ).replace( /[0-9]/g, function ( d ) { return FA[ +d ]; } );
 	}
 
 	/* ---------------------------------------------------------------- 1) سنجاق‌ها */
@@ -55,7 +55,7 @@
 		if ( ! pinnedBox ) { return; }
 		var n = pinnedGrid ? pinnedGrid.children.length : 0;
 		pinnedBox.hidden = n === 0;
-		if ( pinnedN ) { pinnedN.textContent = n ? String( n ) : ''; }
+		if ( pinnedN ) { pinnedN.textContent = n ? faDigits( n ) : ''; }
 	}
 
 	function movePinned( card, on ) {
@@ -72,7 +72,7 @@
 		syncPinned();
 	}
 
-	// کارت‌های سنجاق‌شده در HTML داخل گروه خودشان‌اند؛ اینجا بالا برده می‌شوند.
+	// ردیف‌های سنجاق‌شده در HTML داخل گروه خودشان‌اند؛ اینجا بالا برده می‌شوند.
 	$$( '.tisa-plugin-card.is-pinned' ).forEach( function ( c ) { movePinned( c, true ); } );
 
 	$$( '.tisa-pin' ).forEach( function ( btn ) {
@@ -81,10 +81,8 @@
 			e.stopPropagation();
 			var card = btn.closest( '.tisa-plugin-card' );
 			var on = ! card.classList.contains( 'is-pinned' );
-			// همهٔ کارت‌های هم‌کلید (اگر جایی دوبله رندر شده باشد) با هم عوض می‌شوند.
-			var key = card.getAttribute( 'data-key' );
-			$$( '.tisa-plugin-card[data-key="' + key + '"]' ).forEach( function ( c ) { movePinned( c, on ); } );
-			if ( cfg.ajax ) { post( 'tsh_pin', { key: key, on: on ? 1 : 0 } ).catch( function () {} ); }
+			$$( '.tisa-plugin-card[data-key="' + card.getAttribute( 'data-key' ) + '"]' ).forEach( function ( c ) { movePinned( c, on ); } );
+			if ( cfg.ajax ) { post( 'tsh_pin', { key: card.getAttribute( 'data-key' ), on: on ? 1 : 0 } ).catch( function () {} ); }
 		} );
 	} );
 
@@ -110,20 +108,26 @@
 			el.setAttribute( 'data-text', text );
 		}
 		if ( ! q ) {
-			el.innerHTML = esc( text );
+			el.innerHTML = '';
+			el.textContent = text;
 			return;
 		}
 		var i = text.toLowerCase().indexOf( q );
 		if ( i < 0 ) {
-			el.innerHTML = esc( text );
+			el.textContent = text;
 			return;
 		}
+		var esc = function ( s ) {
+			return s.replace( /[&<>"]/g, function ( c ) {
+				return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ c ];
+			} );
+		};
 		el.innerHTML = esc( text.slice( 0, i ) ) + '<mark>' + esc( text.slice( i, i + q.length ) ) + '</mark>' + esc( text.slice( i + q.length ) );
 	}
 
 	function focusCard( i, scroll ) {
 		var list = vis();
-		cards.forEach( function ( c ) { c.classList.remove( 'is-focused' ); } );
+		cards.forEach( function ( c ) { c.classList.remove( 'is-focused'); } );
 		if ( ! list.length || i < 0 ) { at = -1; return; }
 		at = ( ( i % list.length ) + list.length ) % list.length;
 		list[ at ].classList.add( 'is-focused' );
@@ -132,7 +136,7 @@
 		}
 	}
 
-	function apply( scroll ) {
+	function apply() {
 		var q = ( input.value || '' ).trim().toLowerCase();
 		var n = 0;
 		cards.forEach( function ( c ) {
@@ -140,7 +144,7 @@
 			c.hidden = ! hit;
 			if ( hit ) { n++; }
 			highlight( $( '.tisa-plugin-card__title', c ), hit ? q : '' );
-			highlight( $( '.tisa-plugin-card__desc', c ), hit ? q : '' );
+			clearConfirm( c );
 		} );
 		$$( '.tisa-hub-group' ).forEach( function ( g ) {
 			var any = $$( '.tisa-plugin-card', g ).some( function ( c ) { return ! c.hidden; } );
@@ -148,17 +152,18 @@
 		} );
 		if ( empty ) { empty.hidden = n !== 0; }
 		if ( counter ) {
+			var total = cards.length;
 			counter.textContent = q
-				? ( n + ' / ' + cards.length )
-				: cards.length + ' ' + ( cfg.i18n && cfg.i18n.tools ? cfg.i18n.tools : '' );
+				? faDigits( n ) + ' / ' + faDigits( total )
+				: faDigits( total ) + ' ' + ( cfg.i18n && cfg.i18n.tools ? cfg.i18n.tools : '' );
 		}
-		focusCard( q ? 0 : -1, !! scroll );
+		focusCard( q ? 0 : -1, false );
 	}
 
 	if ( input ) {
-		input.addEventListener( 'input', function () { apply( false ); } );
+		input.addEventListener( 'input', apply );
 		input.addEventListener( 'keydown', function ( e ) {
-			if ( 'Escape' === e.key ) { input.value = ''; apply( false ); return; }
+			if ( 'Escape' === e.key ) { input.value = ''; apply(); return; }
 			if ( 'ArrowDown' === e.key ) { e.preventDefault(); focusCard( ( at < 0 ? -1 : at ) + 1, true ); }
 			if ( 'ArrowUp' === e.key ) { e.preventDefault(); focusCard( ( at < 0 ? 0 : at ) - 1, true ); }
 			if ( 'Enter' === e.key ) {
@@ -168,17 +173,67 @@
 				if ( link && link.href ) { e.preventDefault(); window.open( link.href, '_blank', 'noopener' ); }
 			}
 		} );
+		var form = input.closest( 'form' );
+		if ( form ) { form.addEventListener( 'submit', function ( e ) { e.preventDefault(); } ); }
 		var clear = $( '#tsh-clear' );
-		if ( clear ) { clear.addEventListener( 'click', function () { input.value = ''; apply( false ); input.focus(); } ); }
+		if ( clear ) { clear.addEventListener( 'click', function () { input.value = ''; apply(); input.focus(); } ); }
 		document.addEventListener( 'keydown', function ( e ) {
 			var t = e.target;
 			var typing = t && ( 'INPUT' === t.tagName || 'TEXTAREA' === t.tagName || t.isContentEditable );
 			if ( '/' === e.key && ! typing ) { e.preventDefault(); input.focus(); input.select(); }
 		} );
-		apply( false );
+		apply();
 	}
 
-	/* ---------------------------------------------------------------- 3) رنگ برند و چگالی */
+	/* ---------------------------------------------------------------- 3) تأیید درون‌خطی (جای confirm بومی) */
+
+	function clearConfirm( card ) {
+		if ( card ) { card.classList.remove( 'is-confirming' ); }
+	}
+
+	$$( '[data-confirm]' ).forEach( function ( btn ) {
+		btn.addEventListener( 'click', function ( e ) {
+			e.preventDefault();
+			var card = btn.closest( '.tisa-plugin-card' );
+			var open = card.classList.contains( 'is-confirming' );
+			cards.forEach( clearConfirm );
+			if ( ! open ) {
+				card.classList.add( 'is-confirming' );
+				var yes = $( '.tisa-confirmbar a', card );
+				if ( yes ) { yes.focus(); }
+			}
+		} );
+	} );
+
+	document.addEventListener( 'click', function ( e ) {
+		var no = e.target.closest && e.target.closest( '[data-confirm-no]' );
+		if ( no ) { e.preventDefault(); clearConfirm( no.closest( '.tisa-plugin-card' ) ); return; }
+		if ( ! ( e.target.closest && e.target.closest( '.tisa-confirmbar' ) ) ) {
+			cards.forEach( clearConfirm );
+		}
+	} );
+
+	document.addEventListener( 'keydown', function ( e ) {
+		if ( 'Escape' === e.key ) { cards.forEach( clearConfirm ); }
+	} );
+
+	/* ---------------------------------------------------------------- ۴) سایهٔ نوار ابزار چسبان */
+
+	var top = $( '.tisa-hub-card__top' );
+	if ( top && 'IntersectionObserver' in window ) {
+		var probe = document.createElement( 'div' );
+		probe.setAttribute( 'aria-hidden', 'true' );
+		probe.style.cssText = 'height:1px;margin-bottom:-1px';
+		top.parentNode.insertBefore( probe, top );
+		new IntersectionObserver( function ( rows ) {
+			top.classList.toggle( 'is-stuck', ! rows[ 0 ].isIntersecting );
+		} ).observe( probe );
+	}
+
+	/* ---------------------------------------------------------------- ۵) رنگ برند و چگالی (فقط صفحهٔ تنظیمات)
+
+	   اینجا هیچ ذخیرهٔ بی‌صدایی انجام نمی‌شود: پیش‌نمایش زنده است و با
+	   «ذخیره تنظیمات» نوشته می‌شود — تا تغییرِ اثرسراسری، بدون تأیید نماند. */
 
 	function mix( hex, other, pct ) {
 		hex = hex.replace( '#', '' );
@@ -192,7 +247,9 @@
 		} ).join( '' );
 	}
 
-	function previewAccent( hex ) {
+	function setAccent( hex ) {
+		if ( ! /^#?[0-9a-fA-F]{6}$/.test( hex ) ) { return; }
+		hex = ( '#' === hex.charAt( 0 ) ? hex : '#' + hex ).toLowerCase();
 		var st = $( '#tsh-live' );
 		if ( ! st ) {
 			st = document.createElement( 'style' );
@@ -211,48 +268,43 @@
 			+ '--tisa-primary-tint:' + mix( hex, '#ffffff', 0.955 ) + ';'
 			+ '--tisa-border-strong:' + mix( hex, '#ffffff', 0.75 ) + ';'
 			+ '--tisa-ring:0 0 0 3px ' + rgba( 0.22 ) + ';}';
-		$$( '.tisa-accent__sw' ).forEach( function ( b ) {
-			b.classList.toggle( 'is-on', ( b.getAttribute( 'data-hex' ) || '' ).toLowerCase() === hex.toLowerCase() );
+		var sw = $$( '.tisa-accent__sw' );
+		sw.forEach( function ( b ) {
+			var on = ( b.getAttribute( 'data-hex' ) || '' ).toLowerCase() === hex;
+			b.classList.toggle( 'is-on', on );
+			b.setAttribute( 'aria-checked', on ? 'true' : 'false' );
 		} );
-	}
-
-	var pick = $( '#tsh-accent-pick' );
-	if ( pick ) {
-		pick.addEventListener( 'input', function () {
-			previewAccent( pick.value );
-			var f = $( '#tsh-accent' );
-			if ( f ) { f.value = pick.value.replace( '#', '' ); }
-		} );
-		pick.addEventListener( 'change', function () { if ( cfg.ajax ) { post( 'tsh_prefs', { accent: pick.value } ); } } );
+		var field = $( '#tsh-accent' );
+		if ( field ) { field.value = hex.replace( '#', '' ); }
+		var pick = $( '#tsh-accent-pick' );
+		if ( pick && /^#[0-9a-f]{6}$/.test( hex ) ) { pick.value = hex; }
 	}
 
 	$$( '.tisa-accent__sw' ).forEach( function ( btn ) {
-		btn.addEventListener( 'click', function () {
-			var hex = btn.getAttribute( 'data-hex' );
-			previewAccent( hex );
-			var field = $( '#tsh-accent' );
-			if ( field ) { field.value = hex.replace( '#', '' ); }
-			var pick = $( '#tsh-accent-pick' );
-			if ( pick ) { pick.value = hex; }
-			if ( cfg.ajax ) { post( 'tsh_prefs', { accent: hex } ); }
-		} );
+		btn.addEventListener( 'click', function () { setAccent( btn.getAttribute( 'data-hex' ) ); } );
 	} );
 
-	var custom = $( '#tsh-accent-custom' );
-	if ( custom ) {
-		custom.addEventListener( 'input', function () { previewAccent( custom.value ); } );
-		custom.addEventListener( 'change', function () { if ( cfg.ajax ) { post( 'tsh_prefs', { accent: custom.value } ); } } );
+	var pick = $( '#tsh-accent-pick' );
+	if ( pick ) {
+		pick.addEventListener( 'input', function () { setAccent( pick.value ); } );
 	}
 
-	var compact = $( '#tsh-compact' );
-	if ( compact ) {
-		compact.addEventListener( 'change', function () {
-			body.classList.toggle( 'tisa-compact', compact.checked );
-			if ( cfg.ajax ) { post( 'tsh_prefs', { compact: compact.checked ? 1 : 0 } ); }
+	var hexField = $( '#tsh-accent' );
+	if ( hexField ) {
+		hexField.addEventListener( 'input', function () {
+			var v = hexField.value.trim().replace( '#', '' );
+			if ( /^[0-9a-fA-F]{6}$/.test( v ) ) { setAccent( '#' + v ); }
 		} );
 	}
 
-	/* ---------------------------------------------------------------- 4) کپی قطعهٔ کد */
+	var compact = $( '#tsh-compact' ) || $( 'input[name$="[compact]"]' );
+	if ( compact ) {
+		compact.addEventListener( 'change', function () {
+			body.classList.toggle( 'tisa-compact', !! compact.checked );
+		} );
+	}
+
+	/* ---------------------------------------------------------------- ۶) کپی قطعهٔ کد */
 
 	var copy = $( '#tsh-copy' );
 	if ( copy ) {
@@ -262,7 +314,7 @@
 			var text = box.textContent;
 			var done = function () {
 				var old = copy.textContent;
-				copy.textContent = t( 'copied' ) || 'کپی شد';
+				copy.textContent = ( cfg.i18n && cfg.i18n.copied ) ? cfg.i18n.copied : 'کپی شد';
 				window.setTimeout( function () { copy.textContent = old; }, 1600 );
 			};
 			if ( navigator.clipboard && navigator.clipboard.writeText ) {

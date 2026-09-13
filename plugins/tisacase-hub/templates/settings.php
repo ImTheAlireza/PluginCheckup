@@ -68,9 +68,12 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 				<b class="tisa-h3"><?php esc_html_e( 'رنگ برند', 'tisacase-hub' ); ?></b>
 				<p class="tisa-meta"><?php esc_html_e( 'توکن‌های --tisa-primary* و سایه/حلقهٔ فوکوس از همین یک رنگ ساخته می‌شوند. هر افزونه‌ای که از var() استفاده کند، خودکار rebrand می‌شود.', 'tisacase-hub' ); ?></p>
 			</div>
-			<div class="tisa-setrow__ctrl" id="tsh-accent-row">
+			<div class="tisa-setrow__ctrl" id="tsh-accent-row" role="radiogroup" aria-label="<?php esc_attr_e( 'رنگ برند', 'tisacase-hub' ); ?>">
 				<?php foreach ( $accents as $hex => $label ) : ?>
-					<button type="button" class="tisa-accent__sw<?php echo strtolower( (string) $settings['accent'] ) === strtolower( $hex ) ? ' is-on' : ''; ?>" data-hex="<?php echo esc_attr( $hex ); ?>" style="background:<?php echo esc_attr( $hex ); ?>" title="<?php echo esc_attr( $label ); ?>"></button>
+					<?php $is_on = strtolower( (string) $settings['accent'] ) === strtolower( $hex ); ?>
+					<button type="button" class="tisa-accent__sw<?php echo $is_on ? ' is-on' : ''; ?>" role="radio" aria-checked="<?php echo $is_on ? 'true' : 'false'; ?>"
+						data-hex="<?php echo esc_attr( $hex ); ?>" style="background:<?php echo esc_attr( $hex ); ?>"
+						aria-label="<?php echo esc_attr( $label ); ?>" title="<?php echo esc_attr( $label ); ?>"></button>
 				<?php endforeach; ?>
 				<span class="tisa-input-group" style="max-width:170px">
 					<span class="tisa-input-group__addon">#</span>

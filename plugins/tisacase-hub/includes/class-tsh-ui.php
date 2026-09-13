@@ -238,6 +238,8 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 						'nonce'  => wp_create_nonce( 'tsh_hub' ),
 						'rest'   => '',
 						'screen' => $screen,
+						// اگر شماره‌گذاریِ قلم فارسی است، JS هم همان ارقام را بنویسد.
+						'fa'     => (bool) preg_match( '/^[\x{06F0}-\x{06F9}\x{0660}-\x{0669}]/u', TSH_View::num( 10 ) ),
 						'i18n'   => array(
 							'pinned'     => __( 'سنجاق شد', 'tisacase-hub' ),
 							'unpinned'   => __( 'از سنجاق خارج شد', 'tisacase-hub' ),
