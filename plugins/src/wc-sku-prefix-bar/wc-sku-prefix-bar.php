@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WooCommerce SKU Prefix Bar
  * Description: SKU prefix dashboard, next-SKU generator, duplicate checker and protected REST API for the Telegram bot.
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: Arena
  * Text Domain: wc-sku-prefix-bar
  * Requires at least: 5.6
@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class WC_SKU_Prefix_Bar {
     const TRANSIENT = 'wcspb_latest_skus';
+    const VER = '1.5.0';
     const TTL = HOUR_IN_SECONDS * 6;
     private static $printed = false;
 
@@ -51,16 +52,21 @@ class WC_SKU_Prefix_Bar {
         if ( 'post-new.php' === $pagenow ) return 'product' === ( isset($_GET['post_type']) ? sanitize_key(wp_unslash($_GET['post_type'])) : '' );
         return 'post.php' === $pagenow && $post && 'product' === get_post_type($post);
     }
+    /** وابستگی به لایهٔ توکن هاب، اگر فعال بود — تا var(--tisa-*) ما بعد از آن کسکید بگیرد. */
+    private function style_deps() {
+        return wp_style_is( 'tisacase-ui', 'registered' ) ? array( 'tisacase-ui' ) : array();
+    }
+
     public function assets( $hook ) {
         if ( $this->is_product_editor() ) {
-            wp_enqueue_style('wcspb', plugins_url('assets/bar.css',__FILE__),array(),'1.4.0');
-            wp_enqueue_script('wcspb-editor',plugins_url('assets/editor.js',__FILE__),array('jquery'),'1.4.0',true);
-            wp_localize_script('wcspb-editor','WCSPB_ED',array('ajax'=>admin_url('admin-ajax.php'),'nonce'=>wp_create_nonce('wcspb'),'postId'=>get_the_ID() ?: 0,'i18n'=>array('checking'=>__('Checking…','wc-sku-prefix-bar'),'dupe'=>__('This SKU is already used by:','wc-sku-prefix-bar'),'free'=>__('SKU is available','wc-sku-prefix-bar'),'edit'=>__('edit','wc-sku-prefix-bar'))));
+            wp_enqueue_style('wcspb', plugins_url('assets/bar.css',__FILE__), $this->style_deps(), self::VER);
+            wp_enqueue_script('wcspb-editor',plugins_url('assets/editor.js',__FILE__),array('jquery'),self::VER,true);
+            wp_localize_script('wcspb-editor','WCSPB_ED',array('ajax'=>admin_url('admin-ajax.php'),'nonce'=>wp_create_nonce('wcspb'),'postId'=>get_the_ID() ?: 0,'i18n'=>array('checking'=>__('در حال بررسی…','wc-sku-prefix-bar'),'dupe'=>__('این SKU قبلاً استفاده شده:','wc-sku-prefix-bar'),'free'=>__('SKU آزاد است','wc-sku-prefix-bar'),'edit'=>__('ویرایش','wc-sku-prefix-bar'))));
             return;
         }
         if ( ! $this->is_products_screen() ) return;
-        wp_enqueue_style('wcspb',plugins_url('assets/bar.css',__FILE__),array(),'1.4.0');
-        wp_enqueue_script('wcspb',plugins_url('assets/bar.js',__FILE__),array('jquery'),'1.4.0',true);
+        wp_enqueue_style('wcspb',plugins_url('assets/bar.css',__FILE__), $this->style_deps(), self::VER);
+        wp_enqueue_script('wcspb',plugins_url('assets/bar.js',__FILE__),array('jquery'),self::VER,true);
         wp_localize_script('wcspb','WCSPB',array('ajax'=>admin_url('admin-ajax.php'),'nonce'=>wp_create_nonce('wcspb')));
     }
     public function get_latest() {
@@ -84,21 +90,24 @@ class WC_SKU_Prefix_Bar {
     public function render_bar(){ if(self::$printed||!$this->is_products_screen()||!current_user_can('edit_products'))return; self::$printed=true; echo $this->bar_html($this->get_latest()); }
     private function bar_html( $items ) {
         ob_start(); ?>
-        <div class="wcspb-bar" id="wcspb-bar" dir="rtl" aria-label="شناسه‌ها" style="display: inline-flex;visibility: visible;opacity: 1;">
-            <div class="wcspb-sort-label">مرتب‌سازی محصولات بر اساس:</div>
-            <div class="wcspb-list">
+        <div class="wcspb-bar" id="wcspb-bar" dir="rtl" role="toolbar" aria-label="شناسه‌ها">
+            <span class="wcspb-sort-label"><?php esc_html_e( 'مرتب‌سازی بر اساس:', 'wc-sku-prefix-bar' ); ?></span>
+            <span class="wcspb-list">
             <?php if ( empty( $items ) ) : ?>
-                <em>شناسه‌ای پیدا نشد.</em>
+                <span class="wcspb-empty"><?php esc_html_e( 'شناسه‌ای پیدا نشد.', 'wc-sku-prefix-bar' ); ?></span>
             <?php else : foreach ( $items as $it ) : ?>
-                <button type="button" class="wcspb-chip" data-prefix="<?php echo esc_attr( $it['prefix'] ); ?>" title="مرتب‌سازی بر اساس <?php echo esc_attr( $it['prefix'] ); ?>"><?php echo esc_html( $it['prefix'] ); ?></button>
+                <button type="button" class="wcspb-chip" data-prefix="<?php echo esc_attr( $it['prefix'] ); ?>" title="<?php echo esc_attr( sprintf( /* translators: %s: SKU prefix */ __( 'مرتب‌سازی محصولات بر اساس %s', 'wc-sku-prefix-bar' ), $it['prefix'] ) ); ?>"><?php echo esc_html( $it['prefix'] ); ?></button>
             <?php endforeach; endif; ?>
-            </div>
-            <small class="wcspb-credit">توسط علیرضا شعبان‌زاده</small>
+            </span>
+            <span class="wcspb-tools">
+                <button type="button" class="wcspb-refresh" id="wcspb-refresh" title="<?php esc_attr_e( 'شمارش دوبارهٔ سری‌ها', 'wc-sku-prefix-bar' ); ?>">⟳ <?php esc_html_e( 'تازه‌سازی', 'wc-sku-prefix-bar' ); ?></button>
+                <small class="wcspb-credit"><?php esc_html_e( 'توسط علیرضا شعبان‌زاده', 'wc-sku-prefix-bar' ); ?></small>
+            </span>
         </div>
         <?php return ob_get_clean();
     }
     public function ajax_refresh(){ check_ajax_referer('wcspb','nonce'); if(!current_user_can('edit_products'))wp_send_json_error(); self::flush(); wp_send_json_success(array('html'=>$this->bar_html($this->get_latest()))); }
-    public function render_generator(){ if(!current_user_can('edit_products'))return; $items=$this->get_latest(); if(!$items)return; ?><p class="form-field wcspb-gen-field"><label for="wcspb-gen"><?php esc_html_e('Auto SKU','wc-sku-prefix-bar'); ?></label><span class="wcspb-gen-wrap"><select id="wcspb-gen" class="wcspb-gen-select"><option value=""><?php esc_html_e('— choose a series —','wc-sku-prefix-bar'); ?></option><?php foreach($items as $it): ?><option value="<?php echo esc_attr($it['next']); ?>"><?php echo esc_html($it['label'].'  →  '.$it['next']); ?></option><?php endforeach; ?></select><button type="button" class="button wcspb-gen-btn" id="wcspb-gen-btn"><?php esc_html_e('Insert','wc-sku-prefix-bar'); ?></button></span><span class="wcspb-gen-status" id="wcspb-gen-status"></span></p><?php }
+    public function render_generator(){ if(!current_user_can('edit_products'))return; $items=$this->get_latest(); if(!$items)return; ?><p class="form-field wcspb-gen-field"><label for="wcspb-gen"><?php esc_html_e('SKU خودکار','wc-sku-prefix-bar'); ?></label><span class="wcspb-gen-wrap"><select id="wcspb-gen" class="wcspb-gen-select"><option value=""><?php esc_html_e('— انتخاب سری —','wc-sku-prefix-bar'); ?></option><?php foreach($items as $it): ?><option value="<?php echo esc_attr($it['next']); ?>"><?php echo esc_html($it['label'].'  →  '.$it['next']); ?></option><?php endforeach; ?></select><button type="button" class="button button-primary wcspb-gen-btn" id="wcspb-gen-btn"><?php esc_html_e('درج در فیلد SKU','wc-sku-prefix-bar'); ?></button></span><span class="wcspb-gen-status" id="wcspb-gen-status" role="status" aria-live="polite"></span></p><?php }
     public function ajax_next(){ check_ajax_referer('wcspb','nonce'); if(!current_user_can('edit_products'))wp_send_json_error(); $prefix=strtoupper(sanitize_text_field(wp_unslash($_POST['prefix']??''))); self::flush(); foreach($this->get_latest() as $it)if($it['prefix']===$prefix)wp_send_json_success(array('next'=>$it['next'])); wp_send_json_error(); }
     public function ajax_check(){ check_ajax_referer('wcspb','nonce'); if(!current_user_can('edit_products'))wp_send_json_error(); global $wpdb; $sku=sanitize_text_field(wp_unslash($_POST['sku']??'')); $self=absint($_POST['post_id']??0); if(''===$sku)wp_send_json_success(array('dupe'=>false)); $row=$wpdb->get_row($wpdb->prepare("SELECT p.ID,p.post_title,p.post_type FROM {$wpdb->postmeta} pm INNER JOIN {$wpdb->posts} p ON p.ID=pm.post_id WHERE pm.meta_key='_sku' AND pm.meta_value=%s AND p.ID<>%d AND p.post_type IN ('product','product_variation') AND p.post_status NOT IN ('trash','auto-draft') LIMIT 1",$sku,$self)); if(!$row)wp_send_json_success(array('dupe'=>false)); $id=(int)$row->ID; $title=$row->post_title; if('product_variation'===$row->post_type&&($parent=wp_get_post_parent_id($id))){$title=get_the_title($parent).' — '.__('variation','wc-sku-prefix-bar');$id=$parent;} wp_send_json_success(array('dupe'=>true,'title'=>$title?:('#'.$id),'link'=>get_edit_post_link($id,'raw'))); }
 
