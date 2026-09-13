@@ -155,8 +155,9 @@ def check_file(path):
             elif ch == "," and depth == 0:
                 n_args += 1
         ln = src[: m.start()].count("\n") + 1
-        need = 6 if kind == "submenu" else 7
-        lo = need if kind == "submenu" else 4
+        # add_submenu_page: 6 اجباری + position اختیاری (WP 5.3+)؛ add_menu_page: 4..7
+        need = 7
+        lo = 6 if kind == "submenu" else 4
         if n_args < lo or n_args > need:
             out.append(("add_%s_page: %d آرگومان (مجاز %d–%d)" % (kind, n_args, lo, need), ln))
 

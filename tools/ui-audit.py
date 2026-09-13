@@ -29,7 +29,7 @@ RADIUS = re.compile(r"border-radius:\s*\d*\.?\d+px")
 FSIZE = re.compile(r"font-size:\s*\d*\.?\d+px")
 CDN = re.compile(r"(fonts\.googleapis|fonts\.gstatic|cdn\.jsdelivr|cdnjs|unpkg\.com|bootstrapcdn)", re.I)
 INLINE = re.compile(r'style="([^"]*)"')
-DYNAMIC = re.compile(r"%|<\?php|px;|top:|left:|right:|bottom:|width|height|z-index")
+DYNAMIC = re.compile(r"%|<\?php|px;|top:|left:|right:|bottom:|width|height|z-index|^display:\s*none;?$")
 MONO_ON_NUM = re.compile(r"(money|price|amount|total|count|qty|quantity)[^;{]*\{[^}]*mono", re.I)
 
 
