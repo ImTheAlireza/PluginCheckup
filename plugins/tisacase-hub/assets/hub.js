@@ -217,6 +217,29 @@
 		if ( 'Escape' === e.key ) { cards.forEach( clearConfirm ); }
 	} );
 
+	/* ---------------------------------------------------------------- ۳ب) به‌روزرسانی از روی کارت */
+
+	$$( '[data-upd] input[type="file"]' ).forEach( function ( inp ) {
+		inp.addEventListener( 'change', function () {
+			if ( ! inp.files || ! inp.files.length ) { return; }
+			var form = inp.closest( 'form' );
+			var card = inp.closest( '.tisa-plugin-card' );
+			if ( ! /\.zip$/i.test( inp.files[ 0 ].name ) ) {
+				window.alert( ( cfg.i18n && cfg.i18n.zipOnly ) || 'فقط فایل .zip' );
+				inp.value = '';
+				return;
+			}
+			if ( card ) {
+				card.classList.add( 'is-updating' );
+				var m = document.createElement( 'p' );
+				m.className = 'tisa-hub-tile__updmsg';
+				m.textContent = ( cfg.i18n && cfg.i18n.updating ) || 'در حال نصب…';
+				card.appendChild( m );
+			}
+			form.submit();
+		} );
+	} );
+
 	/* ---------------------------------------------------------------- ۴) سایهٔ نوار ابزار چسبان */
 
 	var top = $( '.tisa-hub-card__top' );

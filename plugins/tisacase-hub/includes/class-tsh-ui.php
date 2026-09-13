@@ -244,6 +244,8 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 							'pinned'     => __( 'سنجاق شد', 'tisacase-hub' ),
 							'unpinned'   => __( 'از سنجاق خارج شد', 'tisacase-hub' ),
 							'error'      => __( 'خطا در ارتباط با سرور.', 'tisacase-hub' ),
+							'updating'   => __( 'در حال نصب…', 'tisacase-hub' ),
+							'zipOnly'    => __( 'فقط فایل .zip پذیرفته می‌شود.', 'tisacase-hub' ),
 							'saved'      => __( 'ذخیره شد', 'tisacase-hub' ),
 							'copied'     => __( 'کپی شد', 'tisacase-hub' ),
 							'tools'      => __( 'ابزار', 'tisacase-hub' ),

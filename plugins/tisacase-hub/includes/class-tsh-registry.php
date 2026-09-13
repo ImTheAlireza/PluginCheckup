@@ -425,6 +425,7 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 			$item['cap_name']   = $cap;
 			$item['can']        = current_user_can( $cap );
 			$item['can_manage'] = current_user_can( 'activate_plugins' );
+			$item['can_update'] = current_user_can( 'update_plugins' ) && current_user_can( 'upload_plugins' ) && '' !== $dir;
 			$item['screens']    = isset( $item['screens'] ) ? (array) $item['screens'] : array();
 			foreach ( $pages as $page ) {
 				if ( ! empty( $page['screen'] ) && ! in_array( $page['screen'], $item['screens'], true ) ) {

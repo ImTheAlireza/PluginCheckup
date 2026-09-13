@@ -38,6 +38,9 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 			add_action( 'admin_post_tisacase_hub_action', array( __CLASS__, 'handle_action' ) );
 			add_action( 'admin_post_tisacase_hub_save', array( __CLASS__, 'handle_save' ) );
+			add_action( 'admin_post_tisacase_hub_update', array( __CLASS__, 'handle_update' ) );
+			// بنرهای افزونه‌های دیگر (آپدیت دیجی‌پی، ووکامرس، …) روی صفحه‌های هاب چاپ نشوند.
+			add_action( 'in_admin_header', array( __CLASS__, 'mute_foreign_notices' ), 999 );
 			add_action( 'admin_bar_menu', array( __CLASS__, 'admin_bar' ), 61 );
 
 			add_action( 'wp_ajax_tsh_pin', array( __CLASS__, 'ajax_pin' ) );
@@ -447,6 +450,116 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			exit;
 		}
 
+		/**
+		 * فقط روی صفحه‌های هاب: همهٔ admin_notices/all_admin_notices دیگران حذف،
+		 * پیام خود هاب دوباره وصل می‌شود. کاری با خودِ افزونه‌ها ندارد.
+		 *
+		 * @return void
+		 */
+		public static function mute_foreign_notices() {
+			if ( ! TSH_UI::is_hub_screen() ) {
+				return;
+			}
+			remove_all_actions( 'admin_notices' );
+			remove_all_actions( 'all_admin_notices' );
+			remove_all_actions( 'network_admin_notices' );
+			remove_all_actions( 'user_admin_notices' );
+			add_action( 'admin_notices', array( __CLASS__, 'admin_notice' ) );
+		}
+
+		/**
+		 * به‌روزرسانی یک افزونه از روی کارت با فایل زیپ (Plugin_Upgrader با overwrite).
+		 *
+		 * @return void
+		 */
+		public static function handle_update() {
+			$key = isset( $_POST['item'] ) ? sanitize_key( wp_unslash( $_POST['item'] ) ) : '';
+			check_admin_referer( 'tsh_update_' . $key, '_tshnonce' );
+
+			$back = admin_url( 'admin.php?page=' . TSH_SLUG );
+			if ( ! current_user_can( 'update_plugins' ) || ! current_user_can( 'upload_plugins' ) ) {
+				wp_die( esc_html__( 'برای به‌روزرسانی افزونه اجازه ندارید.', 'tisacase-hub' ) );
+			}
+
+			$items = TSH_Registry::items();
+			if ( ! isset( $items[ $key ] ) || empty( $items[ $key ]['dir'] ) ) {
+				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
+				exit;
+			}
+			$dir = (string) $items[ $key ]['dir'];
+
+			if ( empty( $_FILES['tsh_zip']['tmp_name'] ) || ! empty( $_FILES['tsh_zip']['error'] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_failed', 'tsh_err' => rawurlencode( __( 'فایلی نرسید.', 'tisacase-hub' ) ) ), $back ) );
+				exit;
+			}
+
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+			require_once ABSPATH . 'wp-admin/includes/misc.php';
+
+			$was_active = false;
+			$old_base   = TSH_Registry::basename_for( $dir );
+			if ( $old_base ) {
+				$was_active = is_plugin_active( $old_base );
+			}
+
+			$overrides = array(
+				'test_form' => false,
+				'test_type' => false,
+				'mimes'     => array( 'zip' => 'application/zip' ),
+			);
+			$upload    = wp_handle_upload( $_FILES['tsh_zip'], $overrides ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			if ( ! empty( $upload['error'] ) ) {
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_failed', 'tsh_err' => rawurlencode( (string) $upload['error'] ) ), $back ) );
+				exit;
+			}
+
+			// زیپ باید همان پوشهٔ این کارت را داشته باشد؛ نه افزونه‌ای دیگر.
+			$zip = new ZipArchive();
+			$top = '';
+			if ( true === $zip->open( $upload['file'] ) ) {
+				$first = (string) $zip->getNameIndex( 0 );
+				$top   = strtok( $first, '/' );
+				$zip->close();
+			}
+			if ( $top !== $dir ) {
+				wp_delete_file( $upload['file'] );
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_wrong', 'tsh_err' => rawurlencode( $top . ' ≠ ' . $dir ) ), $back ) );
+				exit;
+			}
+
+			$skin     = new Automatic_Upgrader_Skin();
+			$upgrader = new Plugin_Upgrader( $skin );
+			$result   = $upgrader->install(
+				$upload['file'],
+				array(
+					'overwrite_package' => true,
+					'clear_update_cache' => true,
+				)
+			);
+			wp_delete_file( $upload['file'] );
+
+			if ( is_wp_error( $result ) || ! $result ) {
+				$err = is_wp_error( $result ) ? $result->get_error_message() : implode( ' ', (array) $skin->get_upgrade_messages() );
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_failed', 'tsh_err' => rawurlencode( $err ) ), $back ) );
+				exit;
+			}
+
+			TSH_UI::flush();
+			wp_clean_plugins_cache( true );
+
+			if ( $was_active ) {
+				$new_base = $upgrader->plugin_info();
+				if ( $new_base && ! is_plugin_active( $new_base ) ) {
+					activate_plugin( $new_base, '', is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $old_base ) );
+				}
+			}
+
+			wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'updated', 'tsh_item' => $key ), $back ) );
+			exit;
+		}
+
 		/* * * * * * * * * * * AJAX * * * * * * * * * * * */
 
 		/**
@@ -574,6 +687,9 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				'notfound'    => array( 'error', sprintf( /* translators: %s: dir */ __( 'پوشهٔ افزونه (%s) روی این سرور نیست.', 'tisacase-hub' ), $err ) ),
 				'failed'      => array( 'error', sprintf( /* translators: %s: error */ __( 'فعال‌سازی نشد: %s', 'tisacase-hub' ), $err ) ),
 				'bad'         => array( 'error', __( 'اقدام نامعتبر بود.', 'tisacase-hub' ) ),
+				'updated'     => array( 'success', __( 'افزونه به‌روزرسانی شد.', 'tisacase-hub' ) ),
+				'upd_failed'  => array( 'error', sprintf( /* translators: %s: error */ __( 'به‌روزرسانی نشد: %s', 'tisacase-hub' ), $err ) ),
+				'upd_wrong'   => array( 'error', sprintf( /* translators: %s: dirs */ __( 'این زیپ مال این کارت نیست (%s).', 'tisacase-hub' ), $err ) ),
 			);
 			if ( ! isset( $texts[ $msg ] ) ) {
 				return;
@@ -581,7 +697,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			list( $type, $text ) = $texts[ $msg ];
 			$cls = 'info' === $type ? 'info' : $type;
 			printf(
-				'<div class="notice notice-%1$s is-dismissible" style="margin-top:12px"><p>%2$s</p></div>',
+				'<div class="notice tsh-notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
 				esc_attr( $cls ),
 				wp_kses(
 					$text,

@@ -29,34 +29,24 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 }
 
 /* ==================================================================
-   ۲) سرِ صفحه — بدون پنل رنگی
+   ۲) سرِ صفحه — پنل سبز (گرادیان لایهٔ مشترک)، فشرده
    ------------------------------------------------------------------
-   لانچر یک فهرست است؛ سر پررنگ با آن رقابت می‌کرد و بنر افزونه‌های دیگر
-   هم داخلش می‌افتاد. حالا فقط عنوان + یک خط + دکمهٔ تنظیمات، روی خودِ بوم.
+   تنها سطح پررنگِ بزرگ صفحه همین است؛ کارت‌ها زیرش سفید و آرام‌اند.
    ================================================================== */
 
 .tisa-hero--slim {
 	display: block;
 	margin: 0 0 var(--tisa-sp-4, 16px);
-	padding: 0;
-	border: 0;
-	border-radius: 0;
-	background: none !important;
-	box-shadow: none;
-	color: var(--tisa-ink, #1F2A2E);
+	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
+	border-radius: var(--tisa-r-lg, 16px);
+	color: var(--tisa-on-primary, #fff);
 	overflow: visible;
 }
 
-/* لایهٔ مشترک، بچه‌های هیرو را سفید می‌کند؛ اینجا زمینه سفید است */
 .tisa-hero--slim .tisa-hero-title,
 .tisa-hero--slim .tisa-hero-txt,
 .tisa-hero--slim .tisa-lead {
-	color: var(--tisa-ink, #1F2A2E);
-}
-
-.tisa-hero--slim::before,
-.tisa-hero--slim::after {
-	display: none;
+	color: var(--tisa-on-primary, #fff);
 }
 
 .tisa-hero-row {
@@ -74,9 +64,11 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 .tisa-hero--slim .tisa-hero-mark {
 	width: 36px;
 	height: 36px;
+	display: grid;
+	place-items: center;
 	border-radius: var(--tisa-r-sm, 10px);
-	background: var(--tisa-primary, #0E7C6B);
-	color: #fff;
+	background: rgba(255, 255, 255, .16);
+	color: var(--tisa-on-primary, #fff);
 	box-shadow: none;
 }
 
@@ -93,14 +85,12 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 	margin: 0;
 	font-size: var(--tisa-fs-h2, 19px);
 	font-weight: 800;
-	color: var(--tisa-ink, #1F2A2E);
 }
 
 .tisa-hero--slim .tisa-lead {
 	margin: 1px 0 0;
 	font-size: var(--tisa-fs-meta, 12px);
-	color: var(--tisa-muted, #77828A);
-	opacity: 1;
+	opacity: .78;
 }
 
 .tisa-hero-actions {
@@ -121,25 +111,30 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 
 /* دکمهٔ تنظیمات: آرام (secondary)؛ روی صفحه فقط «باز کردن»ها پررنگ‌اند */
 .tisa-btn--on-dark {
-	background: var(--tisa-surface, #fff) !important;
-	color: var(--tisa-muted, #77828A) !important;
-	border: 1px solid var(--tisa-border, #E3E1DA) !important;
+	background: rgba(255, 255, 255, .12) !important;
+	color: var(--tisa-on-primary, #fff) !important;
+	border: 1px solid rgba(255, 255, 255, .28) !important;
 	box-shadow: none !important;
 }
 
 .tisa-btn--on-dark:hover {
-	color: var(--tisa-ink, #1F2A2E) !important;
-	border-color: var(--tisa-border-strong, #C9DCD7) !important;
+	background: rgba(255, 255, 255, .22) !important;
 }
 
 .tisa-btn--on-dark:focus-visible {
 	outline: 0;
-	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)) !important;
+	box-shadow: 0 0 0 3px rgba(255, 255, 255, .45) !important;
 }
 
-/* بنر افزونه‌های دیگر که JS‌شان بعد از h1 درج می‌کند: زیر سر، با رنگ خودش */
-.tisa-hero--slim .notice {
-	margin: var(--tisa-sp-3, 12px) 0 0;
+/* بنر افزونه‌های دیگر (آپدیت دیجی‌پی، ووکامرس، …) در لانچر جایی ندارد؛
+   سرور هم آن‌ها را از admin_notices برمی‌دارد، این خط برای درج‌های JS است. */
+.tisa-hub-wrap .notice:not(.tsh-notice),
+.tisa-hub-wrap .update-nag,
+.tisa-hub-wrap .updated:not(.tsh-notice),
+.tisa-hub-wrap .error:not(.tsh-notice),
+body.toplevel_page_tisacase-hub #wpbody-content > .notice:not(.tsh-notice),
+body.toplevel_page_tisacase-hub #wpbody-content > .update-nag {
+	display: none !important;
 }
 
 /* ==================================================================
@@ -512,8 +507,12 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 }
 
 /* --- تأیید غیرفعال‌سازی: جای پا را می‌گیرد، آرام، بدون قرمز پر --- */
+.tisa-confirmbar[hidden] {
+	display: none !important;
+}
+
 .tisa-confirmbar {
-	display: flex;
+	display: none;
 	align-items: center;
 	gap: var(--tisa-sp-2, 8px);
 	font-size: var(--tisa-fs-meta, 12px);
@@ -528,8 +527,9 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 	display: none;
 }
 
+.tisa-hub-tile.is-confirming .tisa-confirmbar,
 .tisa-hub-tile.is-confirming .tisa-confirmbar[hidden] {
-	display: flex;
+	display: flex !important;
 }
 
 .tisa-btn--danger-soft {
@@ -708,4 +708,45 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 	.tisa-hub-card__top {
 		position: static;
 	}
+}
+
+/* ==================================================================
+   ۷) به‌روزرسانی از روی کارت — زیپ را انتخاب کن، همان‌جا نصب می‌شود
+   ================================================================== */
+
+.tisa-hub-tile__upd {
+	display: inline-flex;
+}
+
+.tisa-hub-tile__upd input[type="file"] {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.tisa-hub-tile.is-updating {
+	opacity: .6;
+	pointer-events: none;
+}
+
+.tisa-hub-tile__updmsg {
+	position: relative;
+	z-index: 1;
+	margin: 0;
+	font-size: var(--tisa-fs-tiny, 11px);
+	color: var(--tisa-muted, #77828A);
+}
+
+.tisa-hub-tile__updmsg.is-err {
+	color: var(--tisa-danger-ink, #8E3128);
+}
+
+/* پیام خودِ هاب: وردپرس آن را بعد از h1 (داخل هیرو) می‌برد — همان‌جا سفید و خوانا */
+.tisa-hero--slim .tsh-notice {
+	flex-basis: 100%;
+	margin: var(--tisa-sp-3, 12px) 0 0;
+	color: var(--tisa-ink, #1F2A2E);
 }

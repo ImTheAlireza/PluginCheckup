@@ -49,6 +49,7 @@ if ( ! class_exists( 'TSH_View' ) ) {
 				'heart'    => '<path d="M12 20s-8-4.6-8-10a4.5 4.5 0 018-2.9A4.5 4.5 0 0120 10c0 5.4-8 10-8 10z"/>',
 				'lock'     => '<path d="M6 11V8a6 6 0 0112 0v3M5 11h14v10H5zM12 15v3"/>',
 				'external' => '<path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/>',
+				'upload'   => '<path d="M12 16V4M7 9l5-5 5 5M4 17v3h16v-3"/>',
 				'pin'      => '<path d="M12 21v-7M8 3h8l-1 6 3 3H6l3-3z"/>',
 			);
 			return $icons;
