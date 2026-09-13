@@ -1,120 +1,137 @@
 @charset "UTF-8";
 /* ==========================================================================
-   TisaCase Hub — استایل اختصاصیِ خودِ صفحهٔ هاب
-   لایهٔ کامپوننت در tisacase-ui.css است؛ این فایل فقط چیزهایی را دارد که
-   «مخصوص لانچر/تنظیمات»اند و هیچ افزونهٔ دیگری به آن‌ها نیاز ندارد.
-   همه‌جا var() با fallback — تا اگر هاب غیرفعال شد، چیزی نمی‌شکند.
+   TisaCase Hub — لانچر v2 (هاب 1.4)
+   لایهٔ کامپوننت در tisacase-ui.css است؛ اینجا فقط لانچر و تنظیمات.
+   همه‌جا var() با fallback.
+
+   اصول:  ۱) کل کادر وسط (max-width + margin auto، مستقل از پدینگ #wpcontent)
+          ۲) یک سطح پررنگ: سرِ سبز؛ بقیه سفید/کرم و تخت
+          ۳) در هر کارت یک عنصر پررنگ: «باز کردن»؛ ابزارها خاکستری و با hover
+          ۴) پنل داخل پنل ممنوع — گروه‌ها روی بوم، کارت‌ها روی بوم
    ========================================================================== */
 
-/* ==================================================================
-   ۱) پوستهٔ ادمینِ صفحه‌های هاب
-   ================================================================== */
-
-/* عمداً padding/margin های #wpcontent دست‌نخورده: در RTL همان پدینگ،
-   فاصلهٔ منوی کنار است و صفرکردنش صفحه را از مرکز می‌خارج کرد (بازخورد ۱٫۲). */
+/* ---------- ۱) پوسته و مرکزچینی ---------- */
 body.tisa-hub-page #wpcontent {
 	background: var(--tisa-bg, #F4F2EC);
+	padding-inline-start: 0;
 }
 
 body.tisa-hub-page #wpbody-content {
-	padding-bottom: var(--tisa-sp-7, 48px);
+	padding-bottom: var(--tisa-sp-8, 64px);
 }
 
-/* همان --tisa-max-w همهٔ صفحه‌ها: عرض یکی، تا لانچر جزو زبان طراحی باشد */
 body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
-	max-width: var(--tisa-max-w, 1180px);
-	margin-inline: auto;
-	margin-block-start: var(--tisa-sp-5, 24px);
-	padding-inline: var(--tisa-sp-5, 24px);
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 1120px;
+	margin: var(--tisa-sp-6, 32px) auto 0;
+	padding: 0 var(--tisa-sp-5, 24px);
 }
 
-/* ==================================================================
-   ۲) سرِ صفحه — پنل سبز (گرادیان لایهٔ مشترک)، فشرده
-   ------------------------------------------------------------------
-   تنها سطح پررنگِ بزرگ صفحه همین است؛ کارت‌ها زیرش سفید و آرام‌اند.
-   ================================================================== */
+/* WP نوتیس‌ها را بعد از h1 می‌برد؛ h1 ما داخل هیرو است — بنر غریبه چاپ نشود */
+.tisa-hub-wrap .notice:not(.tsh-notice),
+.tisa-hub-wrap .update-nag,
+.tisa-hub-wrap .updated:not(.tsh-notice),
+.tisa-hub-wrap .error:not(.tsh-notice),
+body.tisa-hub-page #wpbody-content > .notice:not(.tsh-notice),
+body.tisa-hub-page #wpbody-content > .update-nag {
+	display: none !important;
+}
 
-.tisa-hero--slim {
+/* ---------- ۲) سر سبز با جستجوی داخلی ---------- */
+.tsh-hero.tisa-hero--slim {
 	display: block;
-	margin: 0 0 var(--tisa-sp-4, 16px);
-	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
-	border-radius: var(--tisa-r-lg, 16px);
+	position: relative;
+	overflow: hidden;
+	margin: 0 0 var(--tisa-sp-6, 32px);
+	padding: var(--tisa-sp-6, 32px) var(--tisa-sp-6, 32px) var(--tisa-sp-6, 32px);
+	border: 0;
+	border-radius: var(--tisa-r-xl, 22px);
+	background: linear-gradient(120deg, var(--tisa-primary-deep, #0A5F52) 0%, var(--tisa-primary, #0E7C6B) 60%, var(--tisa-primary-bright, #17A088) 100%);
 	color: var(--tisa-on-primary, #fff);
-	overflow: visible;
+	box-shadow: 0 18px 40px -22px rgba(10, 95, 82, .55);
 }
 
-.tisa-hero--slim .tisa-hero-title,
-.tisa-hero--slim .tisa-hero-txt,
-.tisa-hero--slim .tisa-lead {
-	color: var(--tisa-on-primary, #fff);
+/* نور ملایم گوشه — فقط تزئین، بدون رنگ جدید */
+.tsh-hero.tisa-hero--slim::before {
+	content: "";
+	position: absolute;
+	inset: auto -120px -160px auto;
+	width: 380px;
+	height: 380px;
+	border-radius: 50%;
+	background: radial-gradient(closest-side, rgba(255, 255, 255, .14), rgba(255, 255, 255, 0));
+	pointer-events: none;
+	display: block;
 }
 
-.tisa-hero-row {
+.tsh-hero .tsh-hero__row {
+	position: relative;
 	display: flex;
-	flex-wrap: wrap;
 	align-items: center;
-	gap: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px);
+	gap: var(--tisa-sp-4, 16px);
 	min-width: 0;
 }
 
-.tisa-hero-row > * {
-	min-width: 0;
-}
-
-.tisa-hero--slim .tisa-hero-mark {
-	width: 36px;
-	height: 36px;
+.tsh-hero .tisa-hero-mark {
+	flex: 0 0 auto;
 	display: grid;
 	place-items: center;
-	border-radius: var(--tisa-r-sm, 10px);
+	width: 44px;
+	height: 44px;
+	border-radius: var(--tisa-r, 14px);
 	background: rgba(255, 255, 255, .16);
 	color: var(--tisa-on-primary, #fff);
-	box-shadow: none;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
 }
 
-.tisa-hero--slim .tisa-hero-mark svg {
-	width: 18px;
-	height: 18px;
+.tsh-hero .tisa-hero-mark svg {
+	width: 22px;
+	height: 22px;
 }
 
-.tisa-hero--slim .tisa-hero-txt {
-	flex: 1 1 240px;
+.tsh-hero .tisa-hero-txt {
+	flex: 1 1 auto;
+	min-width: 0;
 }
 
-.tisa-hero--slim .tisa-hero-title {
+.tsh-hero .tisa-hero-title {
 	margin: 0;
-	font-size: var(--tisa-fs-h2, 19px);
+	font-size: var(--tisa-fs-hero, 24px);
 	font-weight: 800;
+	letter-spacing: -.2px;
+	color: var(--tisa-on-primary, #fff);
 }
 
-.tisa-hero--slim .tisa-lead {
-	margin: 1px 0 0;
-	font-size: var(--tisa-fs-meta, 12px);
+.tsh-hero .tisa-lead {
+	margin: 3px 0 0;
+	font-size: var(--tisa-fs-control, 13px);
+	color: var(--tisa-on-primary, #fff);
 	opacity: .78;
 }
 
-.tisa-hero-actions {
+.tsh-hero .tisa-hero-actions {
+	flex: 0 0 auto;
 	margin-inline-start: auto;
-	display: flex;
-	gap: var(--tisa-sp-2, 8px);
 }
 
-.tisa-hero-actions .tisa-btn {
-	white-space: nowrap;
-}
-
-.tisa-btn > span:only-child {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--tisa-sp-2, 8px);
-}
-
-/* دکمهٔ تنظیمات: آرام (secondary)؛ روی صفحه فقط «باز کردن»ها پررنگ‌اند */
 .tisa-btn--on-dark {
 	background: rgba(255, 255, 255, .12) !important;
 	color: var(--tisa-on-primary, #fff) !important;
 	border: 1px solid rgba(255, 255, 255, .28) !important;
 	box-shadow: none !important;
+	backdrop-filter: blur(6px);
+}
+
+.tisa-btn--on-dark > span {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--tisa-sp-2, 8px);
+}
+
+.tisa-btn--on-dark svg {
+	width: 15px;
+	height: 15px;
 }
 
 .tisa-btn--on-dark:hover {
@@ -126,306 +143,235 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 	box-shadow: 0 0 0 3px rgba(255, 255, 255, .45) !important;
 }
 
-/* بنر افزونه‌های دیگر (آپدیت دیجی‌پی، ووکامرس، …) در لانچر جایی ندارد؛
-   سرور هم آن‌ها را از admin_notices برمی‌دارد، این خط برای درج‌های JS است. */
-.tisa-hub-wrap .notice:not(.tsh-notice),
-.tisa-hub-wrap .update-nag,
-.tisa-hub-wrap .updated:not(.tsh-notice),
-.tisa-hub-wrap .error:not(.tsh-notice),
-body.toplevel_page_tisacase-hub #wpbody-content > .notice:not(.tsh-notice),
-body.toplevel_page_tisacase-hub #wpbody-content > .update-nag {
-	display: none !important;
-}
-
-/* ==================================================================
-   ۳) بدنهٔ کارت لانچر + نوار ابزار چسبان
-   ================================================================== */
-
-.tisa-hub-card {
-	overflow: visible;
-	padding: 0 !important;
-}
-
-.tisa-hub-card__top {
-	position: sticky;
-	inset-block-start: 0;
-	z-index: 7;
-	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
-	background: var(--tisa-surface, #fff);
-	border-block-end: 1px solid var(--tisa-border, #E3E1DA);
-	border-start-start-radius: var(--tisa-r-lg, 16px);
-	border-start-end-radius: var(--tisa-r-lg, 16px);
-	transition: box-shadow var(--tisa-t, 150ms cubic-bezier(.4, 0, .2, 1));
-}
-
-.tisa-hub-card__top.is-stuck {
-	box-shadow: var(--tisa-shadow, 0 8px 24px rgba(31, 42, 46, .12));
-}
-
-.tisa-hub-card__body {
-	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px);
-	background: var(--tisa-surface-2, #FAFAF8);
-}
-
-@media screen and (max-width: 782px) {
-	.tisa-hub-card__body {
-		padding-inline: var(--tisa-sp-4, 16px);
-	}
-}
-
-.tisa-hub-toolbar {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px);
-	margin: 0;
-}
-
-.tisa-hub-search {
-	flex: 1 1 320px;
+/* جستجو: تنها ورودی صفحه، پهن و سفید روی سبز */
+.tsh-search {
 	position: relative;
 	display: flex;
 	align-items: center;
+	max-width: 560px;
+	margin: var(--tisa-sp-5, 24px) 0 0;
 }
 
-.tisa-hub-search .tisa-input {
-	width: 100%;
-	padding-inline-end: 34px;
-	border-color: var(--tisa-border-strong, #C9DCD7);
-}
-
-.tisa-hub-search .tisa-kbd {
+.tsh-search__icon {
 	position: absolute;
-	inset-inline-end: 8px;
+	inset-inline-start: 14px;
+	display: grid;
+	place-items: center;
+	color: var(--tisa-muted, #77828A);
 	pointer-events: none;
 }
 
-.tisa-hub-count {
-	font-size: var(--tisa-fs-meta, 12px);
+.tsh-search__icon svg {
+	width: 17px;
+	height: 17px;
+}
+
+.tsh-search__input.tsh-search__input {
+	width: 100%;
+	height: 46px;
+	margin: 0;
+	padding: 0 42px;
+	border: 0;
+	border-radius: var(--tisa-r, 14px);
+	background: var(--tisa-surface, #fff);
+	color: var(--tisa-ink, #1F2A2E);
+	font: inherit;
+	font-size: var(--tisa-fs-body, 14px);
+	box-shadow: 0 8px 24px -14px rgba(10, 95, 82, .6);
+	outline: 0;
+}
+
+.tsh-search__input::placeholder {
 	color: var(--tisa-muted, #77828A);
-	white-space: nowrap;
+}
+
+.tsh-search__input:focus {
+	box-shadow: 0 0 0 3px rgba(255, 255, 255, .55), 0 8px 24px -14px rgba(10, 95, 82, .6);
+}
+
+.tsh-search .tisa-kbd {
+	position: absolute;
+	inset-inline-end: 12px;
+	pointer-events: none;
 }
 
 .tisa-kbd {
 	display: inline-block;
-	padding: 1px 6px;
+	padding: 1px 7px;
 	border: 1px solid var(--tisa-border, #E3E1DA);
 	border-radius: var(--tisa-r-xs, 6px);
 	background: var(--tisa-surface-3, #F6F5F1);
-	box-shadow: 0 1px 0 rgba(0, 0, 0, .04);
 	font: 11px/1.6 var(--tisa-mono, ui-monospace, Consolas, monospace);
 	color: var(--tisa-muted, #77828A);
 	direction: ltr;
 }
 
-/* ==================================================================
-   ۴) کارتِ ابزار — مینیمال، یک عنصر پررنگ در هر کارت
-   ------------------------------------------------------------------
-   سلسله‌مراتب رنگ:  ۱) «باز کردن» (primary)  ۲) عنوان (ink)
-   ۳) بقیه (muted) — سنجاق/مخفی/غیرفعال فقط با hover رنگ می‌گیرند.
-   ================================================================== */
+/* پیام خود هاب داخل هیرو */
+.tsh-hero .tsh-notice {
+	position: relative;
+	margin: var(--tisa-sp-4, 16px) 0 0;
+	color: var(--tisa-ink, #1F2A2E);
+}
 
-.tisa-hub-group {
+/* ---------- ۳) گروه‌ها روی بوم ---------- */
+.tsh-body {
+	display: block;
+}
+
+.tsh-group {
 	margin: 0 0 var(--tisa-sp-6, 32px);
 }
 
-.tisa-hub-group:last-child {
-	margin-block-end: 0;
+.tsh-group[hidden] {
+	display: none;
 }
 
-.tisa-hub-group__title {
+.tsh-group__title {
 	display: flex;
 	align-items: center;
-	gap: var(--tisa-sp-2, 8px);
+	gap: var(--tisa-sp-3, 12px);
 	margin: 0 0 var(--tisa-sp-3, 12px);
+	padding: 0 var(--tisa-sp-1, 4px);
 	font-size: var(--tisa-fs-meta, 12px);
 	font-weight: 700;
+	letter-spacing: .2px;
 	color: var(--tisa-muted, #77828A);
 }
 
-.tisa-hub-group__title .tisa-badge {
-	font-weight: 500;
+.tsh-group__title::after {
+	content: "";
+	flex: 1 1 auto;
+	height: 1px;
+	background: var(--tisa-border, #E3E1DA);
 }
 
-/* ۴ ستون در عرض کامل، ۳ و ۲ در پایین‌تر — بدون خانهٔ «کشیده» */
-.tisa-hub-grid {
+.tsh-group__n {
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+	color: var(--tisa-muted, #77828A);
+	opacity: .8;
+}
+
+/* شبکه: ۳ ستون ثابت در عرض کامل، بدون سوراخ؛ کارت آخر ناقص، ایرادی ندارد چون
+   کارت‌ها روی بوم‌اند نه داخل کادر */
+.tsh-grid.tisa-hub-grid {
 	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: var(--tisa-sp-3, 12px);
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--tisa-sp-4, 16px);
 }
 
-@media screen and (max-width: 1100px) {
-	.tisa-hub-grid {
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-	}
-}
-
-@media screen and (max-width: 782px) {
-	.tisa-hub-grid {
+@media (max-width: 1100px) {
+	.tsh-grid.tisa-hub-grid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 }
 
-@media screen and (max-width: 520px) {
-	.tisa-hub-grid {
-		grid-template-columns: minmax(0, 1fr);
+@media (max-width: 640px) {
+	.tsh-grid.tisa-hub-grid {
+		grid-template-columns: 1fr;
 	}
 }
 
-.tisa-hub-tile {
+/* ---------- ۴) کارت ---------- */
+.tsh-card.tisa-plugin-card {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: var(--tisa-sp-3, 12px);
-	min-height: 150px;
-	padding: var(--tisa-sp-4, 16px);
+	gap: var(--tisa-sp-4, 16px);
+	min-width: 0;
+	margin: 0;
+	padding: var(--tisa-sp-5, 24px);
 	border: 1px solid var(--tisa-border, #E3E1DA);
-	border-radius: var(--tisa-r, 14px);
+	border-radius: var(--tisa-r-lg, 18px);
 	background: var(--tisa-surface, #fff);
 	box-shadow: none;
-	transition: border-color var(--tisa-t, 150ms), box-shadow var(--tisa-t, 150ms);
+	transition: border-color var(--tisa-t, 150ms), box-shadow var(--tisa-t, 150ms), transform var(--tisa-t, 150ms);
 }
 
-.tisa-hub-tile:hover {
-	border-color: var(--tisa-border-strong, #C9DCD7);
-	box-shadow: var(--tisa-shadow-sm, 0 1px 2px rgba(31, 42, 46, .06));
+.tsh-card.tisa-plugin-card:hover,
+.tsh-card.tisa-plugin-card:focus-within,
+.tsh-card.is-focused {
+	border-color: var(--tisa-primary-border, #B9D9D2);
+	box-shadow: 0 14px 30px -20px rgba(31, 42, 46, .35);
+	transform: translateY(-1px);
 }
 
-.tisa-hub-tile:focus-visible,
-.tisa-hub-tile.is-focused {
-	outline: 0;
-	border-color: var(--tisa-primary, #0E7C6B);
-	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
+.tsh-card[hidden] {
+	display: none;
 }
 
-/* سر: آیکون + اکشن‌های آرام */
-.tisa-hub-tile__head {
+.tsh-card.is-pinned {
+	border-color: var(--tisa-primary-border, #B9D9D2);
+}
+
+.tsh-card__top {
 	display: flex;
 	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--tisa-sp-2, 8px);
-}
-
-.tisa-hub-tile .tisa-plugin-card__icon {
-	width: 34px;
-	height: 34px;
-	border-radius: var(--tisa-r-sm, 10px);
-	background: var(--tisa-primary-soft, #E8F0EE);
-	color: var(--tisa-primary-ink, #0A5F52);
-}
-
-.tisa-hub-tile .tisa-plugin-card__icon svg {
-	width: 17px;
-	height: 17px;
-}
-
-.tisa-hub-tile__quiet {
-	display: inline-flex;
-	gap: 2px;
-	opacity: .55;
-	transition: opacity var(--tisa-t, 150ms);
-}
-
-.tisa-hub-tile:hover .tisa-hub-tile__quiet,
-.tisa-hub-tile:focus-within .tisa-hub-tile__quiet,
-.tisa-hub-tile.is-pinned .tisa-hub-tile__quiet {
-	opacity: 1;
-}
-
-@media (hover: none) {
-	.tisa-hub-tile__quiet {
-		opacity: 1;
-	}
-}
-
-/* دکمهٔ آرام: بدون حاشیه، بدون پس‌زمینه؛ hover → tint */
-.tisa-quiet-btn,
-.tisa-pin {
-	position: relative;
-	inset: auto;
-	display: inline-grid;
-	place-items: center;
-	width: 26px;
-	height: 26px;
-	padding: 0;
-	border: 0;
-	border-radius: var(--tisa-r-xs, 6px);
-	background: transparent;
-	color: var(--tisa-muted, #77828A);
-	font-size: 13px;
-	line-height: 1;
-	text-decoration: none;
-	cursor: pointer;
-	opacity: 1;
-	transition: background var(--tisa-t, 150ms), color var(--tisa-t, 150ms);
-}
-
-.tisa-quiet-btn svg {
-	width: 14px;
-	height: 14px;
-}
-
-.tisa-quiet-btn:hover,
-.tisa-pin:hover {
-	background: var(--tisa-surface-3, #F6F5F1);
-	color: var(--tisa-ink, #1F2A2E);
-}
-
-.tisa-quiet-btn:focus-visible,
-.tisa-pin:focus-visible {
-	outline: 0;
-	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
-}
-
-.tisa-hub-tile.is-pinned .tisa-pin {
-	color: var(--tisa-warning-ink, #8A6116);
-}
-
-.tisa-hub-tile.is-pinned {
-	border-color: var(--tisa-border-strong, #C9DCD7);
-}
-
-/* بدنه: عنوان + یک خط متا */
-.tisa-hub-tile__body {
-	flex: 1 1 auto;
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
+	gap: var(--tisa-sp-3, 12px);
 	min-width: 0;
 }
 
-.tisa-hub-tile .tisa-plugin-card__title {
+.tsh-card__icon.tisa-plugin-card__icon {
+	flex: 0 0 auto;
+	display: grid;
+	place-items: center;
+	width: 42px;
+	height: 42px;
+	margin: 0;
+	border-radius: var(--tisa-r-sm, 12px);
+	background: var(--tisa-primary-soft, #E8F0EE);
+	color: var(--tisa-primary-ink, #0A5F52);
+	box-shadow: none;
+}
+
+.tsh-card__icon svg {
+	width: 19px;
+	height: 19px;
+}
+
+.tsh-card.is-inactive .tsh-card__icon {
+	background: var(--tisa-surface-3, #F6F5F1);
+	color: var(--tisa-muted, #77828A);
+}
+
+.tsh-card__text {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.tsh-card__title.tisa-plugin-card__title {
 	display: block;
 	margin: 0;
+	font-size: var(--tisa-fs-h3, 15px);
+	font-weight: 700;
+	line-height: 1.45;
+	color: var(--tisa-ink, #1F2A2E);
+	text-decoration: none;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: var(--tisa-fs-body, 14px);
-	font-weight: 700;
-	color: var(--tisa-ink, #1F2A2E);
-	text-decoration: none;
 }
 
-.tisa-hub-tile__go:hover {
-	color: var(--tisa-primary-ink, #0A5F52);
-}
-
-/* لینک عنوان کل کارت را می‌گیرد؛ دکمه‌ها رو می‌افتند (z-index) */
-.tisa-hub-tile__go::after {
+/* کل کارت کلیک‌پذیر (لینک عنوان) — ابزارها با z-index بالاتر */
+a.tsh-card__title::after {
 	content: "";
 	position: absolute;
 	inset: 0;
 	border-radius: inherit;
 }
 
-.tisa-hub-tile__head,
-.tisa-hub-tile__foot,
-.tisa-confirmbar {
-	position: relative;
-	z-index: 1;
+a.tsh-card__title:hover {
+	color: var(--tisa-primary-ink, #0A5F52);
 }
 
-.tisa-hub-tile__meta {
+.tsh-card.is-nocap .tsh-card__title {
+	color: var(--tisa-muted, #77828A);
+}
+
+.tsh-card__meta {
 	display: flex;
 	align-items: center;
 	gap: var(--tisa-sp-2, 8px);
@@ -433,103 +379,250 @@ body.toplevel_page_tisacase-hub #wpbody-content > .update-nag {
 	color: var(--tisa-muted, #77828A);
 }
 
-.tisa-hub-tile__ver {
-	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
-	font-size: var(--tisa-fs-tiny, 11px);
-	font-variant-numeric: normal;
-}
-
-.tisa-hub-tile__state {
+.tsh-state {
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
 }
 
-.tisa-hub-tile__state .tisa-dot {
+.tsh-state i {
 	width: 6px;
 	height: 6px;
+	border-radius: 50%;
+	background: var(--tisa-border-strong, #C9C6BD);
 }
 
-.tisa-hub-tile__state.is-on {
-	color: var(--tisa-success, #1A7F37);
+.tsh-state.is-on i {
+	background: var(--tisa-success, #1A7F37);
 }
 
-.tisa-hub-tile__state.is-warn {
-	color: var(--tisa-warning-ink, #8A6116);
+.tsh-state.is-warn i {
+	background: var(--tisa-warning, #C79A2E);
 }
 
-/* پا: یک دکمهٔ پررنگ + یک آیکون آرام، همین */
-.tisa-hub-tile__foot {
+.tsh-ver {
+	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
+	font-variant-numeric: normal;
+}
+
+.tsh-ver::before {
+	content: "·";
+	margin-inline-end: var(--tisa-sp-2, 8px);
+	font-family: var(--tisa-font, inherit);
+}
+
+/* سنجاق: همیشه هست، خیلی آرام؛ وقتی سنجاق شد رنگ می‌گیرد */
+.tsh-pin.tisa-pin {
+	position: relative;
+	z-index: 2;
+	flex: 0 0 auto;
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 30px;
+	margin: -4px -6px 0 0;
+	padding: 0;
+	border: 0;
+	border-radius: var(--tisa-r-xs, 8px);
+	background: transparent;
+	color: var(--tisa-border-strong, #C9C6BD);
+	cursor: pointer;
+	transition: color var(--tisa-t, 150ms), background var(--tisa-t, 150ms);
+}
+
+.tsh-pin svg {
+	width: 15px;
+	height: 15px;
+}
+
+.tsh-pin:hover {
+	color: var(--tisa-ink, #1F2A2E);
+	background: var(--tisa-surface-3, #F6F5F1);
+}
+
+.tsh-card.is-pinned .tsh-pin {
+	color: var(--tisa-warning, #C79A2E);
+}
+
+.tsh-card.is-pinned .tsh-pin svg {
+	fill: currentColor;
+}
+
+.tsh-pin:focus-visible {
+	outline: 0;
+	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
+}
+
+/* پا: «باز کردن» (تنها عنصر پررنگ) + ابزارهای خاکستری */
+.tsh-card__foot {
+	position: relative;
+	z-index: 2;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--tisa-sp-2, 8px);
+	gap: var(--tisa-sp-3, 12px);
+	margin-top: auto;
 }
 
-.tisa-hub-tile__foot .tisa-btn--sm {
-	min-height: 30px;
-	padding-inline: var(--tisa-sp-4, 16px);
+.tsh-open {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 34px;
+	padding: 0 var(--tisa-sp-4, 16px);
+	border-radius: var(--tisa-r-pill, 999px);
+	background: var(--tisa-primary, #0E7C6B);
+	color: var(--tisa-on-primary, #fff) !important;
+	font-size: var(--tisa-fs-control, 13px);
+	font-weight: 600;
+	text-decoration: none;
+	white-space: nowrap;
+	transition: background var(--tisa-t, 150ms), transform var(--tisa-t, 150ms);
 }
 
-.tisa-hub-tile__off {
-	opacity: .55;
+.tsh-open svg {
+	width: 13px;
+	height: 13px;
+	opacity: .8;
 }
 
-.tisa-hub-tile:hover .tisa-hub-tile__off,
-.tisa-hub-tile:focus-within .tisa-hub-tile__off {
-	opacity: 1;
+.tsh-open:hover {
+	background: var(--tisa-primary-ink, #0A5F52);
 }
 
-.tisa-hub-tile__off:hover {
-	color: var(--tisa-danger, #B5453A);
-	background: var(--tisa-danger-soft, #FBECEA);
+.tsh-open:focus-visible {
+	outline: 0;
+	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
 }
 
-.tisa-hub-tile__na {
+.tsh-open--secondary {
+	background: var(--tisa-primary-soft, #E8F0EE);
+	color: var(--tisa-primary-ink, #0A5F52) !important;
+}
+
+.tsh-open--secondary:hover {
+	background: var(--tisa-primary-border, #B9D9D2);
+}
+
+.tsh-open.is-disabled {
+	background: var(--tisa-surface-3, #F6F5F1);
+	color: var(--tisa-muted, #77828A) !important;
+	cursor: not-allowed;
+}
+
+.tsh-na {
 	font-size: var(--tisa-fs-tiny, 11px);
 	color: var(--tisa-muted, #77828A);
 }
 
-.tisa-plugin-card.is-inactive .tisa-plugin-card__icon {
+.tsh-card__tools {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	opacity: .55;
+	transition: opacity var(--tisa-t, 150ms);
+}
+
+.tsh-card:hover .tsh-card__tools,
+.tsh-card:focus-within .tsh-card__tools {
+	opacity: 1;
+}
+
+@media (hover: none) {
+	.tsh-card__tools {
+		opacity: 1;
+	}
+}
+
+.tsh-tool {
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 30px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: var(--tisa-r-xs, 8px);
+	background: transparent;
+	color: var(--tisa-muted, #77828A);
+	font-size: 16px;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+	transition: color var(--tisa-t, 150ms), background var(--tisa-t, 150ms);
+}
+
+.tsh-tool svg {
+	width: 15px;
+	height: 15px;
+}
+
+.tsh-tool:hover {
+	color: var(--tisa-ink, #1F2A2E);
 	background: var(--tisa-surface-3, #F6F5F1);
+}
+
+.tsh-tool--off:hover {
+	color: var(--tisa-danger-ink, #8E3128);
+	background: var(--tisa-danger-soft, #FBECEA);
+}
+
+.tsh-tool:focus-visible {
+	outline: 0;
+	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
+}
+
+.tisa-hub-tile__upd {
+	display: inline-flex;
+	margin: 0;
+}
+
+.tisa-hub-tile__upd input[type="file"] {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.tsh-card.is-updating {
+	opacity: .6;
+	pointer-events: none;
+}
+
+.tisa-hub-tile__updmsg {
+	position: relative;
+	z-index: 2;
+	margin: 0;
+	font-size: var(--tisa-fs-tiny, 11px);
 	color: var(--tisa-muted, #77828A);
 }
 
-.tisa-plugin-card.is-nocap .tisa-plugin-card__title {
-	opacity: .72;
-}
-
-.tisa-plugin-card mark {
-	padding: 0 2px;
-	border-radius: 3px;
-	background: #FFF2A8;
-	color: inherit;
-}
-
-/* --- تأیید غیرفعال‌سازی: جای پا را می‌گیرد، آرام، بدون قرمز پر --- */
-.tisa-confirmbar[hidden] {
+/* تأیید غیرفعال‌سازی: بسته؛ فقط با کلاس باز می‌شود و جای پا را می‌گیرد */
+.tsh-confirm.tisa-confirmbar,
+.tsh-confirm.tisa-confirmbar[hidden] {
 	display: none !important;
 }
 
-.tisa-confirmbar {
+.tsh-card.is-confirming .tsh-card__foot {
 	display: none;
+}
+
+.tsh-card.is-confirming .tsh-confirm.tisa-confirmbar,
+.tsh-card.is-confirming .tsh-confirm.tisa-confirmbar[hidden] {
+	position: relative;
+	z-index: 2;
+	display: flex !important;
 	align-items: center;
 	gap: var(--tisa-sp-2, 8px);
+	margin-top: auto;
 	font-size: var(--tisa-fs-meta, 12px);
 	color: var(--tisa-ink, #1F2A2E);
 }
 
-.tisa-confirmbar > span {
+.tsh-confirm > span {
 	flex: 1 1 auto;
-}
-
-.tisa-hub-tile.is-confirming .tisa-hub-tile__foot {
-	display: none;
-}
-
-.tisa-hub-tile.is-confirming .tisa-confirmbar,
-.tisa-hub-tile.is-confirming .tisa-confirmbar[hidden] {
-	display: flex !important;
 }
 
 .tisa-btn--danger-soft {
@@ -541,7 +634,7 @@ body.toplevel_page_tisacase-hub #wpbody-content > .update-nag {
 
 .tisa-btn--danger-soft:hover {
 	background: var(--tisa-danger, #B5453A) !important;
-	color: #fff !important;
+	color: var(--tisa-on-primary, #fff) !important;
 }
 
 .tisa-btn--ghost {
@@ -552,33 +645,62 @@ body.toplevel_page_tisacase-hub #wpbody-content > .update-nag {
 }
 
 .tisa-btn--ghost:hover {
-	background: var(--tisa-surface-3, #F6F5F1) !important;
 	color: var(--tisa-ink, #1F2A2E) !important;
+	background: var(--tisa-surface-3, #F6F5F1) !important;
 }
 
-/* ==================================================================
-   ۵) حالت خالی + پاورقی
-   ================================================================== */
+/* هایلایت جستجو */
+.tsh-card mark {
+	background: var(--tisa-warning-soft, #FCF3D7);
+	color: inherit;
+	border-radius: 3px;
+	padding: 0 1px;
+}
 
-.tisa-empty {
-	padding: var(--tisa-sp-6, 32px) var(--tisa-sp-4, 16px);
+/* ---------- ۵) خالی و پانوشت ---------- */
+.tsh-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--tisa-sp-3, 12px);
+	padding: var(--tisa-sp-8, 64px) 0;
+	color: var(--tisa-muted, #77828A);
 	text-align: center;
 }
 
-.tisa-hub-footnote {
-	margin: var(--tisa-sp-4, 16px) 0 0;
-	padding-top: var(--tisa-sp-3, 12px);
-	border-block-start: 1px solid var(--tisa-border, #E3E1DA);
-	font-size: var(--tisa-fs-meta, 12px);
-	color: var(--tisa-muted, #77828A);
-	display: flex;
-	align-items: center;
-	gap: var(--tisa-sp-2, 8px);
+.tsh-empty[hidden] {
+	display: none;
 }
 
-.tisa-hub-footnote a {
-	text-decoration: underline;
+.tsh-empty__icon svg {
+	width: 28px;
+	height: 28px;
+	opacity: .5;
+}
+
+.tsh-empty b {
+	color: var(--tisa-ink, #1F2A2E);
+}
+
+.tsh-foot {
+	margin: var(--tisa-sp-4, 16px) 0 0;
+	font-size: var(--tisa-fs-meta, 12px);
+	color: var(--tisa-muted, #77828A);
+	text-align: center;
+}
+
+.tsh-foot a {
 	color: var(--tisa-primary-ink, #0A5F52);
+}
+
+/* ---------- کم‌فضا ---------- */
+body.tisa-compact .tsh-card.tisa-plugin-card {
+	padding: var(--tisa-sp-4, 16px);
+	gap: var(--tisa-sp-3, 12px);
+}
+
+body.tisa-compact .tsh-hero.tisa-hero--slim {
+	padding: var(--tisa-sp-5, 24px);
 }
 
 /* ==================================================================
@@ -679,74 +801,40 @@ body.toplevel_page_tisacase-hub #wpbody-content > .update-nag {
    ۷) واکنش‌گرایی
    ================================================================== */
 
-@media screen and (max-width: 960px) {
-	body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
-		padding-inline: var(--tisa-sp-4, 16px);
-	}
-}
-
 @media screen and (max-width: 782px) {
-
-	.tisa-hub-card__top,
-	.tisa-hub-card__body {
-		padding: var(--tisa-sp-4, 16px);
+	body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
+		margin-top: var(--tisa-sp-4, 16px);
+		padding: 0 var(--tisa-sp-4, 16px);
 	}
 
-	.tisa-hero-actions {
+	.tsh-hero.tisa-hero--slim {
+		padding: var(--tisa-sp-5, 24px);
+		border-radius: var(--tisa-r-lg, 18px);
+	}
+
+	.tsh-hero .tsh-hero__row {
+		flex-wrap: wrap;
+	}
+
+	.tsh-hero .tisa-hero-actions {
 		margin-inline-start: 0;
+		flex-basis: 100%;
+	}
+
+	.tsh-search {
+		max-width: none;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-
-	.tisa-pin,
-	.tisa-accent__sw,
-	.tisa-plugin-card {
-		transition-duration: .01ms !important;
+	.tsh-card.tisa-plugin-card,
+	.tsh-open,
+	.tsh-tool,
+	.tsh-pin {
+		transition: none;
 	}
 
-	.tisa-hub-card__top {
-		position: static;
+	.tsh-card.tisa-plugin-card:hover {
+		transform: none;
 	}
-}
-
-/* ==================================================================
-   ۷) به‌روزرسانی از روی کارت — زیپ را انتخاب کن، همان‌جا نصب می‌شود
-   ================================================================== */
-
-.tisa-hub-tile__upd {
-	display: inline-flex;
-}
-
-.tisa-hub-tile__upd input[type="file"] {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	opacity: 0;
-	overflow: hidden;
-	pointer-events: none;
-}
-
-.tisa-hub-tile.is-updating {
-	opacity: .6;
-	pointer-events: none;
-}
-
-.tisa-hub-tile__updmsg {
-	position: relative;
-	z-index: 1;
-	margin: 0;
-	font-size: var(--tisa-fs-tiny, 11px);
-	color: var(--tisa-muted, #77828A);
-}
-
-.tisa-hub-tile__updmsg.is-err {
-	color: var(--tisa-danger-ink, #8E3128);
-}
-
-/* پیام خودِ هاب: وردپرس آن را بعد از h1 (داخل هیرو) می‌برد — همان‌جا سفید و خوانا */
-.tisa-hero--slim .tsh-notice {
-	flex-basis: 100%;
-	margin: var(--tisa-sp-3, 12px) 0 0;
-	color: var(--tisa-ink, #1F2A2E);
 }

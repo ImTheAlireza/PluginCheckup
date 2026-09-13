@@ -24,7 +24,7 @@ if ( ! function_exists( 'tsh_card' ) ) {
 	 */
 	function tsh_card( $item, $pins, $settings ) {
 		$state  = isset( $item['state'] ) ? $item['state'] : 'missing';
-		$cls    = 'tisa-plugin-card tisa-hub-tile';
+		$cls    = 'tisa-plugin-card tisa-hub-tile tsh-card';
 		$pages  = ! empty( $item['pages'] ) ? (array) $item['pages'] : array();
 		$main   = $pages ? $pages[0] : array();
 		$url    = isset( $main['url'] ) ? $main['url'] : '';
@@ -67,74 +67,70 @@ if ( ! function_exists( 'tsh_card' ) ) {
 		?>
 		<article class="<?php echo esc_attr( $cls ); ?>" data-key="<?php echo esc_attr( $item['key'] ); ?>" data-group="<?php echo esc_attr( isset( $item['group'] ) ? $item['group'] : 'products' ); ?>" data-search="<?php echo esc_attr( $search ); ?>" tabindex="-1">
 
-			<div class="tisa-hub-tile__head">
-				<span class="tisa-plugin-card__icon" aria-hidden="true"><?php echo TSH_View::icon( $item['icon'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
-
-				<span class="tisa-hub-tile__quiet">
-					<button type="button" class="tisa-pin" data-pin="<?php echo esc_attr( $item['key'] ); ?>"
-						aria-pressed="<?php echo $pinned ? 'true' : 'false'; ?>"
-						title="<?php esc_attr_e( 'سنجاق در بالای صفحه', 'tisacase-hub' ); ?>">★<span class="screen-reader-text"><?php esc_html_e( 'سنجاق', 'tisacase-hub' ); ?></span></button>
-					<a class="tisa-quiet-btn" href="<?php echo esc_url( $act_url( 'hide' ) ); ?>"
-						title="<?php esc_attr_e( 'مخفی کردن از هاب (از تنظیمات برمی‌گردد)', 'tisacase-hub' ); ?>">✕<span class="screen-reader-text"><?php esc_html_e( 'مخفی کردن', 'tisacase-hub' ); ?></span></a>
-				</span>
-			</div>
-
-			<div class="tisa-hub-tile__body">
-				<?php if ( $open ) : ?>
-					<a class="tisa-plugin-card__title tisa-hub-tile__go" data-open="1" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener"<?php echo $tip ? ' title="' . esc_attr( $tip ) . '"' : ''; ?>><?php echo esc_html( $item['title'] ); ?></a>
-				<?php else : ?>
-					<b class="tisa-plugin-card__title"><?php echo esc_html( $item['title'] ); ?></b>
-				<?php endif; ?>
-
-				<span class="tisa-hub-tile__meta">
-					<?php if ( ! empty( $item['version'] ) ) : ?>
-						<span class="tisa-hub-tile__ver tisa-code" dir="ltr">v<?php echo esc_html( $item['version'] ); ?></span>
-					<?php endif; ?>
-					<?php if ( 'active' === $state ) : ?>
-						<span class="tisa-hub-tile__state is-on"><i class="tisa-dot tisa-dot--on"></i><?php esc_html_e( 'فعال', 'tisacase-hub' ); ?></span>
-					<?php elseif ( 'inactive' === $state ) : ?>
-						<span class="tisa-hub-tile__state"><i class="tisa-dot"></i><?php esc_html_e( 'غیرفعال', 'tisacase-hub' ); ?></span>
+			<div class="tsh-card__top">
+				<span class="tisa-plugin-card__icon tsh-card__icon" aria-hidden="true"><?php echo TSH_View::icon( $item['icon'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+				<div class="tsh-card__text">
+					<?php if ( $open ) : ?>
+						<a class="tisa-plugin-card__title tsh-card__title tisa-hub-tile__go" data-open="1" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener"<?php echo $tip ? ' title="' . esc_attr( $tip ) . '"' : ''; ?>><?php echo esc_html( $item['title'] ); ?></a>
 					<?php else : ?>
-						<span class="tisa-hub-tile__state is-warn"><i class="tisa-dot tisa-dot--warn"></i><?php esc_html_e( 'نصب نیست', 'tisacase-hub' ); ?></span>
+						<b class="tisa-plugin-card__title tsh-card__title"><?php echo esc_html( $item['title'] ); ?></b>
 					<?php endif; ?>
-				</span>
+					<span class="tsh-card__meta">
+						<?php if ( 'active' === $state ) : ?>
+							<span class="tsh-state is-on"><i></i><?php esc_html_e( 'فعال', 'tisacase-hub' ); ?></span>
+						<?php elseif ( 'inactive' === $state ) : ?>
+							<span class="tsh-state"><i></i><?php esc_html_e( 'غیرفعال', 'tisacase-hub' ); ?></span>
+						<?php else : ?>
+							<span class="tsh-state is-warn"><i></i><?php esc_html_e( 'نصب نیست', 'tisacase-hub' ); ?></span>
+						<?php endif; ?>
+						<?php if ( ! empty( $item['version'] ) ) : ?>
+							<span class="tsh-ver" dir="ltr"><?php echo esc_html( $item['version'] ); ?></span>
+						<?php endif; ?>
+					</span>
+				</div>
+				<button type="button" class="tsh-pin tisa-pin" data-pin="<?php echo esc_attr( $item['key'] ); ?>"
+					aria-pressed="<?php echo $pinned ? 'true' : 'false'; ?>"
+					title="<?php esc_attr_e( 'سنجاق در بالای صفحه', 'tisacase-hub' ); ?>"><?php echo TSH_View::icon( 'star' ); // phpcs:ignore WordPress.Security.EscapeOutput ?><span class="screen-reader-text"><?php esc_html_e( 'سنجاق', 'tisacase-hub' ); ?></span></button>
 			</div>
 
-			<div class="tisa-hub-tile__foot">
+			<div class="tsh-card__foot tisa-hub-tile__foot">
 				<?php if ( $open ) : ?>
-					<a class="tisa-btn tisa-btn--primary tisa-btn--sm" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener"<?php echo $tip ? ' title="' . esc_attr( $tip ) . '"' : ''; ?>><?php esc_html_e( 'باز کردن', 'tisacase-hub' ); ?></a>
+					<a class="tsh-open" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener"<?php echo $tip ? ' title="' . esc_attr( $tip ) . '"' : ''; ?>><?php esc_html_e( 'باز کردن', 'tisacase-hub' ); ?><?php echo TSH_View::icon( 'external' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></a>
 				<?php elseif ( $url && empty( $item['can'] ) ) : ?>
-					<span class="tisa-btn tisa-btn--sm is-disabled" aria-disabled="true"
+					<span class="tsh-open is-disabled" aria-disabled="true"
 						title="<?php echo esc_attr( sprintf( /* translators: %s: capability */ __( 'این برگهٔ افزونه با دسترسی «%s» قفل شده است.', 'tisacase-hub' ), isset( $item['cap_name'] ) ? $item['cap_name'] : '' ) ); ?>"><?php esc_html_e( 'باز کردن', 'tisacase-hub' ); ?></span>
 				<?php elseif ( 'inactive' === $state && ! empty( $item['can_manage'] ) ) : ?>
-					<a class="tisa-btn tisa-btn--secondary tisa-btn--sm" href="<?php echo esc_url( $act_url( 'activate' ) ); ?>"><?php esc_html_e( 'فعال‌سازی', 'tisacase-hub' ); ?></a>
+					<a class="tsh-open tsh-open--secondary" href="<?php echo esc_url( $act_url( 'activate' ) ); ?>"><?php esc_html_e( 'فعال‌سازی', 'tisacase-hub' ); ?></a>
 				<?php else : ?>
-					<span class="tisa-hub-tile__na"><?php esc_html_e( 'پوشهٔ افزونه روی این سرور نیست', 'tisacase-hub' ); ?></span>
+					<span class="tsh-na"><?php esc_html_e( 'پوشهٔ افزونه روی این سرور نیست', 'tisacase-hub' ); ?></span>
 				<?php endif; ?>
 
-				<?php if ( 'missing' !== $state && ! empty( $item['can_update'] ) ) : ?>
-					<form class="tisa-hub-tile__upd" method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-upd="1">
-						<input type="hidden" name="action" value="tisacase_hub_update">
-						<input type="hidden" name="item" value="<?php echo esc_attr( $item['key'] ); ?>">
-						<?php wp_nonce_field( 'tsh_update_' . $item['key'], '_tshnonce' ); ?>
-						<label class="tisa-quiet-btn" title="<?php echo esc_attr( sprintf( /* translators: %s: tool title */ __( 'به‌روزرسانی «%s» با فایل زیپ', 'tisacase-hub' ), $item['title'] ) ); ?>">
-							<?php echo TSH_View::icon( 'upload' ); // phpcs:ignore WordPress.Security.EscapeOutput ?><span class="screen-reader-text"><?php esc_html_e( 'به‌روزرسانی', 'tisacase-hub' ); ?></span>
-							<input type="file" name="tsh_zip" accept=".zip,application/zip">
-						</label>
-						<noscript><button type="submit" class="tisa-btn tisa-btn--sm tisa-btn--ghost"><?php esc_html_e( 'نصب', 'tisacase-hub' ); ?></button></noscript>
-					</form>
-				<?php endif; ?>
-
-				<?php if ( 'active' === $state && ! empty( $item['can_manage'] ) ) : ?>
-					<button type="button" class="tisa-quiet-btn tisa-hub-tile__off" data-confirm="1"
-						title="<?php echo esc_attr( sprintf( /* translators: %s: tool title */ __( 'غیرفعال‌کردن «%s»', 'tisacase-hub' ), $item['title'] ) ); ?>">
-						<?php echo TSH_View::icon( 'plug' ); // phpcs:ignore WordPress.Security.EscapeOutput ?><span class="screen-reader-text"><?php esc_html_e( 'غیرفعال‌سازی', 'tisacase-hub' ); ?></span>
-					</button>
-				<?php endif; ?>
+				<span class="tsh-card__tools">
+					<?php if ( 'missing' !== $state && ! empty( $item['can_update'] ) ) : ?>
+						<form class="tisa-hub-tile__upd" method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-upd="1">
+							<input type="hidden" name="action" value="tisacase_hub_update">
+							<input type="hidden" name="item" value="<?php echo esc_attr( $item['key'] ); ?>">
+							<?php wp_nonce_field( 'tsh_update_' . $item['key'], '_tshnonce' ); ?>
+							<label class="tsh-tool" title="<?php echo esc_attr( sprintf( /* translators: %s: tool title */ __( 'به‌روزرسانی «%s» با فایل زیپ', 'tisacase-hub' ), $item['title'] ) ); ?>">
+								<?php echo TSH_View::icon( 'upload' ); // phpcs:ignore WordPress.Security.EscapeOutput ?><span class="screen-reader-text"><?php esc_html_e( 'به‌روزرسانی', 'tisacase-hub' ); ?></span>
+								<input type="file" name="tsh_zip" accept=".zip,application/zip">
+							</label>
+							<noscript><button type="submit" class="tisa-btn tisa-btn--sm tisa-btn--ghost"><?php esc_html_e( 'نصب', 'tisacase-hub' ); ?></button></noscript>
+						</form>
+					<?php endif; ?>
+					<?php if ( 'active' === $state && ! empty( $item['can_manage'] ) ) : ?>
+						<button type="button" class="tsh-tool tsh-tool--off" data-confirm="1"
+							title="<?php echo esc_attr( sprintf( /* translators: %s: tool title */ __( 'غیرفعال‌کردن «%s»', 'tisacase-hub' ), $item['title'] ) ); ?>">
+							<?php echo TSH_View::icon( 'plug' ); // phpcs:ignore WordPress.Security.EscapeOutput ?><span class="screen-reader-text"><?php esc_html_e( 'غیرفعال‌سازی', 'tisacase-hub' ); ?></span>
+						</button>
+					<?php endif; ?>
+					<a class="tsh-tool" href="<?php echo esc_url( $act_url( 'hide' ) ); ?>"
+						title="<?php esc_attr_e( 'مخفی کردن از هاب (از تنظیمات برمی‌گردد)', 'tisacase-hub' ); ?>">×<span class="screen-reader-text"><?php esc_html_e( 'مخفی کردن', 'tisacase-hub' ); ?></span></a>
+				</span>
 			</div>
 
 			<?php if ( 'active' === $state && ! empty( $item['can_manage'] ) ) : ?>
-				<div class="tisa-confirmbar" hidden>
+				<div class="tisa-confirmbar tsh-confirm" hidden>
 					<span><?php esc_html_e( 'غیرفعال شود؟', 'tisacase-hub' ); ?></span>
 					<a class="tisa-btn tisa-btn--sm tisa-btn--danger-soft" href="<?php echo esc_url( $act_url( 'deactivate' ) ); ?>"><?php esc_html_e( 'بله', 'tisacase-hub' ); ?></a>
 					<button type="button" class="tisa-btn tisa-btn--sm tisa-btn--ghost" data-confirm-no="1"><?php esc_html_e( 'نه', 'tisacase-hub' ); ?></button>

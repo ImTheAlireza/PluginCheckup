@@ -1,13 +1,10 @@
 <?php
 /**
- * قالب صفحهٔ لانچر — فقط دیدن و باز کردن.
+ * قالب صفحهٔ لانچر — نسخهٔ ۲ (v1.4): بدون پنل داخل پنل.
  *
- * عمداً سبک است: شمارندهٔ محتوا، گزارش سلامت، توضیح افزونه و یادآوری‌ای اینجا
- * نیست. هر ابزار یک **ردیف** است (نه کارتِ گرید) تا در صفحه‌های عریض سوراخ
- * نیفتد و ردیف آخر ناقص نماند. کنترل‌های سراسری (رنگ برند، چگالی) به صفحهٔ
- * تنظیمات رفته‌اند تا بی‌صدا ذخیره نشوند.
+ * ساختار: سرِ سبز (عنوان + جستجو داخل خودش) → گروه‌ها با خط‌عنوان ظریف →
+ * کارت‌های تخت. کل کادر با max-width و margin auto در مرکز است.
  *
- * متغیرها از TSH_Admin::hub_data() می‌آیند:
  * @var array $groups   گروه‌ها => array('label'=>, 'items'=>array(item))
  * @var array $all      همهٔ آیتم‌های resolve‌شده
  * @var array $pins     کلیدهای سنجاق‌شدهٔ کاربر
@@ -24,12 +21,12 @@ $tool_n       = TSH_View::num( count( $all ) );
 ?>
 <div class="wrap tisa-wrap tisa-hub-wrap" dir="rtl">
 
-	<header class="tisa-hero tisa-hero--slim">
-		<div class="tisa-hero-row">
+	<header class="tisa-hero tisa-hero--slim tsh-hero">
+		<div class="tsh-hero__row">
 			<span class="tisa-hero-mark" aria-hidden="true"><?php echo TSH_View::icon( 'grid' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
 			<div class="tisa-hero-txt">
 				<h1 class="tisa-hero-title"><?php esc_html_e( 'اختصاصی تیساکیس', 'tisacase-hub' ); ?></h1>
-				<p class="tisa-lead"><?php esc_html_e( '«باز کردن» هر ابزار را در تب جدید می‌آورد.', 'tisacase-hub' ); ?></p>
+				<p class="tisa-lead"><?php echo esc_html( $tool_n ); ?> <?php esc_html_e( 'ابزار · هر کدام در تب جدید باز می‌شود', 'tisacase-hub' ); ?></p>
 			</div>
 			<div class="tisa-hero-actions">
 				<a class="tisa-btn tisa-btn--sm tisa-btn--on-dark" href="<?php echo esc_url( $settings_url ); ?>">
@@ -37,64 +34,58 @@ $tool_n       = TSH_View::num( count( $all ) );
 				</a>
 			</div>
 		</div>
+
+		<form class="tsh-search tisa-hub-toolbar" role="search" method="get" onsubmit="return false;">
+			<span class="tsh-search__icon" aria-hidden="true"><?php echo TSH_View::icon( 'search' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+			<input type="search" id="tsh-q" class="tsh-search__input" autocomplete="off" spellcheck="false"
+				placeholder="<?php esc_attr_e( 'جستجوی ابزار…', 'tisacase-hub' ); ?>"
+				aria-label="<?php esc_attr_e( 'جستجو در ابزارها', 'tisacase-hub' ); ?>">
+			<kbd class="tisa-kbd" aria-hidden="true">/</kbd>
+			<span class="screen-reader-text" id="tsh-count" aria-live="polite"><?php echo esc_html( $tool_n ); ?> <?php esc_html_e( 'ابزار', 'tisacase-hub' ); ?></span>
+		</form>
 	</header>
 
-	<section class="tisa-card tisa-hub-card">
+	<main class="tsh-body">
 
-		<div class="tisa-hub-card__top">
-			<form class="tisa-hub-toolbar" role="search" method="get" onsubmit="return false;" style="margin:0">
-				<div class="tisa-hub-search">
-					<span class="tisa-hub-search__icon" aria-hidden="true"><?php echo TSH_View::icon( 'search' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
-					<input type="search" id="tsh-q" class="tisa-input" autocomplete="off" spellcheck="false"
-						placeholder="<?php esc_attr_e( 'جستجوی ابزار…', 'tisacase-hub' ); ?>"
-						aria-label="<?php esc_attr_e( 'جستجو در ابزارها', 'tisacase-hub' ); ?>">
-					<kbd class="tisa-kbd" aria-hidden="true">/</kbd>
-				</div>
-				<span class="tisa-hub-count" id="tsh-count" aria-live="polite"><?php echo esc_html( $tool_n ); ?> <?php esc_html_e( 'ابزار', 'tisacase-hub' ); ?></span>
-			</form>
-		</div>
+		<section class="tsh-group tisa-hub-group" id="tsh-pinned" hidden role="group" aria-labelledby="tsh-pinned-t">
+			<h2 class="tsh-group__title" id="tsh-pinned-t">
+				<span class="tsh-group__label"><?php esc_html_e( 'سنجاق‌شده', 'tisacase-hub' ); ?></span>
+				<span class="tsh-group__n" data-pinned-n></span>
+			</h2>
+			<div class="tisa-hub-grid tsh-grid" data-tsh-grid="pinned"></div>
+		</section>
 
-		<div class="tisa-hub-card__body">
-
-			<div class="tisa-hub-group" id="tsh-pinned" hidden role="group" aria-labelledby="tsh-pinned-t">
-				<h2 class="tisa-hub-group__title" id="tsh-pinned-t"><?php esc_html_e( '📌 سنجاق‌شده', 'tisacase-hub' ); ?>
-					<span class="tisa-badge tisa-badge--outline" data-pinned-n></span>
+		<?php foreach ( $groups as $gkey => $group ) : ?>
+			<section class="tsh-group tisa-hub-group" data-group="<?php echo esc_attr( $gkey ); ?>" role="group" aria-labelledby="tsh-g-<?php echo esc_attr( $gkey ); ?>">
+				<h2 class="tsh-group__title" id="tsh-g-<?php echo esc_attr( $gkey ); ?>">
+					<span class="tsh-group__label"><?php echo esc_html( $group['label'] ); ?></span>
+					<span class="tsh-group__n"><?php echo esc_html( TSH_View::num( count( $group['items'] ) ) ); ?></span>
 				</h2>
-				<div class="tisa-hub-grid" data-tsh-grid="pinned"></div>
-			</div>
-
-			<?php foreach ( $groups as $gkey => $group ) : ?>
-				<div class="tisa-hub-group" data-group="<?php echo esc_attr( $gkey ); ?>" role="group" aria-labelledby="tsh-g-<?php echo esc_attr( $gkey ); ?>">
-					<h2 class="tisa-hub-group__title" id="tsh-g-<?php echo esc_attr( $gkey ); ?>">
-						<?php echo esc_html( $group['label'] ); ?>
-						<span class="tisa-badge tisa-badge--outline"><?php echo esc_html( TSH_View::num( count( $group['items'] ) ) ); ?></span>
-					</h2>
-					<div class="tisa-hub-grid" data-tsh-grid>
-						<?php foreach ( $group['items'] as $item ) : ?>
-							<?php echo tsh_card( $item, $pins, $settings ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-						<?php endforeach; ?>
-					</div>
+				<div class="tisa-hub-grid tsh-grid" data-tsh-grid>
+					<?php foreach ( $group['items'] as $item ) : ?>
+						<?php echo tsh_card( $item, $pins, $settings ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+					<?php endforeach; ?>
 				</div>
-			<?php endforeach; ?>
+			</section>
+		<?php endforeach; ?>
 
-			<div class="tisa-empty" id="tsh-empty" hidden>
-				<span class="tisa-empty__icon"><?php echo TSH_View::icon( 'search' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
-				<b class="tisa-h3"><?php esc_html_e( 'ابزاری با این نام پیدا نشد', 'tisacase-hub' ); ?></b>
-				<button type="button" class="tisa-btn tisa-btn--secondary tisa-btn--sm" id="tsh-clear"><?php esc_html_e( 'پاک کردن جستجو', 'tisacase-hub' ); ?></button>
-			</div>
-
-			<?php if ( ! empty( $hidden ) ) : ?>
-				<p class="tisa-hub-footnote">
-					<?php
-					printf(
-						/* translators: %d: count of hidden tools */
-						esc_html__( '%d ابزار مخفی است.', 'tisacase-hub' ),
-						(int) count( $hidden )
-					);
-					?>
-					<a href="<?php echo esc_url( $settings_url ); ?>"><?php esc_html_e( 'بازگردانی', 'tisacase-hub' ); ?></a>
-				</p>
-			<?php endif; ?>
+		<div class="tsh-empty" id="tsh-empty" hidden>
+			<span class="tsh-empty__icon" aria-hidden="true"><?php echo TSH_View::icon( 'search' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
+			<b><?php esc_html_e( 'ابزاری با این نام پیدا نشد', 'tisacase-hub' ); ?></b>
+			<button type="button" class="tisa-btn tisa-btn--secondary tisa-btn--sm" id="tsh-clear"><?php esc_html_e( 'پاک کردن جستجو', 'tisacase-hub' ); ?></button>
 		</div>
-	</section>
+
+		<?php if ( ! empty( $hidden ) ) : ?>
+			<p class="tsh-foot">
+				<?php
+				printf(
+					/* translators: %d: count of hidden tools */
+					esc_html__( '%d ابزار مخفی است.', 'tisacase-hub' ),
+					(int) count( $hidden )
+				);
+				?>
+				<a href="<?php echo esc_url( $settings_url ); ?>"><?php esc_html_e( 'بازگردانی', 'tisacase-hub' ); ?></a>
+			</p>
+		<?php endif; ?>
+	</main>
 </div>

@@ -146,7 +146,7 @@
 			highlight( $( '.tisa-plugin-card__title', c ), hit ? q : '' );
 			clearConfirm( c );
 		} );
-		$$( '.tisa-hub-group' ).forEach( function ( g ) {
+		$$( '.tsh-group' ).forEach( function ( g ) {
 			var any = $$( '.tisa-plugin-card', g ).some( function ( c ) { return ! c.hidden; } );
 			g.hidden = ! any;
 		} );
