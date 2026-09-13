@@ -88,7 +88,7 @@ $tool_n       = TSH_View::num( count( $all ) );
 					<?php
 					printf(
 						/* translators: %d: count of hidden tools */
-						esc_html__( '%d ردیف مخفی است.', 'tisacase-hub' ),
+						esc_html__( '%d ابزار مخفی است.', 'tisacase-hub' ),
 						(int) count( $hidden )
 					);
 					?>

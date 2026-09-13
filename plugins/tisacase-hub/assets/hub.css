@@ -29,18 +29,40 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 }
 
 /* ==================================================================
-   ۲) هیرو
+   ۲) سرِ صفحه — بدون پنل رنگی
+   ------------------------------------------------------------------
+   لانچر یک فهرست است؛ سر پررنگ با آن رقابت می‌کرد و بنر افزونه‌های دیگر
+   هم داخلش می‌افتاد. حالا فقط عنوان + یک خط + دکمهٔ تنظیمات، روی خودِ بوم.
    ================================================================== */
 
 .tisa-hero--slim {
 	display: block;
-	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
+	margin: 0 0 var(--tisa-sp-4, 16px);
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: none !important;
+	box-shadow: none;
+	color: var(--tisa-ink, #1F2A2E);
+	overflow: visible;
+}
+
+/* لایهٔ مشترک، بچه‌های هیرو را سفید می‌کند؛ اینجا زمینه سفید است */
+.tisa-hero--slim .tisa-hero-title,
+.tisa-hero--slim .tisa-hero-txt,
+.tisa-hero--slim .tisa-lead {
+	color: var(--tisa-ink, #1F2A2E);
+}
+
+.tisa-hero--slim::before,
+.tisa-hero--slim::after {
+	display: none;
 }
 
 .tisa-hero-row {
 	display: flex;
 	flex-wrap: wrap;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px);
 	min-width: 0;
 }
@@ -50,14 +72,17 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 }
 
 .tisa-hero--slim .tisa-hero-mark {
-	width: 38px;
-	height: 38px;
+	width: 36px;
+	height: 36px;
 	border-radius: var(--tisa-r-sm, 10px);
+	background: var(--tisa-primary, #0E7C6B);
+	color: #fff;
+	box-shadow: none;
 }
 
 .tisa-hero--slim .tisa-hero-mark svg {
-	width: 19px;
-	height: 19px;
+	width: 18px;
+	height: 18px;
 }
 
 .tisa-hero--slim .tisa-hero-txt {
@@ -65,15 +90,17 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 }
 
 .tisa-hero--slim .tisa-hero-title {
+	margin: 0;
 	font-size: var(--tisa-fs-h2, 19px);
+	font-weight: 800;
+	color: var(--tisa-ink, #1F2A2E);
 }
 
-/* کنتراست متن روی گرادیان: AA برای متن ریز (بازخورد ۱٫۲) */
 .tisa-hero--slim .tisa-lead {
-	margin: 2px 0 0;
-	color: #fff;
-	opacity: .95;
-	font-size: var(--tisa-fs-body, 14px);
+	margin: 1px 0 0;
+	font-size: var(--tisa-fs-meta, 12px);
+	color: var(--tisa-muted, #77828A);
+	opacity: 1;
 }
 
 .tisa-hero-actions {
@@ -86,27 +113,33 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 	white-space: nowrap;
 }
 
-/* آیکون و برچسب یک واحد‌اند؛ در عرض کم تنها wrap نمی‌شوند */
 .tisa-btn > span:only-child {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--tisa-sp-2, 8px);
 }
 
+/* دکمهٔ تنظیمات: آرام (secondary)؛ روی صفحه فقط «باز کردن»ها پررنگ‌اند */
 .tisa-btn--on-dark {
-	background: rgba(255, 255, 255, .16) !important;
-	color: #fff !important;
-	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28);
+	background: var(--tisa-surface, #fff) !important;
+	color: var(--tisa-muted, #77828A) !important;
+	border: 1px solid var(--tisa-border, #E3E1DA) !important;
+	box-shadow: none !important;
 }
 
 .tisa-btn--on-dark:hover {
-	background: rgba(255, 255, 255, .26) !important;
+	color: var(--tisa-ink, #1F2A2E) !important;
+	border-color: var(--tisa-border-strong, #C9DCD7) !important;
 }
 
-.tisa-btn--on-dark:focus-visible,
-.tisa-hero .tisa-btn:focus-visible {
+.tisa-btn--on-dark:focus-visible {
 	outline: 0;
-	box-shadow: 0 0 0 3px rgba(255, 255, 255, .55);
+	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)) !important;
+}
+
+/* بنر افزونه‌های دیگر که JS‌شان بعد از h1 درج می‌کند: زیر سر، با رنگ خودش */
+.tisa-hero--slim .notice {
+	margin: var(--tisa-sp-3, 12px) 0 0;
 }
 
 /* ==================================================================
@@ -191,11 +224,14 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 }
 
 /* ==================================================================
-   ۴) ردیفِ ابزار (گرید نیست؛ تک‌سطر)
+   ۴) کارتِ ابزار — مینیمال، یک عنصر پررنگ در هر کارت
+   ------------------------------------------------------------------
+   سلسله‌مراتب رنگ:  ۱) «باز کردن» (primary)  ۲) عنوان (ink)
+   ۳) بقیه (muted) — سنجاق/مخفی/غیرفعال فقط با hover رنگ می‌گیرند.
    ================================================================== */
 
 .tisa-hub-group {
-	margin: 0 0 var(--tisa-sp-5, 24px);
+	margin: 0 0 var(--tisa-sp-6, 32px);
 }
 
 .tisa-hub-group:last-child {
@@ -206,131 +242,257 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 	display: flex;
 	align-items: center;
 	gap: var(--tisa-sp-2, 8px);
-	margin: 0 0 var(--tisa-sp-2, 8px);
+	margin: 0 0 var(--tisa-sp-3, 12px);
 	font-size: var(--tisa-fs-meta, 12px);
-	font-weight: 800;
-	letter-spacing: .2px;
+	font-weight: 700;
 	color: var(--tisa-muted, #77828A);
-	text-transform: none;
 }
 
+.tisa-hub-group__title .tisa-badge {
+	font-weight: 500;
+}
+
+/* ۴ ستون در عرض کامل، ۳ و ۲ در پایین‌تر — بدون خانهٔ «کشیده» */
 .tisa-hub-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--tisa-sp-3, 12px);
+}
+
+@media screen and (max-width: 1100px) {
+	.tisa-hub-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+}
+
+@media screen and (max-width: 782px) {
+	.tisa-hub-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media screen and (max-width: 520px) {
+	.tisa-hub-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.tisa-hub-tile {
+	position: relative;
 	display: flex;
 	flex-direction: column;
-	gap: var(--tisa-sp-2, 8px);
-}
-
-.tisa-plugin-card--row {
-	position: relative;
-	display: flex;
-	flex-wrap: nowrap;
-	flex-direction: row;
-	align-items: center;
 	gap: var(--tisa-sp-3, 12px);
-	padding: 9px var(--tisa-sp-4, 16px);
+	min-height: 150px;
+	padding: var(--tisa-sp-4, 16px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
 	border-radius: var(--tisa-r, 14px);
-	min-height: 54px;
+	background: var(--tisa-surface, #fff);
+	box-shadow: none;
+	transition: border-color var(--tisa-t, 150ms), box-shadow var(--tisa-t, 150ms);
 }
 
-.tisa-plugin-card--row > * {
-	position: relative;
-	z-index: 1;
+.tisa-hub-tile:hover {
+	border-color: var(--tisa-border-strong, #C9DCD7);
+	box-shadow: var(--tisa-shadow-sm, 0 1px 2px rgba(31, 42, 46, .06));
 }
 
-/* لینک نامرئی: کل ردیف را کلیک‌پذیر می‌کند، بدون اینکه ظاهر عوض شود */
-.tisa-plugin-card__go {
-	position: static;
-	z-index: 0;
-}
-
-.tisa-plugin-card__go::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	border-radius: inherit;
-}
-
-.tisa-plugin-card--row:hover {
-	border-color: var(--tisa-primary-border, #B9D9D2);
-	background: var(--tisa-primary-tint, #F2FBF8);
-}
-
-.tisa-plugin-card--row:focus-visible,
-.tisa-plugin-card--row.is-focused {
+.tisa-hub-tile:focus-visible,
+.tisa-hub-tile.is-focused {
 	outline: 0;
 	border-color: var(--tisa-primary, #0E7C6B);
 	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
 }
 
-.tisa-plugin-card__icon {
-	flex: 0 0 auto;
-	display: grid;
-	place-items: center;
-	width: 30px;
-	height: 30px;
-	border-radius: var(--tisa-r-xs, 6px);
+/* سر: آیکون + اکشن‌های آرام */
+.tisa-hub-tile__head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--tisa-sp-2, 8px);
+}
+
+.tisa-hub-tile .tisa-plugin-card__icon {
+	width: 34px;
+	height: 34px;
+	border-radius: var(--tisa-r-sm, 10px);
 	background: var(--tisa-primary-soft, #E8F0EE);
 	color: var(--tisa-primary-ink, #0A5F52);
 }
 
-.tisa-plugin-card__icon svg {
-	width: 16px;
-	height: 16px;
+.tisa-hub-tile .tisa-plugin-card__icon svg {
+	width: 17px;
+	height: 17px;
 }
 
-.tisa-plugin-card__txt {
+.tisa-hub-tile__quiet {
+	display: inline-flex;
+	gap: 2px;
+	opacity: .55;
+	transition: opacity var(--tisa-t, 150ms);
+}
+
+.tisa-hub-tile:hover .tisa-hub-tile__quiet,
+.tisa-hub-tile:focus-within .tisa-hub-tile__quiet,
+.tisa-hub-tile.is-pinned .tisa-hub-tile__quiet {
+	opacity: 1;
+}
+
+@media (hover: none) {
+	.tisa-hub-tile__quiet {
+		opacity: 1;
+	}
+}
+
+/* دکمهٔ آرام: بدون حاشیه، بدون پس‌زمینه؛ hover → tint */
+.tisa-quiet-btn,
+.tisa-pin {
+	position: relative;
+	inset: auto;
+	display: inline-grid;
+	place-items: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--tisa-r-xs, 6px);
+	background: transparent;
+	color: var(--tisa-muted, #77828A);
+	font-size: 13px;
+	line-height: 1;
+	text-decoration: none;
+	cursor: pointer;
+	opacity: 1;
+	transition: background var(--tisa-t, 150ms), color var(--tisa-t, 150ms);
+}
+
+.tisa-quiet-btn svg {
+	width: 14px;
+	height: 14px;
+}
+
+.tisa-quiet-btn:hover,
+.tisa-pin:hover {
+	background: var(--tisa-surface-3, #F6F5F1);
+	color: var(--tisa-ink, #1F2A2E);
+}
+
+.tisa-quiet-btn:focus-visible,
+.tisa-pin:focus-visible {
+	outline: 0;
+	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
+}
+
+.tisa-hub-tile.is-pinned .tisa-pin {
+	color: var(--tisa-warning-ink, #8A6116);
+}
+
+.tisa-hub-tile.is-pinned {
+	border-color: var(--tisa-border-strong, #C9DCD7);
+}
+
+/* بدنه: عنوان + یک خط متا */
+.tisa-hub-tile__body {
 	flex: 1 1 auto;
 	display: flex;
-	align-items: baseline;
-	gap: var(--tisa-sp-2, 8px);
+	flex-direction: column;
+	gap: 4px;
 	min-width: 0;
 }
 
-.tisa-plugin-card__title {
+.tisa-hub-tile .tisa-plugin-card__title {
+	display: block;
+	margin: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-size: var(--tisa-fs-body, 14px);
 	font-weight: 700;
 	color: var(--tisa-ink, #1F2A2E);
+	text-decoration: none;
 }
 
-/* شمارهٔ نسخه یک «کد» است: مونو + LTR (قرارداد §۸) */
-.tisa-plugin-card__ver {
-	flex: 0 0 auto;
-	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
+.tisa-hub-tile__go:hover {
+	color: var(--tisa-primary-ink, #0A5F52);
+}
+
+/* لینک عنوان کل کارت را می‌گیرد؛ دکمه‌ها رو می‌افتند (z-index) */
+.tisa-hub-tile__go::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+}
+
+.tisa-hub-tile__head,
+.tisa-hub-tile__foot,
+.tisa-confirmbar {
+	position: relative;
+	z-index: 1;
+}
+
+.tisa-hub-tile__meta {
+	display: flex;
+	align-items: center;
+	gap: var(--tisa-sp-2, 8px);
 	font-size: var(--tisa-fs-tiny, 11px);
-	font-variant-numeric: normal;
 	color: var(--tisa-muted, #77828A);
 }
 
-.tisa-plugin-card__state {
-	flex: 0 0 auto;
+.tisa-hub-tile__ver {
+	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
+	font-size: var(--tisa-fs-tiny, 11px);
+	font-variant-numeric: normal;
+}
+
+.tisa-hub-tile__state {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.tisa-hub-tile__state .tisa-dot {
+	width: 6px;
+	height: 6px;
+}
+
+.tisa-hub-tile__state.is-on {
+	color: var(--tisa-success, #1A7F37);
+}
+
+.tisa-hub-tile__state.is-warn {
+	color: var(--tisa-warning-ink, #8A6116);
+}
+
+/* پا: یک دکمهٔ پررنگ + یک آیکون آرام، همین */
+.tisa-hub-tile__foot {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
+	gap: var(--tisa-sp-2, 8px);
 }
 
-.tisa-row-tools {
-	flex: 0 0 auto;
-	display: flex;
-	flex-wrap: nowrap;
-	align-items: center;
-	gap: var(--tisa-sp-1, 4px);
+.tisa-hub-tile__foot .tisa-btn--sm {
+	min-height: 30px;
+	padding-inline: var(--tisa-sp-4, 16px);
 }
 
-.tisa-row-tools .tisa-btn {
-	padding-inline: var(--tisa-sp-3, 12px);
+.tisa-hub-tile__off {
+	opacity: .55;
 }
 
-.tisa-plugin-card mark {
-	padding: 0 2px;
-	border-radius: 3px;
-	background: #FFF2A8;
-	color: inherit;
+.tisa-hub-tile:hover .tisa-hub-tile__off,
+.tisa-hub-tile:focus-within .tisa-hub-tile__off {
+	opacity: 1;
 }
 
-.tisa-plugin-card.is-inactive {
-	background: var(--tisa-surface-2, #FAFAF8);
+.tisa-hub-tile__off:hover {
+	color: var(--tisa-danger, #B5453A);
+	background: var(--tisa-danger-soft, #FBECEA);
+}
+
+.tisa-hub-tile__na {
+	font-size: var(--tisa-fs-tiny, 11px);
+	color: var(--tisa-muted, #77828A);
 }
 
 .tisa-plugin-card.is-inactive .tisa-plugin-card__icon {
@@ -342,89 +504,56 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 	opacity: .72;
 }
 
-.tisa-plugin-card.is-pinned {
-	border-color: var(--tisa-warning, #C79A2E);
-	box-shadow: inset 3px 0 0 var(--tisa-warning, #C79A2E);
+.tisa-plugin-card mark {
+	padding: 0 2px;
+	border-radius: 3px;
+	background: #FFF2A8;
+	color: inherit;
 }
 
-/* دکمهٔ آیکونیِ یکسان در ارتفاع ردیف */
-.tisa-btn--icon {
-	width: 30px;
-	min-width: 30px;
-	height: 30px;
-	padding: 0;
-	justify-content: center;
-	border-radius: var(--tisa-r-xs, 6px);
-	color: var(--tisa-muted, #77828A);
-	background: transparent;
-}
-
-.tisa-btn--icon:hover {
-	background: var(--tisa-surface-3, #F6F5F1);
-	color: var(--tisa-ink, #1F2A2E);
-}
-
-.tisa-btn--icon svg {
-	width: 15px;
-	height: 15px;
-}
-
-/* --- سنجاق: همیشه دیده می‌شود (روی تاچ هم) --- */
-.tisa-pin {
-	position: relative;
-	inset: auto;
-	z-index: 1;
-	display: grid;
-	place-items: center;
-	width: 30px;
-	height: 30px;
-	padding: 0;
-	border: 0;
-	border-radius: var(--tisa-r-xs, 6px);
-	background: transparent;
-	color: var(--tisa-muted-2, #9AA3A9);
-	font-size: 13px;
-	line-height: 1;
-	opacity: 1;
-	cursor: pointer;
-	transition: background var(--tisa-t, 150ms), color var(--tisa-t, 150ms);
-}
-
-.tisa-pin:hover {
-	background: var(--tisa-primary-soft, #E8F0EE);
-	color: var(--tisa-primary-ink, #0A5F52);
-}
-
-.tisa-plugin-card.is-pinned .tisa-pin {
-	color: var(--tisa-warning-ink, #8A6116);
-	background: var(--tisa-warning-soft, #FCF3D7);
-}
-
-/* --- تأیید درون‌خطی جای confirm() بومی --- */
+/* --- تأیید غیرفعال‌سازی: جای پا را می‌گیرد، آرام، بدون قرمز پر --- */
 .tisa-confirmbar {
-	flex: 0 0 auto;
 	display: flex;
 	align-items: center;
 	gap: var(--tisa-sp-2, 8px);
-	padding: 4px 8px;
-	border-radius: var(--tisa-r-xs, 6px);
-	background: var(--tisa-danger-soft, #FBECEA);
 	font-size: var(--tisa-fs-meta, 12px);
+	color: var(--tisa-ink, #1F2A2E);
 }
 
-.tisa-confirmbar b {
-	color: var(--tisa-danger-ink, #8E3128);
-	font-weight: 700;
-	white-space: nowrap;
+.tisa-confirmbar > span {
+	flex: 1 1 auto;
 }
 
-.tisa-plugin-card.is-confirming .tisa-confirmbar[hidden] {
+.tisa-hub-tile.is-confirming .tisa-hub-tile__foot {
+	display: none;
+}
+
+.tisa-hub-tile.is-confirming .tisa-confirmbar[hidden] {
 	display: flex;
 }
 
-/* وقتی تأیید باز است، خوشهٔ اکشن کنارش دو کلیک‌پذیر نمی‌ماند */
-.tisa-plugin-card.is-confirming .tisa-row-tools {
-	display: none;
+.tisa-btn--danger-soft {
+	background: var(--tisa-danger-soft, #FBECEA) !important;
+	color: var(--tisa-danger-ink, #8E3128) !important;
+	border-color: transparent !important;
+	box-shadow: none !important;
+}
+
+.tisa-btn--danger-soft:hover {
+	background: var(--tisa-danger, #B5453A) !important;
+	color: #fff !important;
+}
+
+.tisa-btn--ghost {
+	background: transparent !important;
+	color: var(--tisa-muted, #77828A) !important;
+	border-color: transparent !important;
+	box-shadow: none !important;
+}
+
+.tisa-btn--ghost:hover {
+	background: var(--tisa-surface-3, #F6F5F1) !important;
+	color: var(--tisa-ink, #1F2A2E) !important;
 }
 
 /* ==================================================================
@@ -561,18 +690,6 @@ body.tisa-hub-page .tisa-wrap.tisa-hub-wrap {
 	.tisa-hub-card__top,
 	.tisa-hub-card__body {
 		padding: var(--tisa-sp-4, 16px);
-	}
-
-	/* در عرض کم ردیف دوخطی می‌شود، ولی نه به‌هم‌ریخته */
-	.tisa-plugin-card--row {
-		flex-wrap: wrap;
-		row-gap: var(--tisa-sp-2, 8px);
-	}
-
-	.tisa-plugin-card__state,
-	.tisa-row-tools,
-	.tisa-confirmbar {
-		margin-inline-start: 42px;
 	}
 
 	.tisa-hero-actions {

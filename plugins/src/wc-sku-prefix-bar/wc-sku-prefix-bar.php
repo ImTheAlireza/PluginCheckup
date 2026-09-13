@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WooCommerce SKU Prefix Bar
  * Description: SKU prefix dashboard, next-SKU generator, duplicate checker and protected REST API for the Telegram bot.
- * Version: 1.5.0
+ * Version: 1.5.1
  * Author: Arena
  * Text Domain: wc-sku-prefix-bar
  * Requires at least: 5.6
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class WC_SKU_Prefix_Bar {
     const TRANSIENT = 'wcspb_latest_skus';
-    const VER = '1.5.0';
+    const VER = '1.5.1';
     const TTL = HOUR_IN_SECONDS * 6;
     private static $printed = false;
 
@@ -90,7 +90,7 @@ class WC_SKU_Prefix_Bar {
     public function render_bar(){ if(self::$printed||!$this->is_products_screen()||!current_user_can('edit_products'))return; self::$printed=true; echo $this->bar_html($this->get_latest()); }
     private function bar_html( $items ) {
         ob_start(); ?>
-        <div class="wcspb-bar" id="wcspb-bar" dir="rtl" role="toolbar" aria-label="شناسه‌ها">
+        <div class="wcspb-bar" id="wcspb-bar" dir="rtl" role="toolbar" aria-label="شناسه‌ها" style="display: flex;visibility: visible;opacity: 1;">
             <span class="wcspb-sort-label"><?php esc_html_e( 'مرتب‌سازی بر اساس:', 'wc-sku-prefix-bar' ); ?></span>
             <span class="wcspb-list">
             <?php if ( empty( $items ) ) : ?>

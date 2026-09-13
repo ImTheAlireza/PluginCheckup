@@ -569,7 +569,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			$texts = array(
 				'activated'   => array( 'success', __( 'افزونه فعال شد.', 'tisacase-hub' ) ),
 				'deactivated' => array( 'success', __( 'افزونه غیرفعال شد.', 'tisacase-hub' ) ),
-				'hidden'      => array( 'info', sprintf( /* translators: %s: settings url */ __( 'ردیف مخفی شد. %sبازگردانی%s', 'tisacase-hub' ), '<a href="' . esc_url( admin_url( 'admin.php?page=' . TSH_SLUG . '-settings' ) ) . '">', '</a>' ) ),
+				'hidden'      => array( 'info', sprintf( /* translators: %s: settings url */ __( 'ابزار مخفی شد. %sبازگردانی%s', 'tisacase-hub' ), '<a href="' . esc_url( admin_url( 'admin.php?page=' . TSH_SLUG . '-settings' ) ) . '">', '</a>' ) ),
 				'saved'       => array( 'success', __( 'تنظیمات ذخیره شد و روی همهٔ صفحه‌ها اعمال می‌شود.', 'tisacase-hub' ) ),
 				'notfound'    => array( 'error', sprintf( /* translators: %s: dir */ __( 'پوشهٔ افزونه (%s) روی این سرور نیست.', 'tisacase-hub' ), $err ) ),
 				'failed'      => array( 'error', sprintf( /* translators: %s: error */ __( 'فعال‌سازی نشد: %s', 'tisacase-hub' ), $err ) ),
