@@ -137,6 +137,40 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				'screens' => (array) apply_filters( 'tisacase_hub_skubar_screens', array( 'edit-product' ) ),
 			);
 
+			$items['pricing'] = array(
+				'title' => __( 'قیمت‌گذاری', 'tisacase-hub' ),
+				'desc'  => __( 'قوانین داینامیک محصول/دسته/سراسری + تغییر گروهی امن قیمت‌ها با پیش‌نمایش، لاگ و بازگردانی.', 'tisacase-hub' ),
+				'group' => 'pricing',
+				'icon'  => 'tag',
+				'dir'   => 'tisacase-pricing',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'قوانین داینامیک', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-pricing&tab=rules',
+						'screen' => 'woocommerce_page_tisacase-pricing',
+						'parent' => 'woocommerce',
+						'slug'   => 'tisacase-pricing',
+					),
+					array(
+						'label'  => __( 'تغییر گروهی', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-pricing&tab=bulk',
+						'screen' => 'woocommerce_page_tisacase-pricing',
+					),
+					array(
+						'label'  => __( 'گزارش و بازگردانی', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-pricing&tab=runs',
+						'screen' => 'woocommerce_page_tisacase-pricing',
+					),
+					array(
+						'label'  => __( 'تنظیمات', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-pricing&tab=settings',
+						'screen' => 'woocommerce_page_tisacase-pricing',
+					),
+				),
+			);
+
+			// دو افزونهٔ قدیمی (تا وقتی هنوز نصب‌اند) همچنان شناخته می‌شوند.
 			$items['tcbpm'] = array(
 				'title' => __( 'قیمت گروهی', 'tisacase-hub' ),
 				'desc'  => __( 'افزایش/کاهش/set قیمت عادی، فروش ویژه و عمده؛ پیش‌نمایش، لاگ و بازگردانی.', 'tisacase-hub' ),

@@ -1,0 +1,495 @@
+<?php
+/**
+ * موتور قوانین داینامیک: قیمت‌ها را هنگام نمایش بر اساس قانون محصول ← دسته ← سراسری
+ * محاسبه می‌کند، بدون نوشتن در دیتابیس. قیمت همکاری و فروش ویژهٔ واقعی دست نمی‌خورد.
+ *
+ * @package TisaCase_Pricing
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+if ( ! class_exists( 'TCP_Rules' ) ) {
+
+	final class TCP_Rules {
+
+		const OPTION         = 'tcp_rules';
+		const CACHE_VERSION  = 'tcp_rules_cache_version';
+		const PRIORITY       = 99999;
+		const WHOLESALE_ROLE = 'tisacase_partner';
+		const WHOLESALE_CAP  = 'tisacase_view_wholesale_prices';
+
+		const ACTION_SAVE   = 'tcp_rules_save';
+		const ACTION_SYNC   = 'tcp_rules_sync_all';
+		const AJAX_PRODUCTS = 'tcp_rules_search_products';
+		const AJAX_CATS     = 'tcp_rules_search_categories';
+		const SEARCH_NONCE  = 'tcp_rules_search';
+
+		private static $settings_cache = null;
+		private static $rule_cache     = array();
+		private static $category_ids   = array();
+		private static $wholesale      = array();
+
+		/* -----------------------------------------------------------------
+		 * راه‌اندازی
+		 * --------------------------------------------------------------- */
+
+		public static function activate() {
+			if ( false === get_option( self::CACHE_VERSION, false ) ) {
+				add_option( self::CACHE_VERSION, 1, '', false );
+			}
+		}
+
+		public static function hooks() {
+			add_action( 'admin_post_' . self::ACTION_SAVE, array( __CLASS__, 'save' ) );
+			add_action( 'admin_post_' . self::ACTION_SYNC, array( __CLASS__, 'sync_all' ) );
+			add_action( 'wp_ajax_' . self::AJAX_PRODUCTS, array( __CLASS__, 'ajax_search_products' ) );
+			add_action( 'wp_ajax_' . self::AJAX_CATS, array( __CLASS__, 'ajax_search_categories' ) );
+
+			if ( ! class_exists( 'WooCommerce' ) || ! class_exists( 'WC_Product' ) ) {
+				return;
+			}
+
+			$p = self::PRIORITY;
+			add_filter( 'woocommerce_product_get_regular_price', array( __CLASS__, 'filter_regular_price' ), $p, 2 );
+			add_filter( 'woocommerce_product_variation_get_regular_price', array( __CLASS__, 'filter_regular_price' ), $p, 2 );
+			add_filter( 'woocommerce_product_get_sale_price', array( __CLASS__, 'filter_sale_price' ), $p, 2 );
+			add_filter( 'woocommerce_product_variation_get_sale_price', array( __CLASS__, 'filter_sale_price' ), $p, 2 );
+			add_filter( 'woocommerce_product_get_price', array( __CLASS__, 'filter_active_price' ), $p, 2 );
+			add_filter( 'woocommerce_product_variation_get_price', array( __CLASS__, 'filter_active_price' ), $p, 2 );
+
+			add_filter( 'woocommerce_variation_prices_regular_price', array( __CLASS__, 'variation_regular_price' ), $p, 3 );
+			add_filter( 'woocommerce_variation_prices_sale_price', array( __CLASS__, 'variation_sale_price' ), $p, 3 );
+			add_filter( 'woocommerce_variation_prices_price', array( __CLASS__, 'variation_active_price' ), $p, 3 );
+			add_filter( 'woocommerce_get_variation_prices_hash', array( __CLASS__, 'variation_hash' ), $p, 3 );
+			add_filter( 'woocommerce_product_is_on_sale', array( __CLASS__, 'filter_is_on_sale' ), $p, 2 );
+
+			add_action( 'template_redirect', array( __CLASS__, 'protect_partner_cache' ), 1 );
+		}
+
+		/* -----------------------------------------------------------------
+		 * تنظیمات قوانین
+		 * --------------------------------------------------------------- */
+
+		public static function defaults() {
+			return array(
+				'global'     => array( 'enabled' => 0, 'increase' => 10, 'sale' => 10 ),
+				'products'   => array(),
+				'categories' => array(),
+			);
+		}
+
+		private static function percent( $value, $max ) {
+			$value = is_numeric( $value ) ? (float) $value : 0;
+			return max( 0, min( $max, $value ) );
+		}
+
+		public static function normalize_rule( $rule ) {
+			$rule = is_array( $rule ) ? $rule : array();
+			return array(
+				'enabled'  => ! empty( $rule['enabled'] ) ? 1 : 0,
+				'increase' => self::percent( isset( $rule['increase'] ) ? $rule['increase'] : 0, 500 ),
+				'sale'     => self::percent( isset( $rule['sale'] ) ? $rule['sale'] : 0, 99.9 ),
+			);
+		}
+
+		public static function settings() {
+			if ( null !== self::$settings_cache ) {
+				return self::$settings_cache;
+			}
+			$raw      = get_option( self::OPTION, array() );
+			$raw      = is_array( $raw ) ? $raw : array();
+			$defaults = self::defaults();
+
+			$settings = array(
+				'global'     => self::normalize_rule( isset( $raw['global'] ) && is_array( $raw['global'] ) ? $raw['global'] : $defaults['global'] ),
+				'products'   => array(),
+				'categories' => array(),
+			);
+			foreach ( array( 'products', 'categories' ) as $group ) {
+				foreach ( (array) ( isset( $raw[ $group ] ) ? $raw[ $group ] : array() ) as $id => $rule ) {
+					$id = absint( $id );
+					if ( $id && is_array( $rule ) ) {
+						$settings[ $group ][ $id ] = self::normalize_rule( $rule );
+					}
+				}
+			}
+			self::$settings_cache = $settings;
+			return $settings;
+		}
+
+		private static function persist( $settings ) {
+			update_option( self::OPTION, $settings, false );
+			$version = (int) get_option( self::CACHE_VERSION, 1 );
+			update_option( self::CACHE_VERSION, max( 1, $version + 1 ), false );
+			self::$settings_cache = null;
+			self::$rule_cache     = array();
+			self::$category_ids   = array();
+		}
+
+		/* -----------------------------------------------------------------
+		 * حل قانون برای یک محصول
+		 * --------------------------------------------------------------- */
+
+		private static function scope_product_id( $product ) {
+			if ( ! $product instanceof WC_Product ) {
+				return 0;
+			}
+			return $product->is_type( 'variation' ) ? absint( $product->get_parent_id() ) : absint( $product->get_id() );
+		}
+
+		private static function product_category_ids( $product_id ) {
+			if ( ! array_key_exists( $product_id, self::$category_ids ) ) {
+				$ids                                = wp_get_post_terms( $product_id, 'product_cat', array( 'fields' => 'ids' ) );
+				self::$category_ids[ $product_id ] = is_wp_error( $ids ) ? array() : array_map( 'absint', $ids );
+			}
+			return self::$category_ids[ $product_id ];
+		}
+
+		private static function category_matches( $category_id, $product_cats ) {
+			$category_id = absint( $category_id );
+			if ( ! $category_id || empty( $product_cats ) ) {
+				return false;
+			}
+			static $expanded = array();
+			if ( ! isset( $expanded[ $category_id ] ) ) {
+				$children                 = get_term_children( $category_id, 'product_cat' );
+				$children                 = is_wp_error( $children ) ? array() : array_map( 'absint', (array) $children );
+				$children[]               = $category_id;
+				$expanded[ $category_id ] = array_values( array_unique( $children ) );
+			}
+			return (bool) array_intersect( $expanded[ $category_id ], $product_cats );
+		}
+
+		private static function resolve_rule( $product ) {
+			$scope_id = self::scope_product_id( $product );
+			if ( ! $scope_id ) {
+				return null;
+			}
+			if ( array_key_exists( $scope_id, self::$rule_cache ) ) {
+				return self::$rule_cache[ $scope_id ];
+			}
+			$s    = self::settings();
+			$rule = null;
+
+			if ( isset( $s['products'][ $scope_id ] ) && ! empty( $s['products'][ $scope_id ]['enabled'] ) ) {
+				$rule = $s['products'][ $scope_id ];
+			} else {
+				$cats = self::product_category_ids( $scope_id );
+				foreach ( $s['categories'] as $category_id => $cat_rule ) {
+					if ( ! empty( $cat_rule['enabled'] ) && self::category_matches( $category_id, $cats ) ) {
+						$rule = $cat_rule;
+						break;
+					}
+				}
+				if ( null === $rule && ! empty( $s['global']['enabled'] ) ) {
+					$rule = $s['global'];
+				}
+			}
+			self::$rule_cache[ $scope_id ] = $rule;
+			return $rule;
+		}
+
+		/* -----------------------------------------------------------------
+		 * موتور قیمت
+		 * --------------------------------------------------------------- */
+
+		private static function can_apply( $product ) {
+			if ( ! $product instanceof WC_Product ) {
+				return false;
+			}
+			if ( is_admin() && function_exists( 'wp_doing_ajax' ) && ! wp_doing_ajax() ) {
+				return false;
+			}
+			$scope_id = self::scope_product_id( $product );
+			return $scope_id && 'publish' === get_post_status( $scope_id );
+		}
+
+		private static function has_real_sale( $product ) {
+			$sale = $product->get_sale_price( 'edit' );
+			return '' !== $sale && null !== $sale && is_numeric( $sale ) && (float) $sale > 0;
+		}
+
+		public static function is_partner() {
+			if ( ! is_user_logged_in() ) {
+				return false;
+			}
+			$user = wp_get_current_user();
+			if ( ! $user instanceof WP_User ) {
+				return false;
+			}
+			return in_array( self::WHOLESALE_ROLE, (array) $user->roles, true ) || user_can( $user, self::WHOLESALE_CAP );
+		}
+
+		private static function wholesale_price( $product ) {
+			$id = absint( $product->get_id() );
+			if ( ! $id ) {
+				return false;
+			}
+			if ( array_key_exists( $id, self::$wholesale ) ) {
+				return self::$wholesale[ $id ];
+			}
+			$value = get_post_meta( $id, TCP_WHOLESALE_META, true );
+			if ( ( '' === $value || ! is_numeric( $value ) || (float) $value <= 0 ) && $product->is_type( 'variation' ) ) {
+				$parent_id = absint( $product->get_parent_id() );
+				if ( $parent_id ) {
+					$value = get_post_meta( $parent_id, TCP_WHOLESALE_META, true );
+				}
+			}
+			self::$wholesale[ $id ] = ( '' !== $value && is_numeric( $value ) && (float) $value > 0 ) ? (float) $value : false;
+			return self::$wholesale[ $id ];
+		}
+
+		/** واحد ارز تعیین می‌کند قیمت به «…۸۰,۰۰۰» (ریال) یا «…۸,۰۰۰» (تومان) گرد شود. */
+		private static function step() {
+			$currency = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'IRT';
+			return 'IRR' === $currency ? array( 100000, 80000 ) : array( 10000, 8000 );
+		}
+
+		public static function round_to_8( $price ) {
+			list( $step, $ending ) = self::step();
+			return ( floor( (float) $price / $step ) * $step ) + $ending;
+		}
+
+		private static function calculated_regular( $product, $rule ) {
+			if ( self::has_real_sale( $product ) ) {
+				return '';
+			}
+			$regular = $product->get_regular_price( 'edit' );
+			if ( '' === $regular || ! is_numeric( $regular ) || (float) $regular <= 0 ) {
+				return '';
+			}
+			return self::round_to_8( (float) $regular * ( 1 + ( (float) $rule['increase'] / 100 ) ) );
+		}
+
+		private static function calculated_sale( $product, $rule ) {
+			if ( self::has_real_sale( $product ) || (float) $rule['sale'] <= 0 ) {
+				return '';
+			}
+			$regular = self::calculated_regular( $product, $rule );
+			if ( '' === $regular || (float) $regular <= 0 ) {
+				return '';
+			}
+			$sale = self::round_to_8( (float) $regular * ( 1 - ( (float) $rule['sale'] / 100 ) ) );
+			if ( $sale >= (float) $regular ) {
+				list( $step ) = self::step();
+				$sale         = max( 0, $sale - $step );
+			}
+			return $sale;
+		}
+
+		/** قانون قابل اعمال برای این محصول، یا null (شرط‌های مشترک همهٔ فیلترها). */
+		private static function applicable_rule( $product ) {
+			if ( ! self::can_apply( $product ) || self::has_real_sale( $product ) ) {
+				return null;
+			}
+			return self::resolve_rule( $product );
+		}
+
+		private static function partner_locked( $product ) {
+			return self::is_partner() && false !== self::wholesale_price( $product );
+		}
+
+		public static function filter_regular_price( $price, $product ) {
+			$rule = self::applicable_rule( $product );
+			if ( ! $rule ) {
+				return $price;
+			}
+			$new = self::calculated_regular( $product, $rule );
+			return '' !== $new ? $new : $price;
+		}
+
+		public static function filter_sale_price( $price, $product ) {
+			$rule = self::applicable_rule( $product );
+			if ( ! $rule || (float) $rule['sale'] <= 0 || self::partner_locked( $product ) ) {
+				return $price;
+			}
+			$new = self::calculated_sale( $product, $rule );
+			return '' !== $new ? $new : $price;
+		}
+
+		public static function filter_active_price( $price, $product ) {
+			$rule = self::applicable_rule( $product );
+			if ( ! $rule || self::partner_locked( $product ) ) {
+				return $price;
+			}
+			if ( (float) $rule['sale'] > 0 ) {
+				$sale = self::calculated_sale( $product, $rule );
+				if ( '' !== $sale ) {
+					return $sale;
+				}
+			}
+			$regular = self::calculated_regular( $product, $rule );
+			return '' !== $regular ? $regular : $price;
+		}
+
+		public static function variation_regular_price( $price, $variation, $parent ) {
+			return self::filter_regular_price( $price, $variation );
+		}
+
+		public static function variation_sale_price( $price, $variation, $parent ) {
+			return self::filter_sale_price( $price, $variation );
+		}
+
+		public static function variation_active_price( $price, $variation, $parent ) {
+			return self::filter_active_price( $price, $variation );
+		}
+
+		public static function filter_is_on_sale( $on_sale, $product ) {
+			$rule = self::applicable_rule( $product );
+			if ( ! $rule || (float) $rule['sale'] <= 0 || self::partner_locked( $product ) ) {
+				return $on_sale;
+			}
+			if ( $product->is_type( 'variable' ) ) {
+				return $on_sale;
+			}
+			return '' !== self::calculated_sale( $product, $rule ) ? true : $on_sale;
+		}
+
+		public static function variation_hash( $hash, $product, $for_display ) {
+			$hash['tisacase_pricing'] = array(
+				'plugin'  => TCP_VERSION,
+				'version' => (int) get_option( self::CACHE_VERSION, 1 ),
+				'mode'    => self::is_partner() ? 'partner' : 'retail',
+			);
+			return $hash;
+		}
+
+		public static function protect_partner_cache() {
+			if ( ! self::is_partner() ) {
+				return;
+			}
+			if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+				define( 'DONOTCACHEPAGE', true );
+			}
+			if ( ! headers_sent() ) {
+				nocache_headers();
+			}
+		}
+
+		/* -----------------------------------------------------------------
+		 * ذخیره / همگام‌سازی (admin-post)
+		 * --------------------------------------------------------------- */
+
+		private static function posted_group( $group, $type ) {
+			$out = array();
+			foreach ( (array) $group as $id => $rule ) {
+				$id = absint( $id );
+				if ( ! $id || ! is_array( $rule ) ) {
+					continue;
+				}
+				if ( 'products' === $type && 'product' !== get_post_type( $id ) ) {
+					continue;
+				}
+				if ( 'categories' === $type && ! term_exists( $id, 'product_cat' ) ) {
+					continue;
+				}
+				$out[ $id ] = self::normalize_rule( $rule );
+			}
+			return $out;
+		}
+
+		private static function redirect( $flag ) {
+			wp_safe_redirect( TCP_Admin::url( 'rules', array( $flag => 1 ) ) );
+			exit;
+		}
+
+		public static function save() {
+			if ( ! TCP_Settings::can() ) {
+				wp_die( 'دسترسی غیرمجاز.' );
+			}
+			check_admin_referer( self::ACTION_SAVE );
+			// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- در normalize_rule پاک‌سازی می‌شود.
+			$settings = array(
+				'global'     => self::normalize_rule( isset( $_POST['global'] ) ? wp_unslash( $_POST['global'] ) : array() ),
+				'products'   => self::posted_group( isset( $_POST['products'] ) ? wp_unslash( $_POST['products'] ) : array(), 'products' ),
+				'categories' => self::posted_group( isset( $_POST['categories'] ) ? wp_unslash( $_POST['categories'] ) : array(), 'categories' ),
+			);
+			// phpcs:enable
+			self::persist( $settings );
+			self::redirect( 'saved' );
+		}
+
+		public static function sync_all() {
+			if ( ! TCP_Settings::can() ) {
+				wp_die( 'دسترسی غیرمجاز.' );
+			}
+			check_admin_referer( self::ACTION_SYNC );
+			$settings           = self::settings();
+			$settings['global'] = array( 'enabled' => 1, 'increase' => 10, 'sale' => 10 );
+			self::persist( $settings );
+			self::redirect( 'synced' );
+		}
+
+		/* -----------------------------------------------------------------
+		 * جستجو (AJAX)
+		 * --------------------------------------------------------------- */
+
+		private static function ajax_term() {
+			if ( ! TCP_Settings::can() ) {
+				wp_send_json_error( array( 'message' => 'دسترسی غیرمجاز' ), 403 );
+			}
+			check_ajax_referer( self::SEARCH_NONCE, 'nonce' );
+			$term = isset( $_POST['term'] ) ? sanitize_text_field( wp_unslash( $_POST['term'] ) ) : '';
+			if ( ( function_exists( 'mb_strlen' ) ? mb_strlen( $term ) : strlen( $term ) ) < 2 ) {
+				wp_send_json_success( array() );
+			}
+			return $term;
+		}
+
+		public static function ajax_search_products() {
+			$term  = self::ajax_term();
+			$query = new WP_Query(
+				array(
+					'post_type'              => 'product',
+					'post_status'            => array( 'publish', 'draft', 'private', 'pending' ),
+					'posts_per_page'         => 20,
+					's'                      => $term,
+					'fields'                 => 'ids',
+					'orderby'                => 'relevance',
+					'order'                  => 'DESC',
+					'no_found_rows'          => true,
+					'update_post_meta_cache' => false,
+					'update_post_term_cache' => false,
+				)
+			);
+			$items = array();
+			foreach ( $query->posts as $id ) {
+				$product = wc_get_product( $id );
+				if ( $product ) {
+					$items[] = array(
+						'id'   => (int) $id,
+						'name' => $product->get_name(),
+						'sku'  => $product->get_sku(),
+						'type' => $product->get_type(),
+					);
+				}
+			}
+			wp_send_json_success( $items );
+		}
+
+		public static function ajax_search_categories() {
+			$term  = self::ajax_term();
+			$terms = get_terms(
+				array(
+					'taxonomy'   => 'product_cat',
+					'hide_empty' => false,
+					'name__like' => $term,
+					'number'     => 20,
+					'orderby'    => 'name',
+					'order'      => 'ASC',
+				)
+			);
+			$items = array();
+			if ( ! is_wp_error( $terms ) ) {
+				foreach ( $terms as $item ) {
+					$items[] = array(
+						'id'    => (int) $item->term_id,
+						'name'  => $item->name,
+						'count' => (int) $item->count,
+					);
+				}
+			}
+			wp_send_json_success( $items );
+		}
+	}
+}
