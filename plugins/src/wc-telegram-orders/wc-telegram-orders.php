@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ارسال سفارش‌ها به تلگرام ووکامرس
  * Description:       ارسال خودکار سفارش‌های جدید ووکامرس به تلگرام با فرمت فارسی دلخواه + گزارش روزانه فروش (با سنجاق خودکار) + اعلان کمبود موجودی محصولات + سیستم لاگ رویدادها در پنل.
- * Version:           1.12.1
+ * Version:           1.12.2
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            علیرضا شعبان زاده
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_TELEGRAM_ORDERS_VERSION', '1.12.1');
+define('WC_TELEGRAM_ORDERS_VERSION', '1.12.2');
 define('WC_TELEGRAM_ORDERS_OPTION', 'wc_telegram_orders_settings');
 define('WC_TELEGRAM_ORDERS_FILE', __FILE__);
 
@@ -922,8 +922,18 @@ class WC_Telegram_Orders {
         $s   = $this->get_settings();
         $gap = isset($s['status_gap']) ? max(0, (int) $s['status_gap']) : 3;
         $order_id = (int) $order_id;
+        // ضد سیل: اگر برای همین سفارش پیام وضعیتِ در صف هست، اسلات جدید نساز (پردازشگر وضعیت فعلی را می‌فرستد)
+        if ($this->status_event_pending($order_id)) {
+            return;
+        }
+        // سقف صف: اگر بیش از ۳۰۰ پیام وضعیت در انتظار است (تغییر گروهی خیلی بزرگ)، بقیه رها می‌شوند تا کرون/تلگرام خفه نشود
+        if ($this->status_queue_size() >= 300) {
+            $this->log('warning', 'order', 'status_dropped', sprintf('پیام وضعیت سفارش #%s ارسال نشد: صف پیام‌های وضعیت پر است (۳۰۰).', $order_id), ['old' => $old_status, 'new' => $new_status], $order_id);
+            return;
+        }
         $last = (int) get_option('wc_telegram_status_last_slot', 0);
-        $slot = max(time(), $last + $gap);
+        // اسلات‌ها بیش از ۳۰ دقیقه جلو نمی‌روند؛ صف پر شد → همان انتها
+        $slot = min(max(time(), $last + $gap), time() + 30 * MINUTE_IN_SECONDS);
         update_option('wc_telegram_status_last_slot', $slot, false);
         $args = [$order_id, (string) $old_status, (string) $new_status, 1];
         if (wp_schedule_single_event($slot, self::STATUS_HOOK, $args)) {
@@ -933,6 +943,37 @@ class WC_Telegram_Orders {
         }
         // زمان‌بندی نشد — همان‌جا بفرست
         $this->process_status_send($order_id, $old_status, $new_status, 1);
+    }
+
+    private function status_event_pending($order_id) {
+        $crons = _get_cron_array();
+        if (empty($crons) || !is_array($crons)) {
+            return false;
+        }
+        foreach ($crons as $cron) {
+            if (empty($cron[self::STATUS_HOOK])) {
+                continue;
+            }
+            foreach ($cron[self::STATUS_HOOK] as $data) {
+                if (isset($data['args'][0]) && (int) $data['args'][0] === (int) $order_id) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private function status_queue_size() {
+        $crons = _get_cron_array();
+        $n = 0;
+        if (is_array($crons)) {
+            foreach ($crons as $cron) {
+                if (!empty($cron[self::STATUS_HOOK])) {
+                    $n += count($cron[self::STATUS_HOOK]);
+                }
+            }
+        }
+        return $n;
     }
 
     // پردازشگر کرون پیام وضعیت — با تلاش مجدد (۳ بار) در صورت 429/خطای شبکه
@@ -1182,6 +1223,11 @@ class WC_Telegram_Orders {
         if (defined('DISABLE_WP_CRON') && DISABLE_WP_CRON) {
             return; // کرون واقعی سرور کار را انجام می‌دهد
         }
+        // بیش از یک بار در هر ۱۰ ثانیه کرون را بیدار نکن (سیل درخواست به wp-cron.php)
+        if (get_transient('wc_telegram_cron_spawned')) {
+            return;
+        }
+        set_transient('wc_telegram_cron_spawned', 1, 10);
         if (function_exists('spawn_cron')) {
             spawn_cron(time());
         }
@@ -3260,6 +3306,14 @@ class WC_Telegram_Orders {
 
     // فراخوانی عمومی Bot API — خروجی: ['ok', 'message', 'result' => آرایه پاسخ تلگرام]
     private function telegram_api($bot_token, $method, $params, $_retried = false) {
+        // اگر تلگرام همین الان 429 داده، قبل از تلاش تازه تا پایان retry_after صبر کن (بین همهٔ درخواست‌ها مشترک)
+        $until = (int) get_transient('wc_telegram_429_until');
+        if ($until > time()) {
+            $wait = min(30, $until - time());
+            if ($wait > 0) {
+                sleep($wait);
+            }
+        }
         $url = 'https://api.telegram.org/bot' . trim($bot_token) . '/' . $method;
         $response = wp_remote_post($url, [
             'timeout' => 15,
@@ -3278,6 +3332,7 @@ class WC_Telegram_Orders {
         // محدودیت نرخ تلگرام: طبق retry_after صبر و یک بار دوباره تلاش کن
         if ($code === 429 && !$_retried) {
             $wait = isset($body['parameters']['retry_after']) ? (int) $body['parameters']['retry_after'] : 3;
+            set_transient('wc_telegram_429_until', time() + $wait, max(1, $wait));
             $this->log('warning', 'telegram', 'rate_limited', sprintf('محدودیت نرخ تلگرام (429) هنگام %s؛ %d ثانیه صبر و تلاش مجدد.', $method, $wait), ['method' => $method, 'retry_after' => $wait], 0);
             sleep(max(1, min($wait, 30)));
             return $this->telegram_api($bot_token, $method, $params, true);
