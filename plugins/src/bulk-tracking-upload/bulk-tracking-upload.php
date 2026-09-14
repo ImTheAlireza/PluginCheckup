@@ -2,13 +2,15 @@
 /**
  * Plugin Name: Bulk Tracking Code Upload for WooCommerce
  * Description: آپلود انبوه کد رهگیری از اکسل و نمایش اطلاعات کامل سفارش + لینک پیگیری پست
- * Version: 2.2
+ * Version: 2.3.0
  * Author: علیرضا شعبان زاده
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
+
+define('BWT_VERSION', '2.3.0');
 
 // ========== 1. افزودن منو به پیشخوان ==========
 add_action('admin_menu', 'bwt_add_admin_menu');
@@ -42,8 +44,36 @@ function bwt_admin_assets($hook) {
         'bwt-admin',
         plugin_dir_url(__FILE__) . 'assets/admin.css',
         wp_style_is('tisacase-ui', 'registered') ? array('tisacase-ui') : array(),
-        '2.2'
+        BWT_VERSION
     );
+}
+
+
+// سر سبز مشترک دو صفحه (زبان طراحی TisaCase)
+function bwt_render_hero($active) {
+    $tabs = array(
+        'upload'  => array('label' => 'آپلود کد رهگیری', 'url' => admin_url('admin.php?page=bulk-tracking-upload')),
+        'cleanup' => array('label' => 'پاک کردن کدها',   'url' => admin_url('admin.php?page=bwt-cleanup')),
+    );
+    ?>
+    <header class="bwt-hero">
+        <div class="bwt-hero-row">
+            <div class="bwt-hero-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg>
+            </div>
+            <div class="bwt-hero-text">
+                <h1 class="bwt-hero-title">کد رهگیری پستی</h1>
+                <p class="bwt-hero-sub">افزودن انبوه کد رهگیری از CSV و پاک‌کردن کدها — به همراه فرم پیگیری سفارش برای مشتری</p>
+            </div>
+            <span class="bwt-hero-ver" dir="ltr">v<?php echo esc_html(BWT_VERSION); ?></span>
+        </div>
+        <nav class="bwt-tabs">
+            <?php foreach ($tabs as $key => $t) : ?>
+                <a class="bwt-tab <?php echo $key === $active ? 'is-active' : ''; ?>" href="<?php echo esc_url($t['url']); ?>"><?php echo esc_html($t['label']); ?></a>
+            <?php endforeach; ?>
+        </nav>
+    </header>
+    <?php
 }
 
 // ========== 2. صفحه آپلود اکسل ==========
@@ -95,24 +125,13 @@ function bwt_upload_page() {
     }
 
     ?>
-    <div class="wrap bwt-wrap">
-        <h1>آپلود فایل کدهای رهگیری پستی</h1>
-        <p class="bwt-lead">فرمت فایل CSV باید شامل دو ستون باشد: <strong>order_id, tracking_code</strong> (ردیف اول هدر است و نادیده گرفته می‌شود)</p>
-        <div class="bwt-card">
-            <p class="bwt-card-title"><strong>نمونه فایل صحیح:</strong></p>
-            <code class="bwt-sample">
-                order_id,tracking_code<br>
-                1234,12345678901234567890<br>
-                1235,98765432109876543210<br>
-                1236,
-            </code>
-            <p class="bwt-hint">* اگر ستون دوم خالی باشد، کد رهگیری آن سفارش حذف می‌شود.</p>
-        </div>
+    <div class="wrap tisa-wrap bwt-wrap" dir="rtl">
+        <?php bwt_render_hero('upload'); ?>
 
         <?php
         // نمایش خطای آپلود کلی
         if (!empty($upload_error)) {
-            echo '<div class="notice notice-error"><p>❌ ' . esc_html($upload_error) . '</p></div>';
+            echo '<div class="tisa-notice tisa-notice--danger bwt-notice">' . esc_html($upload_error) . '</div>';
         }
 
         // نمایش نتیجه پردازش با جزئیات خطاها
@@ -122,40 +141,68 @@ function bwt_upload_page() {
             $details = $result_data['details'];
             $total   = $updated + $errors;
 
+            echo '<div class="bwt-kpis">';
+            echo '<div class="bwt-kpi"><div class="t">ردیف‌های پردازش‌شده</div><div class="v">' . esc_html(number_format_i18n($total)) . '</div></div>';
+            echo '<div class="bwt-kpi bwt-kpi--ok"><div class="t">بروزرسانی موفق</div><div class="v">' . esc_html(number_format_i18n($updated)) . '</div></div>';
+            echo '<div class="bwt-kpi' . ($errors > 0 ? ' bwt-kpi--bad' : '') . '"><div class="t">ناموفق</div><div class="v">' . esc_html(number_format_i18n($errors)) . '</div></div>';
+            echo '</div>';
+
             if ($errors === 0) {
-                echo '<div class="notice notice-success"><p>✅ همه ردیف‌ها با موفقیت پردازش شد. تعداد بروزرسانی: <strong>' . esc_html($updated) . '</strong> از ' . esc_html($total) . ' ردیف.</p></div>';
+                echo '<div class="tisa-notice tisa-notice--success bwt-notice">همه ردیف‌ها با موفقیت پردازش شد.</div>';
             } else {
-                echo '<div class="notice notice-warning"><p>⚠️ پردازش تمام شد. موفق: <strong>' . esc_html($updated) . '</strong> | ناموفق: <strong>' . esc_html($errors) . '</strong> | کل ردیف‌های پردازش شده (بدون هدر): <strong>' . esc_html($total) . '</strong></p></div>';
+                echo '<div class="tisa-notice tisa-notice--warning bwt-notice">پردازش تمام شد؛ ' . esc_html(number_format_i18n($errors)) . ' ردیف بروزرسانی نشد. جزئیات در جدول زیر.</div>';
             }
 
             if (!empty($details)) {
-                echo '<div class="bwt-card bwt-card--error">';
-                echo '<h3 class="bwt-card-h">ردیف‌های خطا خورده (' . esc_html(count($details)) . ' مورد)</h3>';
-                echo '<p class="bwt-hint">این ردیف‌ها بروزرسانی نشدند. فایل را اصلاح و دوباره آپلود کنید.</p>';
-                echo '<div class="bwt-scroll">';
-                echo '<table class="widefat striped bwt-table">';
+                echo '<section class="bwt-card bwt-card--error">';
+                echo '<div class="bwt-card-head"><span class="bwt-dot bwt-dot--bad"></span><div><h2>ردیف‌های خطا خورده (' . esc_html(number_format_i18n(count($details))) . ' مورد)</h2><p>این ردیف‌ها بروزرسانی نشدند. فایل را اصلاح و دوباره آپلود کنید.</p></div></div>';
+                echo '<div class="bwt-card-body">';
+                echo '<div class="tisa-table-scroll bwt-scroll">';
+                echo '<table class="tisa-table bwt-table">';
                 echo '<thead><tr><th>ردیف فایل</th><th>order_id</th><th>tracking_code</th><th>دلیل خطا</th></tr></thead><tbody>';
                 foreach ($details as $err) {
                     echo '<tr>';
                     echo '<td>' . esc_html($err['row']) . '</td>';
                     echo '<td class="bwt-ltr">' . esc_html($err['order_id_raw'] !== '' ? $err['order_id_raw'] : '—') . '</td>';
-                    echo '<td class="bwt-ltr bwt-code">' . esc_html($err['tracking_code_raw'] !== '' ? $err['tracking_code_raw'] : '—') . '</td>';
+                    echo '<td class="bwt-ltr"><span class="tisa-code">' . esc_html($err['tracking_code_raw'] !== '' ? $err['tracking_code_raw'] : '—') . '</span></td>';
                     echo '<td class="bwt-reason">' . esc_html($err['reason']) . '</td>';
                     echo '</tr>';
                 }
                 echo '</tbody></table>';
                 echo '</div>';
                 echo '</div>';
+                echo '</section>';
             }
         }
         ?>
 
-        <form method="post" enctype="multipart/form-data" class="bwt-card bwt-form">
-            <label for="bwt_tracking_file" class="bwt-label">فایل CSV</label>
-            <input type="file" id="bwt_tracking_file" name="tracking_file" accept=".csv" required />
-            <?php wp_nonce_field('bwt_upload_action', 'bwt_nonce'); ?>
-            <p class="bwt-actions"><button type="submit" name="bwt_upload" class="button button-primary">آپلود و بروزرسانی</button></p>
-        </form>
+        <div class="bwt-grid">
+            <form method="post" enctype="multipart/form-data" class="bwt-card bwt-form">
+                <div class="bwt-card-head"><span class="bwt-dot"></span><div><h2>آپلود فایل CSV</h2><p>دو ستون <span class="tisa-code">order_id, tracking_code</span> — ردیف اول هدر است و نادیده گرفته می‌شود.</p></div></div>
+                <div class="bwt-card-body">
+                    <label for="bwt_tracking_file" class="bwt-label">فایل CSV</label>
+                    <input type="file" id="bwt_tracking_file" name="tracking_file" accept=".csv" required class="bwt-file" />
+                    <p class="bwt-hint">اگر ستون دوم خالی باشد، کد رهگیری آن سفارش حذف می‌شود.</p>
+                    <?php wp_nonce_field('bwt_upload_action', 'bwt_nonce'); ?>
+                    <div class="bwt-actions"><button type="submit" name="bwt_upload" class="tisa-btn tisa-btn--primary tisa-btn--lg">آپلود و بروزرسانی</button></div>
+                </div>
+            </form>
+
+            <section class="bwt-card">
+                <div class="bwt-card-head"><span class="bwt-dot bwt-dot--muted"></span><div><h2>نمونه فایل صحیح</h2></div></div>
+                <div class="bwt-card-body">
+                    <pre class="bwt-sample">order_id,tracking_code
+1234,12345678901234567890
+1235,98765432109876543210
+1236,</pre>
+                    <ul class="bwt-help">
+                        <li>شماره سفارش‌ها می‌توانند با ارقام فارسی هم باشند.</li>
+                        <li>ردیف آخر (بدون کد) = حذف کد رهگیری سفارش ۱۲۳۶.</li>
+                        <li>شورت‌کد فرم پیگیری مشتری: <span class="tisa-code">[tracking_search]</span></li>
+                    </ul>
+                </div>
+            </section>
+        </div>
     </div>
     <?php
 }
@@ -516,15 +563,15 @@ function bwt_cleanup_page() {
     $message = '';
     if (isset($_POST['bwt_delete_all'])) {
         if (!isset($_POST['bwt_cleanup_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['bwt_cleanup_nonce'])), 'bwt_cleanup_action')) {
-            $message = '<div class="notice notice-error"><p>❌ خطای امنیتی: نانس نامعتبر.</p></div>';
+            $message = '<div class="tisa-notice tisa-notice--danger bwt-notice"><p>خطای امنیتی: نانس نامعتبر.</p></div>';
         } else {
             $message = bwt_delete_all_tracking_codes();
         }
     } elseif (isset($_POST['bwt_delete_selected'])) {
         if (!isset($_POST['bwt_cleanup_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['bwt_cleanup_nonce'])), 'bwt_cleanup_action')) {
-            $message = '<div class="notice notice-error"><p>❌ خطای امنیتی: نانس نامعتبر.</p></div>';
+            $message = '<div class="tisa-notice tisa-notice--danger bwt-notice"><p>خطای امنیتی: نانس نامعتبر.</p></div>';
         } elseif (empty($_POST['order_ids'])) {
-            $message = '<div class="notice notice-error"><p>❌ لطفاً حداقل یک شماره سفارش وارد کنید.</p></div>';
+            $message = '<div class="tisa-notice tisa-notice--danger bwt-notice"><p>لطفاً حداقل یک شماره سفارش وارد کنید.</p></div>';
         } else {
             $raw = sanitize_text_field(wp_unslash($_POST['order_ids']));
             // تبدیل اعداد فارسی به انگلیسی
@@ -537,7 +584,7 @@ function bwt_cleanup_page() {
                 }
             }
             if (empty($order_ids)) {
-                $message = '<div class="notice notice-error"><p>❌ شماره سفارش معتبری یافت نشد.</p></div>';
+                $message = '<div class="tisa-notice tisa-notice--danger bwt-notice"><p>شماره سفارش معتبری یافت نشد.</p></div>';
             } else {
                 $message = bwt_delete_selected_tracking_codes($order_ids);
             }
@@ -545,38 +592,33 @@ function bwt_cleanup_page() {
     }
 
     ?>
-    <div class="wrap bwt-wrap">
-        <h1>پاک کردن کدهای رهگیری</h1>
-        
-        <div class="notice notice-warning">
-            <p><strong>هشدار مهم:</strong> این عملیات غیرقابل بازگشت است! قبل از انجام، از اطلاعات خود بکاپ بگیرید.</p>
-        </div>
+    <div class="wrap tisa-wrap bwt-wrap" dir="rtl">
+        <?php bwt_render_hero('cleanup'); ?>
 
         <?php echo wp_kses_post($message); ?>
-        
-        <form method="post" class="bwt-card bwt-form">
+
+        <form method="post" class="bwt-grid">
             <?php wp_nonce_field('bwt_cleanup_action', 'bwt_cleanup_nonce'); ?>
-            
-            <h3 class="bwt-card-h">پاک کردن انتخابی</h3>
-            <p>
-                <label for="bwt_order_ids" class="bwt-label">شماره سفارش‌ها (با کاما جدا کنید):</label>
-                <input type="text" id="bwt_order_ids" name="order_ids" class="bwt-ids" placeholder="مثلاً 123,124,125" />
-            </p>
-            <p>
-                <button type="submit" name="bwt_delete_selected" class="button button-secondary" onclick="return confirm('کد رهگیری سفارش‌های انتخابی پاک میشه؟')">
-                    پاک کردن انتخابی
-                </button>
-            </p>
-            
-            <hr class="bwt-sep">
-            
-            <h3 class="bwt-card-h bwt-card-h--danger">پاک کردن همه کدها</h3>
-            <p class="bwt-hint">غیرقابل بازگشت — همهٔ سفارش‌ها.</p>
-            <p>
-                <button type="submit" name="bwt_delete_all" class="button button-danger" onclick="return confirm('همه کدهای رهگیری پاک می‌شه! مطمئنی؟ این کار برگشت نداره!')">
-                    پاک کردن همه کدهای رهگیری
-                </button>
-            </p>
+
+            <section class="bwt-card">
+                <div class="bwt-card-head"><span class="bwt-dot"></span><div><h2>پاک کردن انتخابی</h2><p>کد رهگیری فقط از سفارش‌هایی که وارد می‌کنید حذف می‌شود.</p></div></div>
+                <div class="bwt-card-body">
+                    <label for="bwt_order_ids" class="bwt-label">شماره سفارش‌ها (با کاما جدا کنید)</label>
+                    <input type="text" id="bwt_order_ids" name="order_ids" class="tisa-input bwt-ids" dir="ltr" inputmode="numeric" placeholder="123,124,125" />
+                    <div class="bwt-actions">
+                        <button type="submit" name="bwt_delete_selected" class="tisa-btn tisa-btn--secondary" onclick="return confirm('کد رهگیری سفارش‌های انتخابی پاک میشه؟')">پاک کردن انتخابی</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="bwt-card bwt-card--danger">
+                <div class="bwt-card-head"><span class="bwt-dot bwt-dot--bad"></span><div><h2>پاک کردن همهٔ کدها</h2><p>غیرقابل بازگشت — از همهٔ سفارش‌ها. قبل از انجام بکاپ بگیرید.</p></div></div>
+                <div class="bwt-card-body">
+                    <div class="bwt-actions">
+                        <button type="submit" name="bwt_delete_all" class="tisa-btn tisa-btn--danger" onclick="return confirm('همه کدهای رهگیری پاک می‌شه! مطمئنی؟ این کار برگشت نداره!')">پاک کردن همه کدهای رهگیری</button>
+                    </div>
+                </div>
+            </section>
         </form>
     </div>
     <?php
@@ -584,7 +626,7 @@ function bwt_cleanup_page() {
 
 function bwt_delete_all_tracking_codes() {
     if (!current_user_can('manage_options')) {
-        return '<div class="notice notice-error"><p>❌ دسترسی غیر مجاز.</p></div>';
+        return '<div class="tisa-notice tisa-notice--danger bwt-notice"><p>دسترسی غیر مجاز.</p></div>';
     }
     global $wpdb;
     // حذف از postmeta
@@ -602,14 +644,14 @@ function bwt_delete_all_tracking_codes() {
     }
     $total = intval($deleted) + intval($deleted_hpos);
     if ($total > 0) {
-        return '<div class="notice notice-success"><p>✅ <strong>' . esc_html($total) . '</strong> کد رهگیری با موفقیت حذف شد.</p></div>';
+        return '<div class="tisa-notice tisa-notice--success bwt-notice"><p><strong>' . esc_html($total) . '</strong> کد رهگیری با موفقیت حذف شد.</p></div>';
     }
-    return '<div class="notice notice-warning"><p>ℹ️ کدی برای حذف یافت نشد.</p></div>';
+    return '<div class="tisa-notice tisa-notice--warning bwt-notice"><p>کدی برای حذف یافت نشد.</p></div>';
 }
 
 function bwt_delete_selected_tracking_codes($order_ids) {
     if (!current_user_can('manage_options')) {
-        return '<div class="notice notice-error"><p>❌ دسترسی غیر مجاز.</p></div>';
+        return '<div class="tisa-notice tisa-notice--danger bwt-notice"><p>دسترسی غیر مجاز.</p></div>';
     }
     $order_ids = array_map('intval', $order_ids);
     $order_ids = array_unique(array_filter($order_ids));
@@ -648,7 +690,7 @@ function bwt_delete_selected_tracking_codes($order_ids) {
         }
     }
     
-    $msg = '<div class="notice notice-success"><p>✅ <strong>' . esc_html($deleted) . '</strong> کد رهگیری حذف شد. ';
+    $msg = '<div class="tisa-notice tisa-notice--success bwt-notice"><p><strong>' . esc_html($deleted) . '</strong> کد رهگیری حذف شد. ';
     if ($not_found > 0) {
         $msg .= '<strong>' . esc_html($not_found) . '</strong> سفارش کد رهگیری نداشت. ';
     }

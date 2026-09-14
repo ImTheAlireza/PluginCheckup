@@ -1,26 +1,127 @@
-/* Bulk Tracking Upload — استایل ادمین (v2.2 · زبان طراحی TisaCase)
-   فقط دو صفحهٔ آپلود و پاک‌سازی. دکمه/جدول/نوتیس بومی را هاب با tisa-scope می‌پوشاند.
-   مهندسی رنگ: یک دکمهٔ اصلی در هر صفحه؛ قرمزِ پر فقط روی «پاک کردن همه». */
+/* Bulk Tracking Upload — استایل ادمین (v2.3 · زبان طراحی TisaCase)
+   کامپوننت‌های پایه (tisa-btn, tisa-input, tisa-table, tisa-notice, tisa-code) از tisacase-ui.css هاب؛
+   اینجا فقط چیدمان: سر سبز + تب‌های قرصی، کارت‌های تخت، KPI نتیجه.
+   مهندسی رنگ: یک دکمهٔ پُر در هر کارت؛ قرمزِ پر فقط روی «پاک کردن همه». کد رهگیری = مونو؛ شمارنده‌ها = قلم رابط. */
 
-.bwt-wrap { max-width: 920px; font-variant-numeric: tabular-nums; }
-.bwt-lead { color: var(--tisa-muted, #77828A); }
+.bwt-wrap.wrap {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 1120px;
+	margin: var(--tisa-sp-6, 32px) auto 0;
+	padding: 0 var(--tisa-sp-5, 24px) var(--tisa-sp-8, 64px);
+	color: var(--tisa-ink, #1F2A2E);
+	font-family: var(--tisa-font, inherit);
+	font-variant-numeric: tabular-nums;
+}
+.bwt-wrap *, .bwt-wrap *::before, .bwt-wrap *::after { box-sizing: border-box; }
+body.woocommerce_page_bulk-tracking-upload #wpcontent,
+body.woocommerce_page_bwt-cleanup #wpcontent { background: var(--tisa-bg, #F4F2EC); padding-inline-start: 0; }
 
-.bwt-card {
-	margin: var(--tisa-sp-4, 16px) 0;
-	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
-	border: 1px solid var(--tisa-border, #E3E1DA);
+/* ---------- سر سبز + تب‌ها ---------- */
+.bwt-hero {
+	position: relative;
+	overflow: hidden;
+	margin: 0 0 var(--tisa-sp-6, 32px);
+	padding: var(--tisa-sp-6, 32px) var(--tisa-sp-6, 32px) 0;
+	border-radius: var(--tisa-r-xl, 22px);
+	background: linear-gradient(120deg, var(--tisa-primary-deep, #0A5F52) 0%, var(--tisa-primary, #0E7C6B) 60%, var(--tisa-primary-bright, #17A088) 100%);
+	color: var(--tisa-on-primary, #fff);
+	box-shadow: 0 18px 40px -22px rgba(10, 95, 82, .55);
+}
+.bwt-hero::before {
+	content: "";
+	position: absolute;
+	inset: auto -120px -160px auto;
+	width: 380px; height: 380px;
+	border-radius: 50%;
+	background: radial-gradient(closest-side, rgba(255, 255, 255, .14), rgba(255, 255, 255, 0));
+	pointer-events: none;
+}
+.bwt-hero .notice, .bwt-hero .updated, .bwt-hero .error { display: none !important; }
+.bwt-hero-row { position: relative; display: flex; align-items: center; gap: var(--tisa-sp-4, 16px); }
+.bwt-hero-mark {
+	flex: 0 0 auto;
+	display: inline-flex; align-items: center; justify-content: center;
+	width: 46px; height: 46px;
 	border-radius: var(--tisa-r, 14px);
+	background: rgba(255, 255, 255, .14);
+	color: var(--tisa-on-primary, #fff);
+}
+.bwt-hero-mark svg { width: 22px; height: 22px; }
+.bwt-hero-text { flex: 1 1 auto; min-width: 0; }
+.bwt-wrap h1.bwt-hero-title { margin: 0; padding: 0; font-size: var(--tisa-fs-hero, 24px); font-weight: 800; line-height: 1.3; color: var(--tisa-on-primary, #fff); }
+.bwt-hero-sub { margin: 3px 0 0; font-size: var(--tisa-fs-control, 13px); opacity: .78; }
+.bwt-hero-ver { flex: 0 0 auto; padding: 4px 10px; border-radius: var(--tisa-r-pill, 999px); background: rgba(255, 255, 255, .14); font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); font-size: var(--tisa-fs-tiny, 11px); }
+
+.bwt-tabs { position: relative; display: flex; flex-wrap: wrap; gap: var(--tisa-sp-2, 8px); margin: var(--tisa-sp-5, 24px) 0 0; padding: 0 0 var(--tisa-sp-5, 24px); }
+.bwt-wrap .bwt-tabs a.bwt-tab {
+	display: inline-flex; align-items: center;
+	height: 36px; padding: 0 var(--tisa-sp-4, 16px);
+	border: 0; border-radius: var(--tisa-r-pill, 999px);
+	background: rgba(255, 255, 255, .10);
+	color: var(--tisa-on-primary, #fff);
+	font-size: var(--tisa-fs-control, 13px); font-weight: 600;
+	text-decoration: none;
+	transition: background .15s, color .15s;
+}
+.bwt-wrap .bwt-tabs a.bwt-tab:hover { background: rgba(255, 255, 255, .2); color: var(--tisa-on-primary, #fff); }
+.bwt-wrap .bwt-tabs a.bwt-tab.is-active { background: var(--tisa-surface, #fff); color: var(--tisa-primary-ink, #0A5F52); }
+.bwt-wrap .bwt-tabs a.bwt-tab:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(255, 255, 255, .45); }
+
+/* ---------- نوتیس ---------- */
+.bwt-notice { margin: 0 0 var(--tisa-sp-4, 16px); }
+.bwt-notice p { margin: 0; }
+.bwt-notice p + p { margin-top: 6px; }
+
+/* ---------- KPI نتیجه ---------- */
+.bwt-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--tisa-sp-4, 16px); margin: 0 0 var(--tisa-sp-4, 16px); }
+@media (max-width: 720px) { .bwt-kpis { grid-template-columns: 1fr; } }
+.bwt-kpi { padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 20px); border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-lg, 18px); background: var(--tisa-surface, #fff); }
+.bwt-kpi .t { font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.bwt-kpi .v { margin-top: 6px; font-size: var(--tisa-fs-hero, 24px); font-weight: 800; line-height: 1.2; color: var(--tisa-ink, #1F2A2E); }
+.bwt-kpi--ok .v { color: var(--tisa-success, #1A7F37); }
+.bwt-kpi--bad .v { color: var(--tisa-danger, #B5453A); }
+
+/* ---------- کارت ---------- */
+.bwt-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--tisa-sp-4, 16px); align-items: start; }
+@media (max-width: 960px) { .bwt-grid { grid-template-columns: 1fr; } }
+.bwt-card {
+	margin: 0 0 var(--tisa-sp-4, 16px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r-lg, 18px);
 	background: var(--tisa-surface, #fff);
 }
-.bwt-card--error { border-inline-start: 3px solid var(--tisa-danger, #B5453A); }
-.bwt-card-title { margin: 0 0 var(--tisa-sp-2, 8px); }
-.bwt-card-h { margin: 0 0 var(--tisa-sp-2, 8px); font-size: var(--tisa-fs-h3, 16px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
-.bwt-card-h--danger { color: var(--tisa-danger-ink, #8E3128); }
-.bwt-hint { margin: var(--tisa-sp-2, 8px) 0 0; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.bwt-grid > .bwt-card { margin: 0; }
+.bwt-card--error, .bwt-card--danger { border-color: var(--tisa-danger-soft, #FBECEA); background: var(--tisa-surface, #fff); }
+.bwt-card-head { display: flex; align-items: flex-start; gap: 12px; padding: var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px) 0; }
+.bwt-card-head h2 { margin: 0 0 3px; font-size: var(--tisa-fs-h3, 15.5px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
+.bwt-card-head p { margin: 0; font-size: var(--tisa-fs-meta, 12.5px); color: var(--tisa-muted, #77828A); }
+.bwt-card--danger .bwt-card-head h2 { color: var(--tisa-danger-ink, #8E3128); }
+.bwt-dot { flex: 0 0 auto; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--tisa-primary, #0E7C6B); }
+.bwt-dot--muted { background: var(--tisa-border-strong, #C9DCD7); }
+.bwt-dot--bad { background: var(--tisa-danger, #B5453A); }
+.bwt-card-body { padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px); }
+
+/* ---------- فرم ---------- */
+.bwt-label { display: block; margin: 0 0 6px; font-size: var(--tisa-fs-control, 13px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
+.bwt-hint { margin: 8px 0 0; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.bwt-file {
+	display: block; width: 100%;
+	padding: 10px 12px;
+	border: 1px dashed var(--tisa-border-strong, #C9DCD7);
+	border-radius: var(--tisa-r-sm, 10px);
+	background: var(--tisa-surface-2, #FAFAF8);
+	font-size: var(--tisa-fs-control, 13px);
+	color: var(--tisa-ink, #1F2A2E);
+}
+.bwt-file:focus-visible { outline: 0; border-color: var(--tisa-primary, #0E7C6B); box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)); }
+.bwt-ids { max-width: 360px; }
+.bwt-actions { display: flex; gap: var(--tisa-sp-3, 12px); margin: var(--tisa-sp-4, 16px) 0 0; }
 
 .bwt-sample {
-	display: block;
+	margin: 0 0 var(--tisa-sp-3, 12px);
 	padding: var(--tisa-sp-3, 12px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
 	border-radius: var(--tisa-r-sm, 10px);
 	background: var(--tisa-surface-2, #FAFAF8);
 	color: var(--tisa-ink, #1F2A2E);
@@ -28,21 +129,14 @@
 	font-size: var(--tisa-fs-meta, 12px);
 	line-height: 1.8;
 	direction: ltr; text-align: left;
+	white-space: pre; overflow: auto;
 }
+.bwt-help { margin: 0; padding: 0 18px 0 0; font-size: var(--tisa-fs-meta, 12.5px); line-height: 1.9; color: var(--tisa-muted, #77828A); }
 
-.bwt-scroll { max-height: 350px; overflow: auto; border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-sm, 10px); }
-.bwt-table { margin: 0; border: 0; }
+/* ---------- جدول خطاها ---------- */
+.bwt-scroll { max-height: 360px; }
+.bwt-table { margin: 0; }
 .bwt-ltr { direction: ltr; text-align: left; }
-.bwt-code { font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); font-size: var(--tisa-fs-meta, 12px); }
 .bwt-reason { color: var(--tisa-danger-ink, #8E3128); }
 
-.bwt-form .bwt-label { display: block; margin-bottom: 4px; font-weight: 600; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
-.bwt-ids { width: 300px; max-width: 100%; }
-.bwt-actions { margin: var(--tisa-sp-3, 12px) 0 0; }
-.bwt-sep { margin: var(--tisa-sp-5, 24px) 0; border: 0; border-top: 1px solid var(--tisa-border, #E3E1DA); }
-
-/* تنها قرمزِ پر */
-.button.button-danger { background: var(--tisa-danger, #B5453A) !important; border-color: var(--tisa-danger, #B5453A) !important; color: var(--tisa-on-primary, #fff) !important; }
-.button.button-danger:hover { background: var(--tisa-danger-ink, #8E3128) !important; border-color: var(--tisa-danger-ink, #8E3128) !important; }
-
-body.tisa-compact .bwt-card { padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px); }
+body.tisa-compact .bwt-card-body { padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px) var(--tisa-sp-4, 16px); }
