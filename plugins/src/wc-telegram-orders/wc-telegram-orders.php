@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ارسال سفارش‌ها به تلگرام ووکامرس
  * Description:       ارسال خودکار سفارش‌های جدید ووکامرس به تلگرام با فرمت فارسی دلخواه + گزارش روزانه فروش (با سنجاق خودکار) + اعلان کمبود موجودی محصولات + سیستم لاگ رویدادها در پنل.
- * Version:           1.12.2
+ * Version:           1.12.3
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            علیرضا شعبان زاده
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_TELEGRAM_ORDERS_VERSION', '1.12.2');
+define('WC_TELEGRAM_ORDERS_VERSION', '1.12.3');
 define('WC_TELEGRAM_ORDERS_OPTION', 'wc_telegram_orders_settings');
 define('WC_TELEGRAM_ORDERS_FILE', __FILE__);
 
@@ -42,7 +42,7 @@ class WC_Telegram_Orders {
     const LAST_REPORT_OPTION = 'wc_telegram_last_report_end'; // پایان بازه آخرین گزارش روزانه (UTC)
     const MIGRATION_OPTION = 'wc_telegram_migrated_version';  // نسخه‌ای که مهاجرت قالب‌ها برایش انجام شده
     const TEMPLATE_VERSION_OPTION = 'wc_telegram_template_version'; // نسخهٔ قالب پیش‌فرضی که اعمال شده
-    const TEMPLATE_VERSION = '1.10.3';                        // فقط با تغییرِ قالب پیش‌فرض بالا می‌رود
+    const TEMPLATE_VERSION = '1.12.3';                        // فقط با تغییرِ قالب پیش‌فرض بالا می‌رود
     const STOCK_STATE_META = '_wc_telegram_stock_state';      // وضعیت اعلان موجودی هر محصول: '' | low | out
 
     // صف اعلان‌های موجودی همین درخواست — در پایان درخواست یکجا ارسال می‌شود
@@ -222,7 +222,9 @@ class WC_Telegram_Orders {
             . "--------------------------\n"
             . "جمع محصولات: {subtotal}\n"
             . "حمل و نقل: {shipping_method} - {shipping_total}\n"
-            . "💵 <b>مجموع پرداختی: {order_total}</b>\n"
+            . "💵 <b>مجموع سفارش: {order_total}</b>\n"
+            // این خط فقط برای سفارش‌هایی نمایش داده می‌شود که بخشی از آن با کیف پول پرداخت شده باشد
+            . "{if_wallet}💵 <b>پرداختی: {paid_amount}</b> ({wallet_amount} از کیف پول)\n{/if_wallet}"
             . "\n"
             . "💳 نحوه پرداخت: {payment_method}\n"
             . "--------------------------\n"
@@ -236,6 +238,7 @@ class WC_Telegram_Orders {
             . "--------------------------\n"
             . "🔗 <a href=\"{order_url}\">مشاهده سفارش در پنل پیشخوان</a>";
     }
+
 
     // قالبِ خیلی قدیمی (۱.۱۰.۰ و قبل) — برای سازگاری با نصب‌های قدیمی‌تر
     private function legacy_default_template() {
@@ -280,6 +283,8 @@ class WC_Telegram_Orders {
             . "{items}\n"
             . "--------------------------\n"
             . "جمع محصولات: {subtotal}\n"
+            // فقط وقتی تخفیف/کوپن اعمال شده باشد
+            . "{if_discount}🏷 تخفیف: {discount_total}- ({coupons})\n{/if_discount}"
             . "حمل و نقل: {shipping_method} - {shipping_total}\n"
             . "💵 <b>مجموع سفارش: {order_total}</b>\n"
             // این خط فقط برای سفارش‌هایی نمایش داده می‌شود که بخشی از آن با کیف پول پرداخت شده باشد
@@ -536,11 +541,12 @@ class WC_Telegram_Orders {
     private function order_vars() {
         return [
             '{order_number}' => 'شماره سفارش', '{order_date}' => 'تاریخ', '{order_status}' => 'وضعیت', '{order_total}' => 'مجموع سفارش',
-            '{paid_amount}' => 'پرداختی نقدی', '{wallet_amount}' => 'سهم کیف پول', '{subtotal}' => 'جمع محصولات', '{shipping_total}' => 'هزینه ارسال',
+            '{paid_amount}' => 'پرداختی نقدی', '{wallet_amount}' => 'سهم کیف پول', '{subtotal}' => 'جمع محصولات', '{discount_total}' => 'مبلغ تخفیف', '{coupons}' => 'کدهای تخفیف', '{shipping_total}' => 'هزینه ارسال',
             '{shipping_method}' => 'روش ارسال', '{payment_method}' => 'روش پرداخت', '{items}' => 'لیست آیتم‌ها', '{items_count}' => 'تعداد آیتم',
             '{customer_name}' => 'نام مشتری', '{customer_phone}' => 'تلفن', '{customer_email}' => 'ایمیل', '{customer_address}' => 'آدرس',
             '{customer_postcode}' => 'کد پستی', '{customer_note}' => 'یادداشت مشتری', '{order_url}' => 'لینک سفارش', '{site_name}' => 'نام سایت',
             '{if_wallet}…{/if_wallet}' => 'فقط وقتی کیف پول استفاده شده',
+            '{if_discount}…{/if_discount}' => 'فقط وقتی تخفیف/کوپن اعمال شده',
         ];
     }
 
@@ -1438,6 +1444,14 @@ class WC_Telegram_Orders {
         $wallet  = $amounts['wallet'];
         $paid    = $amounts['paid'];
 
+        // تخفیف و کوپن‌ها
+        $discount = (float) $order->get_total_discount() + (float) $order->get_discount_tax();
+        $coupon_codes = method_exists($order, 'get_coupon_codes') ? (array) $order->get_coupon_codes() : (array) $order->get_used_coupons();
+        $coupons = implode('، ', array_map('strtoupper', array_filter(array_map('trim', $coupon_codes))));
+        if ($coupons === '' && $discount > 0) {
+            $coupons = 'تخفیف';
+        }
+
         $replacements = [
             '{order_number}'      => $order->get_order_number(),
             '{order_id}'          => $order->get_id(),
@@ -1446,6 +1460,9 @@ class WC_Telegram_Orders {
             '{order_total}'       => $this->money($amounts['grand'], $order),                          // مجموع سفارش = نقدی + کیف پول
             '{currency}'          => $order->get_currency(),
             '{subtotal}'          => $this->money($order->get_subtotal(), $order),
+            '{discount_total}'    => $discount > 0 ? $this->money($discount, $order) : '',
+            '{discount_number}'   => $discount > 0 ? $this->money_plain($discount) : '',
+            '{coupons}'           => $coupons !== '' ? $coupons : '',
             '{shipping_total}'    => $this->money($order->get_shipping_total() + $order->get_shipping_tax(), $order),
             '{tax_total}'         => $this->money($order->get_total_tax(), $order),
             '{paid_amount}'       => $this->money($paid, $order),                                     // مبلغی که واقعاً پرداخت شده (بدون سهم کیف پول)
@@ -1466,6 +1483,15 @@ class WC_Telegram_Orders {
             '{site_name}'         => get_bloginfo('name'),
             '{order_url}'         => $order->get_edit_order_url(),
         ];
+
+        // بلاک شرطیِ تخفیف: {if_discount} ... {/if_discount}
+        if (strpos($template, '{if_discount}') !== false) {
+            if ($discount > 0) {
+                $template = preg_replace('/\{if_discount\}(.*?)\{\/if_discount\}/s', '$1', $template);
+            } else {
+                $template = preg_replace('/\{if_discount\}.*?\{\/if_discount\}/s', '', $template);
+            }
+        }
 
         // بلاک شرطیِ کیف پول: {if_wallet} ... {/if_wallet}
         // فقط وقتی سفارش بخشی از مبلغ را با کیف پول پرداخت کرده باشد نمایش داده می‌شود؛

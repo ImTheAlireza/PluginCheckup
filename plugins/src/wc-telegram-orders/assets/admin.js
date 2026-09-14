@@ -7,7 +7,7 @@
 		var start = el.selectionStart, end = el.selectionEnd, v = el.value;
 		if (typeof start !== "number") { el.value = v + text; return; }
 		// {if_wallet}…{/if_wallet}: متن انتخاب‌شده را داخل بلاک بگذار
-		var m = text.match(/^(\{if_wallet\})…(\{\/if_wallet\})$/);
+		var m = text.match(/^(\{if_[a-z]+\})…(\{\/if_[a-z]+\})$/);
 		var ins = text, caret;
 		if (m) {
 			var sel = v.slice(start, end);
