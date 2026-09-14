@@ -1,342 +1,181 @@
-/* ============================================================
-   پکیج ویژه قاب — رابط مدیریتی (v1.3 · زبان طراحی TisaCase)
-   ------------------------------------------------------------
-   مارکاپ دست‌نخورده است؛ رنگ/گوشه/فاصله/قلم همه از توکن‌های
-   --tisa-* می‌آیند (با fallback). قلم CDN حذف شد.
-   مهندسی رنگ: هر کارت یک لهجه؛ دکمهٔ ذخیره تنها سطح پُرِ صفحه.
-   اعداد/مبالغ: قلم رابط + tabular-nums؛ SKU: مونو (§۸).
-   ============================================================ */
-.wcsp-app {
-	/* نگاشت نام‌های قدیمی به توکن‌ها — تا هر قاعدهٔ به‌جامانده هم درست باشد */
-	--teal:       var(--tisa-primary, #0E7C6B);
-	--teal-deep:  var(--tisa-primary-ink, #0A5F52);
-	--teal-soft:  var(--tisa-primary-soft, #E8F0EE);
-	--amber:      var(--tisa-warning, #C79A2E);
-	--amber-soft: var(--tisa-warning-soft, #FCF3D7);
-	--plum:       var(--tisa-info, #3F6E9E);
-	--plum-soft:  var(--tisa-info-soft, #E9F1F8);
-	--ink:        var(--tisa-ink, #1F2A2E);
-	--muted:      var(--tisa-muted, #77828A);
-	--line:       var(--tisa-border, #E3E1DA);
-	--paper:      var(--tisa-bg, #F4F2EC);
-	--surface:    var(--tisa-surface, #fff);
-	--ok:         var(--tisa-success, #1A7F37);
-	--ok-soft:    var(--tisa-success-soft, #E5F4E7);
-	--bad:        var(--tisa-danger, #B5453A);
-	--bad-soft:   var(--tisa-danger-soft, #FBECEA);
-	--r:          var(--tisa-r, 14px);
-	--r-sm:       var(--tisa-r-sm, 10px);
-	--r-xs:       var(--tisa-r-xs, 6px);
+/* پکیج ویژه قاب — استایل ادمین (زبان طراحی TisaCase، v1.4)
+   کامپوننت‌های پایه (tisa-btn, tisa-input, tisa-switch, tisa-code) از tisacase-ui.css هاب؛
+   اینجا فقط چیدمان صفحه: سر سبز + تب‌های قرصی، کارت‌های تخت، KPI، نمودار.
+   مهندسی رنگ: تنها سطح پُر صفحه = دکمهٔ ذخیره و تب فعال. اعداد = قلم رابط + tabular-nums؛ SKU = مونو. */
 
+.wcsp-wrap.wrap {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 1120px;
+	margin: var(--tisa-sp-6, 32px) auto 0;
+	padding: 0 var(--tisa-sp-5, 24px) var(--tisa-sp-8, 64px);
+	color: var(--tisa-ink, #1F2A2E);
 	font-family: var(--tisa-font, inherit);
-	background: var(--paper);
-	margin: -10px -20px 0 -20px;
-	padding: var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px) var(--tisa-sp-7, 48px);
-	min-height: calc(100vh - 44px);
-	color: var(--ink);
 	font-variant-numeric: tabular-nums;
 }
-.wcsp-app *, .wcsp-app *::before, .wcsp-app *::after { box-sizing: border-box; }
-.wcsp-main { max-width: var(--tisa-max-w, 1180px); margin: 0 auto; }
+.wcsp-wrap *, .wcsp-wrap *::before, .wcsp-wrap *::after { box-sizing: border-box; }
+body.woocommerce_page_wcsp-settings #wpcontent { background: var(--tisa-bg, #F4F2EC); padding-inline-start: 0; }
 
-/* ---------- سر صفحه: بدون گرادیان؛ عنوان + وضعیت ---------- */
-.wcsp-top {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	gap: var(--tisa-sp-4, 16px);
-	flex-wrap: wrap;
-	padding: 0 0 var(--tisa-sp-4, 16px);
-	color: var(--ink);
+/* ---------- سر سبز + تب‌ها ---------- */
+.wcsp-hero {
 	position: relative;
+	overflow: hidden;
+	margin: 0 0 var(--tisa-sp-6, 32px);
+	padding: var(--tisa-sp-6, 32px) var(--tisa-sp-6, 32px) 0;
+	border-radius: var(--tisa-r-xl, 22px);
+	background: linear-gradient(120deg, var(--tisa-primary-deep, #0A5F52) 0%, var(--tisa-primary, #0E7C6B) 60%, var(--tisa-primary-bright, #17A088) 100%);
+	color: var(--tisa-on-primary, #fff);
+	box-shadow: 0 18px 40px -22px rgba(10, 95, 82, .55);
 }
-.wcsp-top::after { display: none; }
-.wcsp-top-id { display: flex; align-items: center; gap: var(--tisa-sp-3, 12px); }
-.wcsp-logo {
-	width: 40px; height: 40px; flex: none;
-	display: grid; place-items: center;
-	border-radius: var(--r-sm);
-	background: var(--teal);
+.wcsp-hero::before {
+	content: "";
+	position: absolute;
+	inset: auto -120px -160px auto;
+	width: 380px; height: 380px;
+	border-radius: 50%;
+	background: radial-gradient(closest-side, rgba(255, 255, 255, .14), rgba(255, 255, 255, 0));
+	pointer-events: none;
+}
+.wcsp-hero .notice, .wcsp-hero .updated, .wcsp-hero .error { display: none !important; }
+.wcsp-hero-row { position: relative; display: flex; align-items: center; gap: var(--tisa-sp-4, 16px); }
+.wcsp-hero-mark {
+	flex: 0 0 auto;
+	display: inline-flex; align-items: center; justify-content: center;
+	width: 46px; height: 46px;
+	border-radius: var(--tisa-r, 14px);
+	background: rgba(255, 255, 255, .14);
 	color: var(--tisa-on-primary, #fff);
 }
-.wcsp-top h1 {
-	display: flex; align-items: center; gap: var(--tisa-sp-2, 8px);
-	margin: 0 0 2px;
-	font-size: var(--tisa-fs-h2, 19px); font-weight: 800; color: var(--ink);
-}
-.wcsp-ver {
-	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
-	font-size: var(--tisa-fs-tiny, 11px); font-weight: 600;
-	color: var(--muted);
-	padding: 2px 8px; border-radius: var(--tisa-r-pill, 999px);
-	border: 1px solid var(--line);
-	direction: ltr;
-}
-.wcsp-top p { margin: 0; font-size: var(--tisa-fs-meta, 12px); color: var(--muted); line-height: 1.8; max-width: 560px; }
-.wcsp-top-state { display: flex; gap: var(--tisa-sp-2, 8px); align-items: center; flex-wrap: wrap; }
-.wcsp-chip {
-	display: inline-flex; align-items: center; gap: 8px;
+.wcsp-hero-mark svg { width: 22px; height: 22px; }
+.wcsp-hero-text { flex: 1 1 auto; min-width: 0; }
+.wcsp-wrap h1.wcsp-hero-title { margin: 0; padding: 0; font-size: var(--tisa-fs-hero, 24px); font-weight: 800; line-height: 1.3; color: var(--tisa-on-primary, #fff); }
+.wcsp-hero-sub { margin: 3px 0 0; font-size: var(--tisa-fs-control, 13px); opacity: .78; }
+.wcsp-hero-state {
+	flex: 0 0 auto;
+	display: inline-flex; align-items: center; gap: 7px;
+	padding: 4px 12px;
+	border-radius: var(--tisa-r-pill, 999px);
+	background: rgba(255, 255, 255, .14);
 	font-size: var(--tisa-fs-meta, 12px); font-weight: 600;
-	padding: 5px 12px; border-radius: var(--tisa-r-pill, 999px);
-	border: 1px solid var(--line);
-	background: var(--surface);
-	color: var(--ink);
 }
-.wcsp-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
-.wcsp-chip.off .dot { background: var(--muted); }
+.wcsp-hero-state i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .45); }
+.wcsp-hero-state.is-on i { background: var(--tisa-success-bright, rgba(255, 255, 255, .95)); box-shadow: 0 0 0 3px rgba(255, 255, 255, .25); }
+.wcsp-hero-ver { flex: 0 0 auto; padding: 4px 10px; border-radius: var(--tisa-r-pill, 999px); background: rgba(255, 255, 255, .14); font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); font-size: var(--tisa-fs-tiny, 11px); }
 
-/* ---------- تب‌ها: خط زیرین، نه قرص پر ---------- */
-.wcsp-tabs {
-	position: sticky; top: 32px; z-index: 20;
-	display: flex; gap: var(--tisa-sp-1, 4px); flex-wrap: wrap;
-	margin: 0 0 var(--tisa-sp-4, 16px);
-	padding: 0;
-	background: var(--paper);
-	border: 0;
-	border-bottom: 1px solid var(--line);
-	border-radius: 0;
-	box-shadow: none;
-}
+.wcsp-tabs { position: relative; display: flex; flex-wrap: wrap; gap: var(--tisa-sp-2, 8px); margin: var(--tisa-sp-5, 24px) 0 0; padding: 0 0 var(--tisa-sp-5, 24px); }
 .wcsp-tab {
-	display: inline-flex; align-items: center; gap: 8px;
-	border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
-	background: transparent;
-	font: inherit; font-size: var(--tisa-fs-control, 13px); font-weight: 600;
-	color: var(--muted);
-	padding: 10px 14px; border-radius: 0;
-	cursor: pointer;
-	transition: color var(--tisa-t, 150ms), border-color var(--tisa-t, 150ms);
-}
-.wcsp-tab:hover { color: var(--ink); background: transparent; }
-.wcsp-tab.active { color: var(--teal-deep); border-bottom-color: var(--teal); background: transparent; box-shadow: none; }
-.wcsp-tab:focus-visible { outline: 0; box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)); border-radius: var(--r-xs); }
-.wcsp-tab svg { flex: none; opacity: .8; }
-
-/* ---------- کارت ---------- */
-.wcsp-card {
-	background: var(--surface);
-	border: 1px solid var(--line);
-	border-radius: var(--r);
-	padding: var(--tisa-sp-5, 24px);
-	box-shadow: none;
-}
-.wcsp-card + .wcsp-card { margin-top: var(--tisa-sp-4, 16px); }
-.wcsp-sec {
-	display: flex; align-items: center; gap: var(--tisa-sp-2, 8px);
-	margin: 0 0 4px;
-	font-size: var(--tisa-fs-h3, 16px); font-weight: 700; color: var(--ink);
-}
-.wcsp-sec::before { display: none; }
-.wcsp-sec-desc { margin: 0 0 var(--tisa-sp-4, 16px); font-size: var(--tisa-fs-meta, 12px); color: var(--muted); line-height: 1.9; }
-
-/* ---------- KPI: یک خط رنگی نازک بالای هر کاشی، بس ---------- */
-.wcsp-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--tisa-sp-3, 12px); margin-bottom: var(--tisa-sp-4, 16px); }
-.wcsp-kpi {
-	position: relative; overflow: hidden;
-	background: var(--surface);
-	border: 1px solid var(--line);
-	border-radius: var(--r);
-	padding: var(--tisa-sp-4, 16px);
-}
-.wcsp-kpi::before { content: ""; position: absolute; top: 0; right: 0; left: 0; height: 3px; background: var(--teal); }
-.wcsp-kpi.k-amber::before { background: var(--amber); }
-.wcsp-kpi.k-plum::before { background: var(--plum); }
-.wcsp-kpi.k-ink::before { background: var(--muted); }
-.wcsp-kpi .t { font-size: var(--tisa-fs-tiny, 11px); color: var(--muted); font-weight: 600; }
-.wcsp-kpi .v { margin-top: 6px; font-size: var(--tisa-fs-display, 22px); font-weight: 800; color: var(--ink); }
-.wcsp-kpi .v small { font-size: var(--tisa-fs-tiny, 11px); font-weight: 600; color: var(--muted); }
-.wcsp-kpi .s { margin-top: 4px; font-size: var(--tisa-fs-tiny, 11px); color: var(--muted); }
-
-/* ---------- گرید داشبورد ---------- */
-.wcsp-grid { display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr); gap: var(--tisa-sp-4, 16px); align-items: start; }
-.wcsp-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--tisa-sp-4, 16px); margin-top: var(--tisa-sp-4, 16px); }
-
-/* ---------- چارت ---------- */
-.wcsp-chart-head { display: flex; justify-content: space-between; align-items: center; gap: var(--tisa-sp-3, 12px); flex-wrap: wrap; }
-.wcsp-legend { display: inline-flex; align-items: center; gap: 8px; font-size: var(--tisa-fs-tiny, 11px); color: var(--muted); font-weight: 600; }
-.wcsp-legend i { width: 22px; height: 0; border-top: 3px solid var(--teal); border-radius: var(--r-xs); display: inline-block; }
-.wcsp-svgwrap { margin-top: var(--tisa-sp-3, 12px); }
-.wcsp-svg { width: 100%; height: 170px; display: block; }
-.wcsp-xlabels { display: flex; justify-content: space-between; margin-top: 8px; padding: 0 4px; direction: ltr; }
-.wcsp-xlabels span { font-size: var(--tisa-fs-tiny, 11px); color: var(--muted); direction: rtl; }
-.wcsp-xlabels span:nth-child(even) { visibility: hidden; }
-@media (min-width: 900px) { .wcsp-xlabels span:nth-child(even) { visibility: visible; } }
-
-/* ---------- درآمد ---------- */
-.wcsp-rev .big { margin: 8px 0 2px; font-size: var(--tisa-fs-display, 28px); font-weight: 800; color: var(--ink); }
-.wcsp-rev .cur { font-size: var(--tisa-fs-meta, 12px); color: var(--muted); font-weight: 600; }
-.wcsp-rev .rows { margin-top: var(--tisa-sp-4, 16px); padding-top: var(--tisa-sp-3, 12px); border-top: 1px dashed var(--line); display: grid; gap: 8px; }
-.wcsp-rev .r { display: flex; justify-content: space-between; font-size: var(--tisa-fs-meta, 12px); }
-.wcsp-rev .r .k { color: var(--muted); }
-.wcsp-rev .r .v { font-weight: 700; }
-
-/* ---------- سلامت ---------- */
-.wcsp-health { display: grid; grid-template-columns: 1fr 1fr; gap: var(--tisa-sp-2, 8px); }
-.wcsp-htile {
-	display: flex; align-items: center; gap: var(--tisa-sp-2, 8px);
-	padding: var(--tisa-sp-3, 12px);
-	border: 1px solid var(--line);
-	border-radius: var(--r-sm);
-	background: var(--tisa-surface-2, #FAFAF8);
-}
-.wcsp-htile .ind { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--ok); }
-.wcsp-htile.warn .ind { background: var(--amber); }
-.wcsp-htile.off .ind { background: var(--muted); }
-.wcsp-htile .k { flex: 1; font-size: var(--tisa-fs-meta, 12px); color: var(--muted); }
-.wcsp-htile .v { font-size: var(--tisa-fs-meta, 12px); font-weight: 700; color: var(--ink); }
-
-/* ---------- دسترسی سریع ---------- */
-.wcsp-quick { display: grid; grid-template-columns: 1fr 1fr; gap: var(--tisa-sp-2, 8px); }
-.wcsp-quick a {
-	display: flex; align-items: center; gap: 8px;
-	padding: var(--tisa-sp-3, 12px);
-	border: 1px solid var(--line);
-	border-radius: var(--r-sm);
-	background: var(--surface);
-	font-size: var(--tisa-fs-meta, 12px); font-weight: 600;
-	color: var(--ink);
-	text-decoration: none;
-	transition: border-color var(--tisa-t, 150ms), background var(--tisa-t, 150ms);
-}
-.wcsp-quick a:hover { border-color: var(--tisa-border-strong, #C9DCD7); background: var(--tisa-primary-tint, #F2FBF8); color: var(--teal-deep); }
-.wcsp-quick svg { flex: none; color: var(--muted); }
-.wcsp-quick a:hover svg { color: var(--teal); }
-
-/* ---------- فرم ---------- */
-.wcsp-field { margin-bottom: var(--tisa-sp-5, 24px); }
-.wcsp-field:last-child { margin-bottom: 4px; }
-.wcsp-label { display: block; margin-bottom: 6px; font-size: var(--tisa-fs-meta, 12px); font-weight: 600; color: var(--muted); }
-.wcsp-app input[type="text"],
-.wcsp-app textarea,
-.wcsp-app select {
-	width: 100%;
-	min-height: var(--tisa-ctl-h, 38px);
-	padding: 8px 12px;
-	border: 1px solid var(--line);
-	border-radius: var(--r-sm);
-	background: var(--surface);
-	font: inherit; font-size: var(--tisa-fs-control, 13px);
-	color: var(--ink);
-	transition: border-color var(--tisa-t, 150ms), box-shadow var(--tisa-t, 150ms);
-}
-.wcsp-app textarea { line-height: 1.9; resize: vertical; }
-.wcsp-app input[type="text"]:focus,
-.wcsp-app textarea:focus,
-.wcsp-app select:focus {
-	outline: none;
-	border-color: var(--teal);
-	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
-}
-.wcsp-hint { margin-top: 6px; font-size: var(--tisa-fs-tiny, 11px); color: var(--muted); line-height: 1.9; }
-.wcsp-money { display: flex; align-items: center; gap: var(--tisa-sp-2, 8px); }
-.wcsp-money input { max-width: 210px; font-variant-numeric: tabular-nums; }
-.wcsp-money .cur { color: var(--muted); font-size: var(--tisa-fs-meta, 12px); font-weight: 600; }
-
-/* سوییچ (همان ابعاد tisa-switch) */
-.wcsp-switch { position: relative; display: inline-flex; align-items: center; gap: var(--tisa-sp-3, 12px); cursor: pointer; }
-.wcsp-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.wcsp-track { position: relative; flex: none; width: 40px; height: 22px; border-radius: var(--tisa-r-pill, 999px); background: var(--tisa-border-strong, #C9DCD7); transition: background .2s; }
-.wcsp-track::after { content: ""; position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--tisa-surface, #fff); transition: transform .2s; box-shadow: 0 1px 2px rgba(31, 42, 46, .25); }
-.wcsp-switch input:checked + .wcsp-track { background: var(--teal); }
-.wcsp-switch input:checked + .wcsp-track::after { transform: translateX(-18px); }
-.wcsp-switch input:focus-visible + .wcsp-track { box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)); }
-.wcsp-switch .sw-txt { font-size: var(--tisa-fs-control, 13px); font-weight: 600; color: var(--ink); }
-
-/* segmented */
-.wcsp-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--r-sm); background: var(--tisa-surface-3, #EFEBE1); }
-.wcsp-seg label { position: relative; }
-.wcsp-seg input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
-.wcsp-seg span { display: block; padding: 6px 14px; border-radius: var(--r-xs); font-size: var(--tisa-fs-meta, 12px); font-weight: 600; color: var(--muted); cursor: pointer; transition: all var(--tisa-t, 150ms); }
-.wcsp-seg input:checked + span { background: var(--surface); color: var(--ink); box-shadow: var(--tisa-shadow-sm, 0 1px 2px rgba(31, 42, 46, .08)); }
-
-/* پیش‌نمایش SKU — کد: مونو */
-.wcsp-sku {
-	display: flex; justify-content: space-between; align-items: center;
-	margin-top: 8px; padding: 8px 12px;
-	border: 1px solid var(--line); border-radius: var(--r-sm);
-	background: var(--tisa-surface-2, #FAFAF8);
-	font-size: var(--tisa-fs-meta, 12px);
-}
-.wcsp-sku .sku { font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); font-weight: 700; direction: ltr; color: var(--ink); }
-.wcsp-sku .found { color: var(--ok); font-weight: 600; }
-.wcsp-sku .missing { color: var(--bad); font-weight: 600; }
-
-/* پیش‌نمایش چک‌باکس */
-.wcsp-preview { padding: var(--tisa-sp-4, 16px); border: 1px dashed var(--tisa-border-strong, #C9DCD7); border-radius: var(--r); background: var(--tisa-surface-2, #FAFAF8); }
-.wcsp-preview .pv-tag { margin-bottom: 8px; font-size: var(--tisa-fs-tiny, 11px); color: var(--muted); }
-.wcsp-preview .pv-row { display: flex; align-items: center; gap: 8px; font-size: var(--tisa-fs-control, 13px); color: var(--ink); }
-.wcsp-preview input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--teal); }
-.wcsp-preview .pv-price { color: var(--teal-deep); font-weight: 700; }
-
-/* راهنما */
-.wcsp-help ul { margin: 0; padding-right: 18px; }
-.wcsp-help li { font-size: var(--tisa-fs-control, 13px); color: var(--ink); line-height: 2.1; }
-.wcsp-help li b { color: var(--ink); }
-
-/* ---------- نوار ذخیره: روشن؛ فقط دکمه پررنگ است ---------- */
-.wcsp-savebar {
-	position: sticky; bottom: 12px; z-index: 15;
-	display: flex; align-items: center; gap: var(--tisa-sp-4, 16px);
-	margin-top: var(--tisa-sp-5, 24px);
-	padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px);
-	border: 1px solid var(--line);
-	border-radius: var(--r);
-	background: var(--surface);
-	box-shadow: var(--tisa-shadow, 0 8px 24px rgba(31, 42, 46, .12));
-}
-.wcsp-btn {
-	min-height: var(--tisa-ctl-h, 38px);
-	padding: 0 var(--tisa-sp-5, 24px);
-	border: 0; border-radius: var(--r-sm);
-	background: var(--teal);
+	display: inline-flex; align-items: center;
+	height: 36px; padding: 0 var(--tisa-sp-4, 16px);
+	border: 0; border-radius: var(--tisa-r-pill, 999px);
+	background: rgba(255, 255, 255, .10);
 	color: var(--tisa-on-primary, #fff);
-	font: inherit; font-size: var(--tisa-fs-control, 13px); font-weight: 700;
+	font-family: inherit; font-size: var(--tisa-fs-control, 13px); font-weight: 600;
 	cursor: pointer;
-	box-shadow: none;
-	transition: background var(--tisa-t, 150ms);
+	transition: background .15s, color .15s;
 }
-.wcsp-btn:hover { background: var(--teal-deep); filter: none; }
-.wcsp-btn:focus-visible { outline: 0; box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)); }
-.wcsp-savebar .note { font-size: var(--tisa-fs-tiny, 11px); color: var(--muted); }
+.wcsp-tab:hover { background: rgba(255, 255, 255, .2); color: var(--tisa-on-primary, #fff); }
+.wcsp-tab.active { background: var(--tisa-surface, #fff); color: var(--tisa-primary-ink, #0A5F52); }
+.wcsp-tab:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(255, 255, 255, .45); }
 
-/* ---------- توست ---------- */
-.wcsp-toast {
-	display: flex; gap: 8px; align-items: center;
-	margin-bottom: var(--tisa-sp-4, 16px);
-	padding: 10px 14px;
-	border: 1px solid var(--ok-soft);
-	border-inline-start: 3px solid var(--ok);
-	border-radius: var(--r-sm);
-	background: var(--ok-soft);
-	color: var(--ok);
+.wcsp-flashbar {
+	margin: 0 0 var(--tisa-sp-4, 16px);
+	padding: 10px 16px;
+	border: 1px solid var(--tisa-success, #1A7F37);
+	border-radius: var(--tisa-r-sm, 10px);
+	background: var(--tisa-success-soft, #E5F4E7);
+	color: var(--tisa-success, #1A7F37);
 	font-size: var(--tisa-fs-control, 13px); font-weight: 600;
 }
 
-/* ---------- اعتبار ---------- */
-.wcsp-credit { margin-top: var(--tisa-sp-6, 32px); text-align: center; font-size: var(--tisa-fs-tiny, 11px); color: var(--muted); opacity: .7; }
-
 /* ---------- پنل‌ها ---------- */
 .wcsp-panel { display: none; }
-.wcsp-panel.active { display: block; }
+.wcsp-panel.active { display: block; animation: wcsp-in .18s ease; }
+@keyframes wcsp-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ---------- کارت ---------- */
+.wcsp-card {
+	margin: 0 0 var(--tisa-sp-4, 16px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r-lg, 18px);
+	background: var(--tisa-surface, #fff);
+}
+.wcsp-card-head { display: flex; align-items: flex-start; gap: 12px; padding: var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px) 0; }
+.wcsp-card-head h2 { margin: 0 0 3px; font-size: var(--tisa-fs-h3, 15.5px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
+.wcsp-card-head p { margin: 0; font-size: var(--tisa-fs-meta, 12.5px); color: var(--tisa-muted, #77828A); }
+.wcsp-dot { flex: 0 0 auto; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--tisa-primary, #0E7C6B); }
+.wcsp-dot--muted { background: var(--tisa-border-strong, #C9DCD7); }
+.wcsp-card-body { padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px); }
+
+.wcsp-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: var(--tisa-sp-4, 16px); }
+.wcsp-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--tisa-sp-4, 16px); }
+@media (max-width: 960px) { .wcsp-grid, .wcsp-grid-2 { grid-template-columns: 1fr; } }
+
+/* ---------- KPI ---------- */
+.wcsp-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--tisa-sp-4, 16px); margin: 0 0 var(--tisa-sp-4, 16px); }
+@media (max-width: 960px) { .wcsp-kpis { grid-template-columns: repeat(2, 1fr); } }
+.wcsp-kpi { padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 20px); border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-lg, 18px); background: var(--tisa-surface, #fff); }
+.wcsp-kpi .t { font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.wcsp-kpi .v { margin-top: 6px; font-size: var(--tisa-fs-hero, 24px); font-weight: 800; line-height: 1.2; color: var(--tisa-ink, #1F2A2E); }
+.wcsp-kpi .v small { font-size: var(--tisa-fs-meta, 12px); font-weight: 600; color: var(--tisa-muted, #77828A); }
+.wcsp-kpi .s { margin-top: 4px; font-size: var(--tisa-fs-tiny, 11px); color: var(--tisa-muted, #77828A); }
+
+/* ---------- نمودار ---------- */
+.wcsp-svg { display: block; width: 100%; height: 150px; }
+.wcsp-grad-a { stop-color: var(--tisa-primary, #0E7C6B); stop-opacity: .22; }
+.wcsp-grad-b { stop-color: var(--tisa-primary, #0E7C6B); stop-opacity: 0; }
+.wcsp-axis { stroke: var(--tisa-border, #E3E1DA); stroke-width: 1; }
+.wcsp-line { fill: none; stroke: var(--tisa-primary, #0E7C6B); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.wcsp-pt { fill: var(--tisa-surface, #fff); stroke: var(--tisa-primary, #0E7C6B); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.wcsp-xlabels { display: flex; justify-content: space-between; margin-top: 6px; font-size: var(--tisa-fs-tiny, 11px); color: var(--tisa-muted, #77828A); }
+
+/* ---------- خلاصه ---------- */
+.wcsp-rows { margin: 0; }
+.wcsp-rows > div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px dashed var(--tisa-border, #E3E1DA); font-size: var(--tisa-fs-control, 13px); }
+.wcsp-rows > div:last-child { border-bottom: 0; }
+.wcsp-rows dt { margin: 0; color: var(--tisa-muted, #77828A); }
+.wcsp-rows dd { margin: 0; font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
+.wcsp-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--tisa-sp-4, 16px); }
+.wcsp-wrap .wcsp-quick a { padding: 5px 12px; border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-pill, 999px); background: var(--tisa-surface-2, #FAFAF8); color: var(--tisa-ink, #1F2A2E); font-size: var(--tisa-fs-meta, 12px); font-weight: 600; text-decoration: none; }
+.wcsp-wrap .wcsp-quick a:hover { border-color: var(--tisa-primary, #0E7C6B); color: var(--tisa-primary-ink, #0A5F52); }
+
+/* ---------- فرم ---------- */
+.wcsp-toggle { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 var(--tisa-sp-4, 16px); font-size: var(--tisa-fs-control, 13px); font-weight: 600; cursor: pointer; }
+.wcsp-field { margin: 0 0 var(--tisa-sp-4, 16px); }
+.wcsp-field:last-child { margin-bottom: 0; }
+.wcsp-label { display: block; margin: 0 0 6px; font-size: var(--tisa-fs-control, 13px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
+.wcsp-opt { margin-inline-start: 6px; font-size: var(--tisa-fs-tiny, 11px); font-weight: 500; color: var(--tisa-muted, #77828A); }
+.wcsp-hint { margin: 6px 0 0; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.wcsp-wrap textarea.tisa-input { min-height: 0; height: auto; padding-block: 9px; line-height: 1.6; resize: vertical; }
+.wcsp-money { display: flex; align-items: center; gap: 8px; max-width: 320px; }
+.wcsp-money .tisa-input { flex: 1 1 auto; font-weight: 700; }
+.wcsp-money .cur { flex: 0 0 auto; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+
+.wcsp-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--tisa-r-sm, 10px); background: var(--tisa-surface-3, #EFEBE1); }
+.wcsp-seg label { position: relative; }
+.wcsp-seg input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.wcsp-seg span { display: block; padding: 6px 14px; border-radius: var(--tisa-r-xs, 6px); font-size: var(--tisa-fs-meta, 12px); font-weight: 600; color: var(--tisa-muted, #77828A); cursor: pointer; transition: all .15s; }
+.wcsp-seg input:checked + span { background: var(--tisa-surface, #fff); color: var(--tisa-primary-ink, #0A5F52); box-shadow: var(--tisa-shadow-sm, 0 1px 2px rgba(31, 42, 46, .08)); }
+.wcsp-seg input:focus-visible + span { box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)); }
+
+.wcsp-skus { margin: 0; padding: 0; list-style: none; border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-sm, 10px); overflow: hidden; }
+.wcsp-skus li { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--tisa-border, #E3E1DA); font-size: var(--tisa-fs-control, 13px); }
+.wcsp-skus li:last-child { border-bottom: 0; }
+.wcsp-skus .found { color: var(--tisa-ink, #1F2A2E); }
+.wcsp-skus .missing { color: var(--tisa-danger, #B5453A); }
+
+.wcsp-preview { display: flex; align-items: center; gap: 10px; padding: var(--tisa-sp-4, 16px); border: 1px dashed var(--tisa-border-strong, #C9DCD7); border-radius: var(--tisa-r, 14px); background: var(--tisa-surface-2, #FAFAF8); font-size: var(--tisa-fs-control, 13px); }
+.wcsp-preview input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--tisa-primary, #0E7C6B); }
+.wcsp-preview .pv-price { font-weight: 700; color: var(--tisa-primary-ink, #0A5F52); }
+
+.wcsp-help { margin: 0; padding: 0 18px 0 0; font-size: var(--tisa-fs-control, 13px); line-height: 1.9; }
+.wcsp-help li { margin: 0 0 6px; }
+.wcsp-help b { color: var(--tisa-ink, #1F2A2E); }
+
+.wcsp-actions { display: flex; align-items: center; gap: var(--tisa-sp-4, 16px); margin-top: var(--tisa-sp-2, 8px); }
+.wcsp-actions .wcsp-hint { margin: 0; }
 
 /* select2 rtl */
-.wcsp-app .select2-container { font-size: var(--tisa-fs-control, 13px); }
-.wcsp-app .select2-container--default .select2-selection--single { min-height: var(--tisa-ctl-h, 38px); border-color: var(--line); border-radius: var(--r-sm); }
-
-/* ---------- کم‌فضا ---------- */
-body.tisa-compact .wcsp-card { padding: var(--tisa-sp-4, 16px); }
-body.tisa-compact .wcsp-kpi { padding: var(--tisa-sp-3, 12px); }
-
-/* ---------- ریسپانسیو ---------- */
-@media (max-width: 1000px) {
-	.wcsp-grid, .wcsp-grid-2 { grid-template-columns: 1fr; }
-	.wcsp-kpis { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 720px) {
-	.wcsp-app { margin: -10px -12px 0; padding: var(--tisa-sp-4, 16px) var(--tisa-sp-3, 12px) var(--tisa-sp-6, 32px); }
-	.wcsp-kpis, .wcsp-health, .wcsp-quick { grid-template-columns: 1fr; }
-	.wcsp-tabs { position: static; }
-}
-@media (prefers-reduced-motion: reduce) {
-	.wcsp-app * { transition-duration: .01ms !important; }
-}
+.wcsp-wrap .select2-container { font-size: var(--tisa-fs-control, 13px); }
+.wcsp-wrap .select2-container--default .select2-selection--multiple { min-height: var(--tisa-ctl-h, 38px); border-color: var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-sm, 10px); }
+.wcsp-wrap .select2-container--default.select2-container--focus .select2-selection--multiple { border-color: var(--tisa-primary, #0E7C6B); box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)); }
+.wcsp-wrap .select2-container--default .select2-selection--multiple .select2-selection__choice { border: 0; border-radius: var(--tisa-r-pill, 999px); background: var(--tisa-primary-soft, #E8F0EE); color: var(--tisa-primary-ink, #0A5F52); }
