@@ -354,4 +354,20 @@
 			}
 		} );
 	}
+
+	/* پیام هاب: بستن با دکمه، و محو خودکار پیام‌های موفق بعد از ۵ ثانیه */
+	$$( '.tsh-notice' ).forEach( function ( n ) {
+		var hide = function () {
+			n.classList.add( 'is-leaving' );
+			window.setTimeout( function () { if ( n.parentNode ) { n.parentNode.removeChild( n ); } }, 260 );
+		};
+		var x = $( '.tsh-notice__x', n );
+		if ( x ) { x.addEventListener( 'click', hide ); }
+		if ( n.classList.contains( 'tsh-notice--success' ) ) { window.setTimeout( hide, 5000 ); }
+		if ( window.history && history.replaceState && /[?&]tsh_msg=/.test( location.search ) ) {
+			var u = new URL( location.href );
+			u.searchParams.delete( 'tsh_msg' ); u.searchParams.delete( 'tsh_err' ); u.searchParams.delete( 'tsh_item' );
+			history.replaceState( null, '', u.toString() );
+		}
+	} );
 }() );

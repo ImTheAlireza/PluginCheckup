@@ -206,12 +206,58 @@ body.tisa-hub-page #wpbody-content > .update-nag {
 	direction: ltr;
 }
 
-/* پیام خود هاب داخل هیرو */
-.tsh-hero .tsh-notice {
+/* پیام خود هاب داخل هیرو — قرص شیشه‌ای روی سبز؛ بدون حاشیهٔ رنگیِ وردپرس */
+.tsh-hero .tsh-notice,
+.tisa-hub-wrap .tsh-notice {
 	position: relative;
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	max-width: 100%;
 	margin: var(--tisa-sp-4, 16px) 0 0;
-	color: var(--tisa-ink, #1F2A2E);
+	padding: 8px 10px 8px 14px;
+	border: 1px solid rgba(255, 255, 255, .22);
+	border-inline-start: 1px solid rgba(255, 255, 255, .22);
+	border-radius: var(--tisa-r-pill, 999px);
+	background: rgba(255, 255, 255, .14);
+	box-shadow: none;
+	color: var(--tisa-on-primary, #fff);
+	font-size: var(--tisa-fs-control, 13px);
+	font-weight: 600;
+	line-height: 1.5;
+	animation: tsh-notice-in .25s ease;
+	backdrop-filter: blur(6px);
 }
+@keyframes tsh-notice-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.tsh-notice.is-leaving { opacity: 0; transform: translateY(-4px); transition: opacity .25s, transform .25s; }
+.tsh-notice p { margin: 0 !important; padding: 0; color: inherit; font-size: inherit; }
+.tisa-hub-wrap .tsh-notice a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.tsh-notice__ic {
+	flex: 0 0 auto;
+	display: inline-flex; align-items: center; justify-content: center;
+	width: 22px; height: 22px;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, .92);
+	color: var(--tisa-success, #1A7F37);
+}
+.tsh-notice--error .tsh-notice__ic { color: var(--tisa-danger, #B5453A); }
+.tsh-notice--info .tsh-notice__ic { color: var(--tisa-info, #3F6E9E); }
+.tsh-notice__ic svg { width: 14px; height: 14px; }
+.tsh-notice__x {
+	flex: 0 0 auto;
+	width: 24px; height: 24px;
+	margin-inline-start: 2px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: inherit;
+	font-size: 18px; line-height: 1;
+	cursor: pointer;
+	opacity: .75;
+}
+.tsh-notice__x:hover { background: rgba(255, 255, 255, .18); opacity: 1; }
+.tsh-notice__x:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(255, 255, 255, .45); }
 
 /* ---------- ۳) گروه‌ها روی بوم ---------- */
 .tsh-body {

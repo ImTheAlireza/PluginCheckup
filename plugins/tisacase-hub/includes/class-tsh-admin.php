@@ -609,6 +609,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 
 			TSH_UI::flush();
 			wp_clean_plugins_cache( true );
+			self::sweep_temp_write_tests();
 
 			if ( $was_active ) {
 				$new_base = $upgrader->plugin_info();
@@ -619,6 +620,33 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 
 			wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'updated', 'tsh_item' => $key ), $back ) );
 			exit;
+		}
+
+		/**
+		 * پاک‌کردن فایل‌های صفر بایتی «temp-write-test-*» که هستهٔ وردپرس هنگام
+		 * تشخیص روش فایل‌سیستم می‌سازد و گاهی جا می‌گذارد. فقط فایل‌های خالی با همین
+		 * الگو، فقط در ریشه‌های شناخته‌شده و بدون پیمایش بازگشتی.
+		 *
+		 * @return int تعداد حذف‌شده.
+		 */
+		public static function sweep_temp_write_tests() {
+			$roots = array( WP_CONTENT_DIR, WP_PLUGIN_DIR, untrailingslashit( ABSPATH ), untrailingslashit( ABSPATH ) . '/wp-admin' );
+			$up    = wp_upload_dir( null, false );
+			if ( empty( $up['error'] ) && ! empty( $up['basedir'] ) ) {
+				$roots[] = $up['basedir'];
+			}
+			$n = 0;
+			foreach ( array_unique( $roots ) as $root ) {
+				$files = glob( trailingslashit( $root ) . 'temp-write-test-*' );
+				foreach ( (array) $files as $f ) {
+					if ( is_file( $f ) && 0 === (int) filesize( $f ) && preg_match( '/temp-write-test-[0-9a-f]+-\d+$/', $f ) ) {
+						if ( wp_delete_file( $f ) || ! file_exists( $f ) ) {
+							$n++;
+						}
+					}
+				}
+			}
+			return $n;
 		}
 
 		/* * * * * * * * * * * AJAX * * * * * * * * * * * */
@@ -758,7 +786,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			list( $type, $text ) = $texts[ $msg ];
 			$cls = 'info' === $type ? 'info' : $type;
 			printf(
-				'<div class="notice tsh-notice notice-%1$s is-dismissible"><p>%2$s</p></div>',
+				'<div class="notice tsh-notice tsh-notice--%1$s" role="status"><span class="tsh-notice__ic" aria-hidden="true">%3$s</span><p>%2$s</p><button type="button" class="tsh-notice__x" aria-label="%4$s">&times;</button></div>',
 				esc_attr( $cls ),
 				wp_kses(
 					$text,
@@ -768,7 +796,13 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 						'code'   => array(),
 						'span'   => array( 'class' => array() ),
 					)
-				)
+				),
+				'success' === $cls
+					? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+					: ( 'error' === $cls
+						? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg>'
+						: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 11v6M12 7h.01"/></svg>' ),
+				esc_attr__( 'بستن', 'tisacase-hub' )
 			);
 		}
 
@@ -796,4 +830,6 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 
 	// پیام‌ها بعد از redirect — روی همهٔ صفحه‌های هاب.
 	add_action( 'admin_notices', array( 'TSH_Admin', 'admin_notice' ) );
+	// بعد از هر به‌روزرسانی (هاب یا صفحهٔ افزونه‌های وردپرس) فایل‌های تست نوشتن پاک شوند.
+	add_action( 'upgrader_process_complete', array( 'TSH_Admin', 'sweep_temp_write_tests' ), 99, 0 );
 }

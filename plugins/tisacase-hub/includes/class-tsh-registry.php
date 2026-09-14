@@ -265,6 +265,29 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				),
 			);
 
+			$items['telegram'] = array(
+				'title' => __( 'ارسال سفارش‌ها به تلگرام', 'tisacase-hub' ),
+				'desc'  => __( 'سفارش جدید، تغییر وضعیت، گزارش شبانه و هشدار موجودی در چت تلگرام؛ با لاگ رویدادها.', 'tisacase-hub' ),
+				'group' => 'orders',
+				'icon'  => 'send',
+				'dir'   => 'wc-telegram-orders',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'سفارش‌ها و گزارش', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=wc-telegram-orders',
+						'screen' => 'woocommerce_page_wc-telegram-orders',
+						'parent' => 'woocommerce',
+						'slug'   => 'wc-telegram-orders',
+					),
+					array(
+						'label'  => __( 'اعلان موجودی', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=wc-telegram-orders&tab=products',
+						'screen' => 'woocommerce_page_wc-telegram-orders',
+					),
+				),
+			);
+
 			$items['phones'] = array(
 				'title' => __( 'خروجی شماره تماس سفارش‌ها', 'tisacase-hub' ),
 				'desc'  => __( 'اکسل شماره تماس با فرمت 989xxxxxxxxx، بدون تکراری و با پاک‌سازی فایل موقت.', 'tisacase-hub' ),
