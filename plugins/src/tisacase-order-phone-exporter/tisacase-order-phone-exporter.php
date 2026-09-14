@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TisaCase Order Phone Exporter
  * Description: خروجی شماره موبایل سفارش‌های ووکامرس در فایل‌های Excel ده‌هزارتایی، بدون هدر و با فرمت 989xxxxxxxxx، با حذف شماره‌های تکراری، پردازش سبکِ Batch و پاک‌سازی خودکار فایل‌های موقت.
- * Version: 1.4.0
+ * Version: 1.5.0
  * Author: علیرضا شعبان زاده
  * Requires PHP: 7.4
  * Requires at least: 5.8
@@ -18,6 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'TISA_PHONE_EXPORTER_FILE', __FILE__ );
+define( 'TISA_PHONE_EXPORTER_VERSION', '1.5.0' );
 define( 'TISA_PHONE_EXPORTER_DIR', plugin_dir_path( __FILE__ ) );
 
 /*

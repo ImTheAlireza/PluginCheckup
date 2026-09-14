@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ارسال سفارش‌ها به تلگرام ووکامرس
  * Description:       ارسال خودکار سفارش‌های جدید ووکامرس به تلگرام با فرمت فارسی دلخواه + گزارش روزانه فروش (با سنجاق خودکار) + اعلان کمبود موجودی محصولات + سیستم لاگ رویدادها در پنل.
- * Version:           1.12.3
+ * Version:           1.12.4
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            علیرضا شعبان زاده
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_TELEGRAM_ORDERS_VERSION', '1.12.3');
+define('WC_TELEGRAM_ORDERS_VERSION', '1.12.4');
 define('WC_TELEGRAM_ORDERS_OPTION', 'wc_telegram_orders_settings');
 define('WC_TELEGRAM_ORDERS_FILE', __FILE__);
 
@@ -42,7 +42,7 @@ class WC_Telegram_Orders {
     const LAST_REPORT_OPTION = 'wc_telegram_last_report_end'; // پایان بازه آخرین گزارش روزانه (UTC)
     const MIGRATION_OPTION = 'wc_telegram_migrated_version';  // نسخه‌ای که مهاجرت قالب‌ها برایش انجام شده
     const TEMPLATE_VERSION_OPTION = 'wc_telegram_template_version'; // نسخهٔ قالب پیش‌فرضی که اعمال شده
-    const TEMPLATE_VERSION = '1.12.3';                        // فقط با تغییرِ قالب پیش‌فرض بالا می‌رود
+    const TEMPLATE_VERSION = '1.12.4';                        // فقط با تغییرِ قالب پیش‌فرض بالا می‌رود
     const STOCK_STATE_META = '_wc_telegram_stock_state';      // وضعیت اعلان موجودی هر محصول: '' | low | out
 
     // صف اعلان‌های موجودی همین درخواست — در پایان درخواست یکجا ارسال می‌شود
@@ -288,8 +288,7 @@ class WC_Telegram_Orders {
             . "حمل و نقل: {shipping_method} - {shipping_total}\n"
             . "💵 <b>مجموع سفارش: {order_total}</b>\n"
             // این خط فقط برای سفارش‌هایی نمایش داده می‌شود که بخشی از آن با کیف پول پرداخت شده باشد
-            . "{if_wallet}💵 <b>پرداختی: {paid_amount}</b> ({wallet_amount} از کیف پول)\n{/if_wallet}"
-            . "\n"
+            . "{if_wallet}💵 <b>پرداختی: {paid_amount}</b> ({wallet_number}+ تومان از کیف پول)\n{/if_wallet}"
             . "💳 نحوه پرداخت: {payment_method}\n"
             . "--------------------------\n"
             . "👤 <b>اطلاعات مشتری:</b>\n"

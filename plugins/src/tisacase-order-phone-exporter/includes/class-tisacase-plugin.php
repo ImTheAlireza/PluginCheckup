@@ -91,7 +91,7 @@ if ( ! class_exists( 'TisaCase_Phone_Exporter' ) ) {
 				return;
 			}
 			$deps = wp_style_is( 'tisacase-ui', 'registered' ) ? array( 'tisacase-ui' ) : array();
-			wp_enqueue_style( 'tisacase-phone-exporter', plugins_url( 'assets/admin.css', TISA_PHONE_EXPORTER_FILE ), $deps, '1.4.0' );
+			wp_enqueue_style( 'tisacase-phone-exporter', plugins_url( 'assets/admin.css', TISA_PHONE_EXPORTER_FILE ), $deps, TISA_PHONE_EXPORTER_VERSION );
 		}
 
 		public static function admin_menu() {

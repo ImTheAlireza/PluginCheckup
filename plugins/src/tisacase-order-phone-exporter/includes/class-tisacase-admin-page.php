@@ -52,53 +52,75 @@ if ( ! class_exists( 'TisaCase_Phone_Exporter_Admin_Page' ) ) {
 			);
 			?>
 			<div class="wrap tisa-wrap tisa-phx" dir="rtl">
-				<header class="tisa-page-head">
-					<div>
-						<h1 class="tisa-h1"><?php esc_html_e( 'خروجی شماره تماس سفارش‌ها', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></h1>
-						<p class="tisa-meta"><?php echo esc_html( sprintf(
+				<header class="tisa-phx__hero">
+					<div class="tisa-phx__hero-mark" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg>
+					</div>
+					<div class="tisa-phx__hero-text">
+						<h1 class="tisa-phx__title"><?php esc_html_e( 'خروجی شماره تماس سفارش‌ها', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></h1>
+						<p class="tisa-phx__sub"><?php echo esc_html( sprintf(
 							/* translators: 1: batch size, 2: file size */
-							__( 'فرمت 989xxxxxxxxx · هر فایل حداکثر %2$s شماره · هر گام %1$s سفارش', TisaCase_Phone_Exporter::TEXT_DOMAIN ),
+							__( 'فرمت 989xxxxxxxxx · هر فایل %2$s شماره · هر گام %1$s سفارش', TisaCase_Phone_Exporter::TEXT_DOMAIN ),
 							number_format_i18n( TisaCase_Phone_Exporter::batch_size() ),
 							number_format_i18n( TisaCase_Phone_Exporter::file_size() )
 						) ); ?></p>
 					</div>
+					<span class="tisa-phx__hero-pill"><?php echo esc_html( TisaCase_Phone_Exporter_Queries::hpos_enabled() ? 'HPOS' : 'Legacy' ); ?></span>
+					<span class="tisa-phx__hero-pill" dir="ltr">v<?php echo esc_html( TISA_PHONE_EXPORTER_VERSION ); ?></span>
 				</header>
 
-				<section class="tisa-card tisa-phx__card">
-					<label class="tisa-check">
-						<input type="checkbox" id="tisa-phone-export-dedup" checked>
-						<span><?php esc_html_e( 'حذف شماره‌های تکراری (هر شماره یک‌بار، مرتب‌شده)', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></span>
-					</label>
-
-					<div class="tisa-phx__actions">
-						<button type="button" class="tisa-btn tisa-btn--primary" id="tisa-phone-export-start">
-							<?php esc_html_e( 'شروع خروجی جدید', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?>
-						</button>
-						<button type="button" class="tisa-btn tisa-btn--secondary" id="tisa-phone-export-resume" style="display:none;">
-							<?php esc_html_e( 'ادامه خروجی', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?>
-						</button>
-						<button type="button" class="tisa-btn tisa-btn--ghost" id="tisa-phone-export-cancel" style="display:none;">
-							<?php esc_html_e( 'توقف و پاک‌سازی', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?>
-						</button>
-						<button type="button" class="tisa-btn tisa-btn--ghost" id="tisa-phone-export-reload">
-							<?php esc_html_e( 'آخرین وضعیت', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?>
-						</button>
-					</div>
-
-					<div id="tisa-phone-export-box" class="tisa-phx__box" <?php echo empty( $initial ) ? 'hidden' : ''; ?>>
-						<div class="tisa-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-							<div id="tisa-phone-export-progress" class="tisa-progress__bar" style="width:0;"></div>
+				<section class="tisa-phx__card">
+					<div class="tisa-phx__card-head">
+						<span class="tisa-phx__dot" aria-hidden="true"></span>
+						<div>
+							<h2><?php esc_html_e( 'ساخت خروجی', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></h2>
+							<p><?php esc_html_e( 'همهٔ سفارش‌ها (به‌جز سطل زباله) خوانده می‌شود؛ فایل‌ها بدون سرستون، فقط شماره.', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></p>
 						</div>
-						<p id="tisa-phone-export-status" class="tisa-progress-text" aria-live="polite"></p>
-						<pre id="tisa-phone-export-error" class="tisa-log tisa-phx__err" style="display:none;"></pre>
-						<div id="tisa-phone-export-files" class="tisa-phx__files"></div>
+					</div>
+					<div class="tisa-phx__card-body">
+						<div class="tisa-phx__between">
+							<label class="tisa-switch tisa-phx__switch">
+								<input type="checkbox" id="tisa-phone-export-dedup" checked>
+								<span class="tisa-switch__track" aria-hidden="true"></span>
+								<span><?php esc_html_e( 'حذف شماره‌های تکراری', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?> <small><?php esc_html_e( '(هر شماره یک‌بار، مرتب‌شده)', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></small></span>
+							</label>
+
+							<div class="tisa-phx__actions">
+								<button type="button" class="tisa-btn tisa-btn--ghost" id="tisa-phone-export-reload">
+									<?php esc_html_e( 'آخرین وضعیت', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?>
+								</button>
+								<button type="button" class="tisa-btn tisa-btn--ghost tisa-phx__danger" id="tisa-phone-export-cancel" style="display:none;">
+									<?php esc_html_e( 'توقف و پاک‌سازی', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?>
+								</button>
+								<button type="button" class="tisa-btn tisa-btn--secondary" id="tisa-phone-export-resume" style="display:none;">
+									<?php esc_html_e( 'ادامه خروجی', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?>
+								</button>
+								<button type="button" class="tisa-btn tisa-btn--primary" id="tisa-phone-export-start">
+									<?php esc_html_e( 'شروع خروجی جدید', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?>
+								</button>
+							</div>
+						</div>
+
+						<div id="tisa-phone-export-box" class="tisa-phx__box" <?php echo empty( $initial ) ? 'hidden' : ''; ?>>
+							<div class="tisa-phx__kpis">
+								<div class="tisa-phx__kpi"><span><?php esc_html_e( 'سفارش بررسی‌شده', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></span><b id="tisa-phx-k-processed">۰</b><small id="tisa-phx-k-total"></small></div>
+								<div class="tisa-phx__kpi is-ok"><span><?php esc_html_e( 'شماره معتبر', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></span><b id="tisa-phx-k-valid">۰</b></div>
+								<div class="tisa-phx__kpi"><span><?php esc_html_e( 'بدون شماره معتبر', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></span><b id="tisa-phx-k-skipped">۰</b></div>
+								<div class="tisa-phx__kpi"><span><?php esc_html_e( 'تکراری حذف‌شده', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></span><b id="tisa-phx-k-dupes">—</b></div>
+							</div>
+							<div class="tisa-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+								<div id="tisa-phone-export-progress" class="tisa-progress__bar" style="width:0;"></div>
+							</div>
+							<p id="tisa-phone-export-status" class="tisa-progress-text" aria-live="polite"></p>
+							<pre id="tisa-phone-export-error" class="tisa-log tisa-phx__err" style="display:none;"></pre>
+							<div id="tisa-phone-export-files" class="tisa-phx__files"></div>
+						</div>
 					</div>
 				</section>
 
 				<details class="tisa-phx__help">
-					<summary class="tisa-meta"><?php esc_html_e( 'چه چیزی خروجی گرفته می‌شود؟', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></summary>
-					<p class="tisa-meta"><?php esc_html_e( 'شماره تماس سفارش‌ها از وضعیت‌های استاندارد ووکامرس (رسیده، در حال انجام، تکمیل‌شده، لغوشده، ناموفق، مرجوعی و...) به فرمت 989xxxxxxxxx تبدیل می‌شود. سطل زباله و پیش‌نویس پرداخت شامل نمی‌شود. فایل‌ها بدون Header اند و در هر گام فقط ستون‌های لازم، فقط‌خواندنی، خوانده می‌شوند.', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></p>
-					<p class="tisa-meta"><?php esc_html_e( 'با فعال بودن «حذف تکراری‌ها»، هر شماره فقط یک‌بار در خروجی می‌آید (مرتب‌شده صعودی). فایل‌های موقت حداکثر تا ۲۴ ساعت بعد خودکار از سرور پاک می‌شوند.', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></p>
+					<summary><?php esc_html_e( 'چه چیزی خروجی گرفته می‌شود؟', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></summary>
+					<p><?php esc_html_e( 'شماره تماس صورتحساب همهٔ وضعیت‌های ووکامرس (رسیده، در حال انجام، تکمیل‌شده، لغوشده، ناموفق، مرجوعی و…) به 989xxxxxxxxx تبدیل می‌شود؛ سطل زباله شامل نیست. با «حذف تکراری‌ها» هر شماره یک‌بار و مرتب می‌آید. فایل‌ها تا ۲۴ ساعت روی سرور می‌مانند و بعد خودکار پاک می‌شوند.', TisaCase_Phone_Exporter::TEXT_DOMAIN ); ?></p>
 				</details>
 			</div>
 
@@ -195,40 +217,36 @@ if ( ! class_exists( 'TisaCase_Phone_Exporter_Admin_Page' ) ) {
 
 					$('#tisa-phone-export-progress').css('width', pct + '%');
 
-					var status = L.stats
-						.replace('%1', fa(processed)).replace('%2', fa(total))
-						.replace('%3', fa(data.valid_phones || 0))
-						.replace('%4', fa(data.skipped || 0));
+					$('#tisa-phx-k-processed').text(fa(processed));
+					$('#tisa-phx-k-total').text(total > 0 ? ('از ' + fa(total) + ' · ' + fa(pct) + '٪') : '');
+					$('#tisa-phx-k-valid').text(fa(data.valid_phones || 0));
+					$('#tisa-phx-k-skipped').text(fa(data.skipped || 0));
+					$('#tisa-phx-k-dupes').text(data.dedup ? fa(data.duplicates || 0) : '—');
 
-					if (data.duplicates > 0) {
-						status += ' &nbsp;|&nbsp; ' + L.dupes.replace('%1', fa(data.duplicates));
-					}
-					if (data.storage) {
-						status += ' &nbsp;|&nbsp; ' + L.storage.replace('%1', escapeHtml(data.storage));
-					}
+					var status = '';
 					if (running && startedAt && processed > 20) {
 						var elapsed = (Date.now() - startedAt) / 1000;
 						var done    = processed - startProcessed;
 						if (done > 0 && total > processed) {
 							var eta = elapsed / done * (total - processed);
-							status += ' &nbsp;|&nbsp; ' + L.time.replace('%1', fmtDur(elapsed)).replace('%2', fmtDur(eta));
+							status += L.time.replace('%1', fmtDur(elapsed)).replace('%2', fmtDur(eta));
 						} else {
-							status += ' &nbsp;|&nbsp; ' + L.time.replace('%1', fmtDur(elapsed)).replace('%2', '—');
+							status += L.time.replace('%1', fmtDur(elapsed)).replace('%2', '—');
 						}
 					}
 
 					if (data.done) {
 						var files = data.files || [];
 						if (files.length) {
-							status += '<br><strong class="is-ok">' + L.doneFiles.replace('%1', fa(files.length)) + '</strong>';
+							status = '<strong class="is-ok">' + L.doneFiles.replace('%1', fa(files.length)) + '</strong>';
 						} else {
-							status += '<br><strong class="is-fail">' + L.doneEmpty.replace('%1', fa(processed)) + '</strong>';
+							status = '<strong class="is-fail">' + L.doneEmpty.replace('%1', fa(processed)) + '</strong>';
 						}
 						$('#tisa-phone-export-resume').hide();
 					} else if (running) {
-						status += '<br>' + escapeHtml(L.running);
+						status = escapeHtml(L.running) + (status ? ' · ' + status : '');
 					} else if (processed > 0) {
-						status += '<br>' + escapeHtml(L.paused);
+						status = '<strong class="is-warn">' + escapeHtml(L.paused) + '</strong>';
 						$('#tisa-phone-export-resume').show();
 					}
 
@@ -237,16 +255,19 @@ if ( ! class_exists( 'TisaCase_Phone_Exporter_Admin_Page' ) ) {
 					var files = data.files || [];
 					if (files.length) {
 						var $box = $('#tisa-phone-export-files').empty();
-						$('<h2>', { text: L.filesReady, 'class': 'tisa-h3 tisa-phx__files-h' }).appendTo($box);
+						$('<h2>', { text: L.filesReady, 'class': 'tisa-phx__files-h' }).appendTo($box);
 
 						var $list = $('<div>', { 'class': 'tisa-phx__files-list' }).appendTo($box);
 
 						$.each(files, function(i, file) {
+							var $row = $('<div>', { 'class': 'tisa-phx__file' }).appendTo($list);
+							$('<span>', { 'class': 'tisa-phx__file-n', text: fa(i + 1) }).appendTo($row);
+							$('<span>', { 'class': 'tisa-phx__file-c', text: fa(file.count || 0) + ' ' + L.numbers }).appendTo($row);
 							$('<a>', {
 								'class': 'tisa-btn tisa-btn--secondary tisa-btn--sm',
 								href: String(file.url || ''),
-								text: L.downloadFile + ' ' + fa(i + 1) + ' (' + fa(file.count || 0) + ' ' + L.numbers + ')'
-							}).appendTo($list);
+								text: L.downloadFile
+							}).appendTo($row);
 						});
 					} else {
 						$('#tisa-phone-export-files').empty();
