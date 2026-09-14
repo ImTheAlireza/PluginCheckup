@@ -139,7 +139,7 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 
 			$items['pricing'] = array(
 				'title' => __( 'قیمت‌گذاری', 'tisacase-hub' ),
-				'desc'  => __( 'قوانین داینامیک محصول/دسته/سراسری + تغییر گروهی امن قیمت‌ها با پیش‌نمایش، لاگ و بازگردانی.', 'tisacase-hub' ),
+				'desc'  => __( 'قوانین داینامیک، تغییر گروهی امن قیمت‌ها با پیش‌نمایش و بازگردانی، و مدیریت کدهای تخفیف.', 'tisacase-hub' ),
 				'group' => 'pricing',
 				'icon'  => 'tag',
 				'dir'   => 'tisacase-pricing',
@@ -155,6 +155,11 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 					array(
 						'label'  => __( 'تغییر گروهی', 'tisacase-hub' ),
 						'path'   => 'admin.php?page=tisacase-pricing&tab=bulk',
+						'screen' => 'woocommerce_page_tisacase-pricing',
+					),
+					array(
+						'label'  => __( 'کد تخفیف', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-pricing&tab=coupons',
 						'screen' => 'woocommerce_page_tisacase-pricing',
 					),
 					array(

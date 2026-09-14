@@ -71,6 +71,7 @@ if ( ! class_exists( 'TCP_Settings' ) ) {
 
 			// قوانین داینامیک (فیلترهای قیمت + ذخیره + جستجو).
 			TCP_Rules::hooks();
+			TCP_Coupons::hooks();
 		}
 
 		public static function activate() {

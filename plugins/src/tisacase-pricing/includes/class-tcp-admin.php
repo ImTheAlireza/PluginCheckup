@@ -12,12 +12,13 @@ if ( ! class_exists( 'TCP_Admin' ) ) {
 
 	final class TCP_Admin {
 
-		const TABS = array( 'rules', 'bulk', 'runs', 'settings' );
+		const TABS = array( 'rules', 'bulk', 'coupons', 'runs', 'settings' );
 
 		public static function tabs() {
 			return array(
 				'rules'    => 'قوانین داینامیک',
 				'bulk'     => 'تغییر گروهی قیمت',
+				'coupons'  => 'کد تخفیف',
 				'runs'     => 'گزارش و بازگردانی',
 				'settings' => 'تنظیمات',
 			);
@@ -56,7 +57,7 @@ if ( ! class_exists( 'TCP_Admin' ) ) {
 		}
 
 		public static function action_links( $links ) {
-			array_unshift( $links, '<a href="' . esc_url( self::url( 'rules' ) ) . '">قوانین</a>', '<a href="' . esc_url( self::url( 'bulk' ) ) . '">تغییر گروهی</a>' );
+			array_unshift( $links, '<a href="' . esc_url( self::url( 'rules' ) ) . '">قوانین</a>', '<a href="' . esc_url( self::url( 'bulk' ) ) . '">تغییر گروهی</a>', '<a href="' . esc_url( self::url( 'coupons' ) ) . '">کد تخفیف</a>' );
 			return $links;
 		}
 
@@ -121,6 +122,16 @@ if ( ! class_exists( 'TCP_Admin' ) ) {
 						'modes'      => TCP_Rules::modes(),
 					)
 				);
+				return;
+			}
+
+			if ( 'coupons' === $tab ) {
+				if ( TCP_Settings::wc_active() ) {
+					wp_enqueue_style( 'woocommerce_admin_styles' );
+					wp_enqueue_script( 'wc-enhanced-select' );
+				}
+				wp_enqueue_script( 'tcp-coupons', TCP_URL . 'assets/coupons.js', array( 'jquery' ), TCP_VERSION, true );
+				wp_localize_script( 'tcp-coupons', 'TCP_COUPONS', array( 'currency' => function_exists( 'get_woocommerce_currency_symbol' ) ? get_woocommerce_currency_symbol() : '' ) );
 				return;
 			}
 
@@ -250,7 +261,17 @@ if ( ! class_exists( 'TCP_Admin' ) ) {
 		private static function flash() {
 			// phpcs:disable WordPress.Security.NonceVerification.Recommended
 			if ( isset( $_GET['saved'] ) ) {
-				self::flash_box( 'success', 'rules' === self::current_tab() ? 'قوانین ذخیره شد و کش قیمت محصولات متغیر نسخهٔ جدید گرفت.' : 'تنظیمات ذخیره شد.' );
+				self::flash_box( 'success', 'rules' === self::current_tab() ? 'قوانین ذخیره شد و کش قیمت محصولات متغیر نسخهٔ جدید گرفت.' : ( 'coupons' === self::current_tab() ? 'کد تخفیف ذخیره شد.' : 'تنظیمات ذخیره شد.' ) );
+			}
+			if ( isset( $_GET['generated'] ) ) {
+				self::flash_box( 'success', number_format_i18n( absint( $_GET['n'] ?? 0 ) ) . ' کد ساخته شد' . ( ! empty( $_GET['batch'] ) ? ' (گروه ' . sanitize_text_field( wp_unslash( $_GET['batch'] ) ) . ')' : '' ) . '. با فیلتر گروه می‌توانی CSV بگیری.' );
+			}
+			if ( isset( $_GET['deleted'] ) ) {
+				self::flash_box( 'success', number_format_i18n( absint( $_GET['n'] ?? 0 ) ) . ' کد حذف شد.' );
+			}
+			if ( isset( $_GET['err'] ) ) {
+				$msg = isset( $_GET['msg'] ) ? sanitize_key( $_GET['msg'] ) : '';
+				self::flash_box( 'error', 'dupe' === $msg ? 'این کد قبلاً وجود دارد.' : 'کد را وارد کن.' );
 			}
 			if ( isset( $_GET['synced'] ) ) {
 				self::flash_box( 'success', 'قانون سراسری «۱۰٪ افزایش + ۱۰٪ فروش ویژه» برای همهٔ محصولات فعلی و آینده فعال شد.' );
