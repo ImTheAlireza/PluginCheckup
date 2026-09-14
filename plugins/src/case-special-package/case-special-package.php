@@ -3,7 +3,7 @@
  * Plugin Name: پکیج ویژه قاب موبایل
  * Plugin URI:  https://example.com/wc-case-special-package
  * Description: افزودن گزینه «پکیج ویژه» با قیمت ثابت به محصولات قاب موبایل (تشخیص از روی عنوان/دسته‌بندی، با لیست استثنا بر اساس SKU). قیمت به ازای هر عدد محاسبه و در فاکتور، ایمیل و پیشخوان نمایش داده می‌شود.
- * Version:     1.4.0
+ * Version:     1.4.1
  * Author:      علیرضا شعبان زاده
  * Text Domain: case-special-package
  * WC requires at least: 5.0
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'WCSP_MAIN_FILE', __FILE__ );
-define( 'WCSP_VERSION', '1.4.0' );
+define( 'WCSP_VERSION', '1.4.1' );
 
 /**
  * کلاس اصلی پلاگین.
@@ -44,6 +44,7 @@ final class WC_Case_Special_Package {
 		// هوک‌های ادمین.
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_post_wcsp_refresh_stats', array( __CLASS__, 'handle_refresh_stats' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 
 		// فیلد دستی روی صفحه ویرایش محصول.
@@ -72,6 +73,16 @@ final class WC_Case_Special_Package {
 
 	public static function flush_stats() {
 		delete_transient( 'wcsp_stats_v1' );
+	}
+
+	public static function handle_refresh_stats() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( 'دسترسی ندارید.' );
+		}
+		check_admin_referer( 'wcsp_refresh_stats' );
+		self::flush_stats();
+		wp_safe_redirect( admin_url( 'admin.php?page=wcsp-settings&stats-refreshed=1#wcsp-dash' ) );
+		exit;
 	}
 
 	public function declare_compatibility() {
@@ -250,6 +261,8 @@ final class WC_Case_Special_Package {
 
 				<?php if ( isset( $_GET['settings-updated'] ) ) : // phpcs:ignore ?>
 					<div class="wcsp-flashbar" role="status">تنظیمات ذخیره شد.</div>
+				<?php elseif ( isset( $_GET['stats-refreshed'] ) ) : // phpcs:ignore ?>
+					<div class="wcsp-flashbar" role="status">آمار دوباره از سفارش‌ها محاسبه شد.</div>
 				<?php endif; ?>
 
 				<!-- ================= داشبورد ================= -->
@@ -314,6 +327,7 @@ final class WC_Case_Special_Package {
 									<div><dt>کش آمار</dt><dd>۱ ساعته</dd></div>
 								</dl>
 								<div class="wcsp-quick">
+									<a class="wcsp-refresh" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=wcsp_refresh_stats' ), 'wcsp_refresh_stats' ) ); ?>">بازمحاسبهٔ آمار</a>
 									<a href="#" data-goto="general">قیمت و فعال‌سازی</a>
 									<a href="#" data-goto="detect">کلمات کلیدی</a>
 									<a href="#" data-goto="exceptions">لیست استثنا</a>
@@ -322,6 +336,29 @@ final class WC_Case_Special_Package {
 							</div>
 						</section>
 					</div>
+
+					<section class="wcsp-card">
+						<div class="wcsp-card-head"><span class="wcsp-dot wcsp-dot--muted"></span><div><h2>آخرین سفارش‌های دارای پکیج</h2><p>۱۰ سفارش اخیر (در حال انجام / تکمیل‌شده) که آیتم پکیج ویژه دارند.</p></div></div>
+						<div class="wcsp-card-body">
+							<?php if ( empty( $stats['recent'] ) ) : ?>
+								<p class="wcsp-hint">هنوز سفارشی با پکیج ویژه ثبت نشده — یا آمار نیاز به بازمحاسبه دارد.</p>
+							<?php else : ?>
+								<table class="wcsp-table">
+									<thead><tr><th>سفارش</th><th>تاریخ</th><th>وضعیت</th><th>مبلغ پکیج</th></tr></thead>
+									<tbody>
+									<?php foreach ( $stats['recent'] as $r ) : ?>
+										<tr>
+											<td><a href="<?php echo esc_url( $r['url'] ); ?>" target="_blank" rel="noopener">#<?php echo esc_html( $r['number'] ); ?></a></td>
+											<td><?php echo esc_html( $r['date'] ); ?></td>
+											<td><?php echo esc_html( $r['status'] ); ?></td>
+											<td><?php echo esc_html( wc_format_localized_price( $r['total'] ) ); ?> <small><?php echo esc_html( $sym ); ?></small></td>
+										</tr>
+									<?php endforeach; ?>
+									</tbody>
+								</table>
+							<?php endif; ?>
+						</div>
+					</section>
 				</section>
 
 				<!-- ================= تنظیمات ================= -->
@@ -608,6 +645,7 @@ final class WC_Case_Special_Package {
 			'revenue'        => 0.0,
 			'today'          => 0,
 			'series'         => array(),
+			'recent'         => array(),
 		);
 
 		for ( $i = 13; $i >= 0; $i-- ) {
@@ -640,27 +678,27 @@ final class WC_Case_Special_Package {
 			}
 			$stats['total_products'] = count( $ids );
 
-			// سفارش‌های دارای پکیج.
-			$orders = wc_get_orders(
-				array(
-					'status'  => array( 'wc-processing', 'wc-completed' ),
-					'limit'   => -1,
-					'orderby' => 'date',
-					'order'   => 'ASC',
-				)
+			// سفارش‌های دارای پکیج: جست‌وجوی مستقیم روی متای آیتم‌های سفارش
+			// (سریع، مستقل از HPOS، و بدون بارگذاری همهٔ سفارش‌ها).
+			global $wpdb;
+			$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+				"SELECT oi.order_id, SUM( im.meta_value + 0 ) AS total
+				   FROM {$wpdb->prefix}woocommerce_order_itemmeta im
+				  INNER JOIN {$wpdb->prefix}woocommerce_order_items oi ON oi.order_item_id = im.order_item_id
+				  WHERE im.meta_key = '_wcsp_package_total'
+				    AND oi.order_item_type = 'line_item'
+				  GROUP BY oi.order_id
+				 HAVING total > 0
+				  ORDER BY oi.order_id DESC"
 			);
-			$today  = gmdate( 'Y-m-d', time() + ( get_option( 'gmt_offset', 0 ) * HOUR_IN_SECONDS ) );
-			foreach ( $orders as $order ) {
-				$total = 0.0;
-				foreach ( $order->get_items() as $item ) {
-					$v = $item->get_meta( '_wcsp_package_total', true );
-					if ( '' !== $v && null !== $v ) {
-						$total += (float) $v;
-					}
-				}
-				if ( $total <= 0 ) {
+			$today    = gmdate( 'Y-m-d', time() + ( get_option( 'gmt_offset', 0 ) * HOUR_IN_SECONDS ) );
+			$statuses = array( 'processing', 'completed' );
+			foreach ( (array) $rows as $row ) {
+				$order = wc_get_order( (int) $row->order_id );
+				if ( ! $order || ! in_array( $order->get_status(), $statuses, true ) ) {
 					continue;
 				}
+				$total = (float) $row->total;
 				$stats['orders']++;
 				$stats['revenue'] += $total;
 				$d = $order->get_date_created() ? $order->get_date_created()->date( 'Y-m-d' ) : '';
@@ -673,10 +711,20 @@ final class WC_Case_Special_Package {
 						break;
 					}
 				}
+				if ( count( $stats['recent'] ) < 10 ) {
+					$stats['recent'][] = array(
+						'id'     => $order->get_id(),
+						'number' => $order->get_order_number(),
+						'date'   => $order->get_date_created() ? $order->get_date_created()->date_i18n( 'j F Y' ) : '',
+						'status' => wc_get_order_status_name( $order->get_status() ),
+						'total'  => $total,
+						'url'    => $order->get_edit_order_url(),
+					);
+				}
 			}
 		}
 
-		set_transient( 'wcsp_stats_v1', $stats, HOUR_IN_SECONDS );
+		set_transient( 'wcsp_stats_v1', $stats, $stats['orders'] > 0 ? HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS );
 		return $stats;
 	}
 

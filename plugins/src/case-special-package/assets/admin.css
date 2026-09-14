@@ -179,3 +179,12 @@ body.woocommerce_page_wcsp-settings #wpcontent { background: var(--tisa-bg, #F4F
 .wcsp-wrap .select2-container--default .select2-selection--multiple { min-height: var(--tisa-ctl-h, 38px); border-color: var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-sm, 10px); }
 .wcsp-wrap .select2-container--default.select2-container--focus .select2-selection--multiple { border-color: var(--tisa-primary, #0E7C6B); box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)); }
 .wcsp-wrap .select2-container--default .select2-selection--multiple .select2-selection__choice { border: 0; border-radius: var(--tisa-r-pill, 999px); background: var(--tisa-primary-soft, #E8F0EE); color: var(--tisa-primary-ink, #0A5F52); }
+
+/* جدول سفارش‌های اخیر */
+.wcsp-table { width: 100%; border-collapse: collapse; font-size: var(--tisa-fs-control, 13px); }
+.wcsp-table th { padding: 8px 10px; text-align: right; font-size: var(--tisa-fs-meta, 12px); font-weight: 600; color: var(--tisa-muted, #77828A); border-bottom: 1px solid var(--tisa-border, #E3E1DA); }
+.wcsp-table td { padding: 9px 10px; border-bottom: 1px dashed var(--tisa-border, #E3E1DA); }
+.wcsp-table tr:last-child td { border-bottom: 0; }
+.wcsp-table td:last-child { font-weight: 700; }
+.wcsp-wrap .wcsp-table a { color: var(--tisa-primary-ink, #0A5F52); font-weight: 700; text-decoration: none; }
+.wcsp-wrap .wcsp-quick a.wcsp-refresh { border-color: var(--tisa-primary, #0E7C6B); color: var(--tisa-primary-ink, #0A5F52); background: var(--tisa-primary-soft, #E8F0EE); }
