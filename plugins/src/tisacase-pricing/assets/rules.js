@@ -99,14 +99,29 @@
         }
 
         const safeName = escapeText(name);
+        const n = group + '[' + id + ']';
+        const modes = cfg.modes || { none: 'بدون رند', round: 'رند به ۸', jitter: 'تخفیف متغیر (رند به ۸)' };
+        let modeOpts = '';
+        Object.keys(modes).forEach(function (k) {
+            modeOpts += '<option value="' + k + '"' + (k === 'round' ? ' selected' : '') + '>' + escapeText(modes[k]) + '</option>';
+        });
+        const toggle = function (field, label, cls, checked) {
+            return '<input type="hidden" name="' + n + '[' + field + ']" value="0">' +
+                '<label class="tisa-switch tcp-toggle tcp-toggle--sm"><input type="checkbox" class="' + cls + '" name="' + n + '[' + field + ']" value="1"' + (checked ? ' checked' : '') + '>' +
+                '<span class="tisa-switch__track" aria-hidden="true"></span><span>' + label + '</span></label>';
+        };
         const row = [
             '<tr data-rule-id="', id, '">',
             '<td class="tcp-rule-name"><strong>', safeName, '</strong><small class="tisa-code">#', id, '</small>',
-            '<input type="hidden" name="', group, '[', id, '][exists]" value="1"></td>',
-            '<td><input class="tisa-input tisa-input--number" type="number" min="0" max="500" step="0.1" name="', group, '[', id, '][increase]" value="10"></td>',
-            '<td><input class="tisa-input tisa-input--number" type="number" min="0" max="99.9" step="0.1" name="', group, '[', id, '][sale]" value="10"></td>',
-            '<td class="tcp-rule-enabled"><input type="hidden" name="', group, '[', id, '][enabled]" value="0">',
-            '<label><input type="checkbox" name="', group, '[', id, '][enabled]" value="1" checked> فعال</label></td>',
+            '<input type="hidden" name="', n, '[exists]" value="1"></td>',
+            '<td class="tcp-rule-num"><input class="tisa-input tisa-input--number" type="number" min="0" max="500" step="0.1" name="', n, '[increase]" value="10"></td>',
+            '<td class="tcp-rule-num"><input class="tisa-input tisa-input--number" type="number" min="0" max="99.9" step="0.1" name="', n, '[sale]" value="10"></td>',
+            '<td><select class="tisa-input tisa-input--sm tcp-mode" name="', n, '[mode]">', modeOpts, '</select></td>',
+            '<td class="tcp-rule-dates"><input type="date" class="tisa-input tisa-input--sm" name="', n, '[from]" title="از تاریخ">',
+            '<input type="date" class="tisa-input tisa-input--sm" name="', n, '[to]" title="تا تاریخ"></td>',
+            '<td class="tcp-rule-limits"><input type="number" class="tisa-input tisa-input--sm" min="0" step="1000" name="', n, '[min]" placeholder="کف">',
+            '<input type="number" class="tisa-input tisa-input--sm" min="0" step="1000" name="', n, '[max]" placeholder="سقف"></td>',
+            '<td class="tcp-rule-flags">', toggle('enabled', 'فعال', '', true), toggle('exclude', 'استثنا', 'tcp-exclude', false), '</td>',
             '<td><button type="button" class="tisa-btn tisa-btn--ghost tisa-btn--sm tcp-remove-rule">حذف</button></td>',
             '</tr>'
         ].join('');
@@ -121,6 +136,11 @@
         const $item = $(this);
         addRule($item.data('type'), parseInt($item.data('id'), 10), $item.data('name'));
         $item.closest('.tcp-search-results').empty().hide();
+    });
+
+    $(document).on('change', '.tcp-exclude', function () {
+        const $tr = $(this).closest('tr');
+        $tr.toggleClass('is-excluded', this.checked);
     });
 
     $(document).on('click', '.tcp-remove-rule', function () {

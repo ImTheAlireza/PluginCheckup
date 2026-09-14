@@ -43,6 +43,7 @@ if ( ! class_exists( 'TCP_Ajax' ) ) {
 			$analysis = TCP_DB::analyze_targets( $parents, $args['operation'], TCP_Settings::sample_size() );
 
 			// ساخت نمونه‌ها با همان فرمول اجرا.
+			TCP_Ops::set_round_mode( $args['round_mode'] );
 			$samples = array();
 			foreach ( $analysis['samples'] as $oid => $info ) {
 				$samples[] = TCP_Ops::sample_row( $oid, $info, $args['operation'], $args['value'] );
@@ -56,6 +57,9 @@ if ( ! class_exists( 'TCP_Ajax' ) ) {
 				'include_children'   => ! empty( $args['include_children'] ),
 				'category_labels'    => self::category_labels( $args['category_ids'] ),
 				'operation_label'    => TCP_Ops::op_label( $args['operation'] ),
+				'round_mode'         => $args['round_mode'],
+				'round_label'        => TCP_Round::describe(),
+				'jitter'             => TCP_Round::jitter(),
 				'samples'            => $samples,
 			) );
 		}

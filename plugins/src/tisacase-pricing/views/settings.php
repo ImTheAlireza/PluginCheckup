@@ -20,8 +20,10 @@ $tcp_num = static function ( $name, $label, $value, $min, $max = null, $hint = '
 };
 $tcp_bool = static function ( $name, $label, $value ) {
 	?>
-	<label class="tcp-check tcp-set-check">
-		<input type="checkbox" name="<?php echo esc_attr( $name ); ?>" value="1" <?php checked( $value ); ?>> <?php echo esc_html( $label ); ?>
+	<label class="tisa-switch tcp-toggle tcp-set-check">
+		<input type="checkbox" name="<?php echo esc_attr( $name ); ?>" value="1" <?php checked( $value ); ?>>
+		<span class="tisa-switch__track" aria-hidden="true"></span>
+		<span><?php echo esc_html( $label ); ?></span>
 	</label>
 	<?php
 };
@@ -30,6 +32,27 @@ $tcp_bool = static function ( $name, $label, $value ) {
 <form method="post" action="<?php echo esc_url( TCP_Admin::url( 'settings' ) ); ?>">
 	<?php wp_nonce_field( TCP_Settings::NONCE ); ?>
 	<input type="hidden" name="tcp_settings_save" value="1">
+
+	<section class="tcp-card">
+		<div class="tcp-card-head"><span class="tcp-dot"></span><div><h2>رندکردن قیمت</h2><p>مشترک بین قوانین داینامیک و تغییر گروهی. الان قیمت‌های رند به «<?php echo esc_html( TCP_Round::describe() ); ?>» ختم می‌شوند.</p></div></div>
+		<div class="tcp-card-body tcp-grid-2">
+			<div class="tcp-set">
+				<label class="tcp-label" for="tcp-set-round_digit">رقم رندشدن</label>
+				<select name="round_digit" id="tcp-set-round_digit">
+					<?php for ( $d = 0; $d <= 9; $d++ ) : ?>
+						<option value="<?php echo esc_attr( $d ); ?>" <?php selected( (int) $s['round_digit'], $d ); ?>><?php echo esc_html( number_format_i18n( $d ) ); ?></option>
+					<?php endfor; ?>
+				</select>
+				<p class="tcp-muted">قیمت‌ها به این رقم ختم می‌شوند؛ با ۸ و گام ۱۰٬۰۰۰ → ۵۹۸٬۰۰۰، ۶۰۸٬۰۰۰، …</p>
+			</div>
+			<?php $tcp_num( 'round_step', 'گام رند (۰ = خودکار)', $s['round_step'], 0, null, 'خودکار: تومان ۱۰٬۰۰۰ / ریال ۱۰۰٬۰۰۰. مثلاً با ۱۰۰٬۰۰۰ قیمت‌ها می‌شوند ۵۸۰٬۰۰۰، ۶۸۰٬۰۰۰، …' ); ?>
+			<div class="tcp-set">
+				<label class="tcp-label" for="tcp-set-jitter_percent">دامنهٔ تخفیف متغیر (±٪)</label>
+				<input type="number" id="tcp-set-jitter_percent" name="jitter_percent" value="<?php echo esc_attr( $s['jitter_percent'] ); ?>" min="0.1" max="50" step="0.1">
+				<p class="tcp-muted">در حالت «تخفیف متغیر»، اگر ۱۰٪ بدهی هر محصول عددی بین ۵٪ تا ۱۵٪ (با ±۵) می‌گیرد؛ عدد هر محصول ثابت است و با هر بار نمایش عوض نمی‌شود.</p>
+			</div>
+		</div>
+	</section>
 
 	<section class="tcp-card">
 		<div class="tcp-card-head"><span class="tcp-dot"></span><div><h2>دسترسی و ایمنی</h2></div></div>

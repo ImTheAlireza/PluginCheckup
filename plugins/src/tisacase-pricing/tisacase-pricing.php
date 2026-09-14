@@ -3,7 +3,7 @@
  * Plugin Name: TisaCase Pricing
  * Plugin URI:  https://tisacase.com/
  * Description: قیمت‌گذاری یکپارچهٔ ووکامرس برای TisaCase — قوانین داینامیک (محصول/دسته/سراسری با حفظ قیمت همکاری و فروش ویژهٔ واقعی) به‌علاوهٔ تغییر گروهی امن قیمت عادی، فروش ویژه و قیمت عمده با پیش‌نمایش اجباری، گزارش، بازگردانی و CSV.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      TisaCase
  * License:     GPL-2.0-or-later
  * Text Domain: tisacase-pricing
@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TCP_VERSION', '1.0.0' );
+define( 'TCP_VERSION', '1.1.0' );
 define( 'TCP_FILE', __FILE__ );
 define( 'TCP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'TCP_URL', plugin_dir_url( __FILE__ ) );
@@ -24,6 +24,7 @@ define( 'TCP_WHOLESALE_META', '_tisacase_wholesale_price' );
 
 require_once TCP_DIR . 'includes/class-tcp-settings.php';
 require_once TCP_DIR . 'includes/class-tcp-db.php';
+require_once TCP_DIR . 'includes/class-tcp-round.php';
 require_once TCP_DIR . 'includes/class-tcp-ops.php';
 require_once TCP_DIR . 'includes/class-tcp-ajax.php';
 require_once TCP_DIR . 'includes/class-tcp-scheduler.php';

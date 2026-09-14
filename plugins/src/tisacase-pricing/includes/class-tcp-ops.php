@@ -18,6 +18,31 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 		const KIND_SET     = 'set';
 		const KIND_NONE    = 'none';
 
+		/** حالت رند جاری برای این درخواست/صفحه: none | round | jitter (از args می‌آید). */
+		public static $round_mode = 'none';
+
+		public static function set_round_mode( $mode ) {
+			$mode = sanitize_key( (string) $mode );
+			self::$round_mode = in_array( $mode, array( 'none', 'round', 'jitter' ), true ) ? $mode : 'none';
+		}
+
+		/**
+		 * اعمال حالت رند روی نتیجهٔ محاسبه.
+		 * - round: به پایین روی رقم ۸.
+		 * - jitter: فقط برای عملیات «درصد تخفیف» → درصد متغیر ±J به‌ازای هر آیتم؛ سایر عملیات مثل round.
+		 */
+		private static function finish( $op, $new, $base, $value, $seed ) {
+			if ( 'none' === self::$round_mode || null === $new || ! is_finite( (float) $new ) ) {
+				return $new;
+			}
+			$discount_ops = array( 'regular_decrease_percent', 'sale_discount_percent', 'wholesale_decrease_percent', 'wholesale_from_retail_percent' );
+			if ( 'jitter' === self::$round_mode && in_array( $op, $discount_ops, true ) && (float) $base > 0 ) {
+				$r = TCP_Round::jittered_discount( (float) $base, (float) $value, $seed );
+				return $r['price'];
+			}
+			return TCP_Round::down( (float) $new );
+		}
+
 		/* -----------------------------------------------------------------
 		 * فهرست عملیات
 		 * --------------------------------------------------------------- */
@@ -133,6 +158,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 				'category_ids'     => self::ids( isset( $post['category_ids'] ) ? $post['category_ids'] : '' ),
 				'product_ids'      => self::ids( isset( $post['product_ids'] ) ? $post['product_ids'] : '' ),
 				'include_children' => ! empty( $post['include_children'] ),
+				'round_mode'       => isset( $post['round_mode'] ) && in_array( sanitize_key( wp_unslash( $post['round_mode'] ) ), array( 'none', 'round', 'jitter' ), true ) ? sanitize_key( wp_unslash( $post['round_mode'] ) ) : 'none',
 			);
 
 			if ( 'category' === $target ) {
@@ -255,6 +281,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 				implode( ',', $cats ),
 				implode( ',', $prods ),
 				! empty( $args['include_children'] ) ? '1' : '0',
+				isset( $args['round_mode'] ) ? (string) $args['round_mode'] : 'none',
 				(string) $args['operation'],
 				$num( $args['value'] ),
 				! empty( $filters['only_sale'] ) ? '1' : '0',
@@ -291,7 +318,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 		 * قیمت عادی جدید.
 		 * @return array{ok:bool,new:string,msg:string}
 		 */
-		private static function calc_regular( $op, $current_raw, $value ) {
+		private static function calc_regular( $op, $current_raw, $value, $seed = 0 ) {
 			$current = '' === $current_raw ? 0.0 : (float) $current_raw;
 			$value   = (float) $value;
 			$new     = null;
@@ -304,6 +331,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 				case 'regular_decrease_fixed':   $new = $current - $value; break;
 				case 'regular_set':              $new = $value; break;
 			}
+			$new = self::finish( $op, $new, $current, $value, $seed );
 			$new = self::round_price( $new );
 			if ( false === $new ) {
 				return array( 'ok' => false, 'new' => '', 'msg' => 'نتیجهٔ محاسبه نامعتبر است (عدد بیش از حد بزرگ).' );
@@ -317,7 +345,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 		/**
 		 * قیمت فروش ویژهٔ جدید.
 		 */
-		private static function calc_sale( $op, $regular_raw, $value, $sale_current = '' ) {
+		private static function calc_sale( $op, $regular_raw, $value, $sale_current = '', $seed = 0 ) {
 			if ( 'sale_remove' === $op ) {
 				return array( 'ok' => true, 'new' => '', 'msg' => '' );
 			}
@@ -328,7 +356,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 			if ( 'sale_set' === $op ) {
 				$new = self::round_price( (float) $value );
 			} else { // sale_discount_percent
-				$new = self::round_price( $regular * ( 1 - (float) $value / 100 ) );
+				$new = self::round_price( self::finish( $op, $regular * ( 1 - (float) $value / 100 ), $regular, $value, $seed ) );
 			}
 			if ( false === $new ) {
 				return array( 'ok' => false, 'new' => '', 'msg' => 'نتیجهٔ محاسبه نامعتبر است.' );
@@ -342,7 +370,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 		/**
 		 * قیمت عمدهٔ جدید (فراخوانی‌کننده باید مطمئن شود که قبلاً قیمت عمده داشته).
 		 */
-		private static function calc_wholesale( $op, $current_raw, $retail_raw, $value ) {
+		private static function calc_wholesale( $op, $current_raw, $retail_raw, $value, $seed = 0 ) {
 			$current = '' === $current_raw ? 0.0 : (float) $current_raw;
 			$value   = (float) $value;
 			$new     = null;
@@ -360,6 +388,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 					$new = (float) $retail_raw * ( 1 - $value / 100 );
 					break;
 			}
+			$new = self::finish( $op, $new, 'wholesale_from_retail_percent' === $op ? (float) $retail_raw : $current, $value, $seed );
 			$new = self::round_price( $new );
 			if ( false === $new ) {
 				return array( 'ok' => false, 'new' => '', 'msg' => 'نتیجهٔ محاسبه نامعتبر است.' );
@@ -393,7 +422,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 					if ( 'regular_set' !== $op && '' === $cur ) {
 						return array( 'status' => 'skip', 'message' => '#' . $id . ' قیمت عادی ندارد.', 'entry' => null );
 					}
-					$res   = self::calc_regular( $op, $cur, $value );
+					$res   = self::calc_regular( $op, $cur, $value, $id );
 					if ( ! $res['ok'] ) {
 						return array( 'status' => 'skip', 'message' => '#' . $id . ' ' . $res['msg'], 'entry' => null );
 					}
@@ -424,7 +453,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 
 				$regular = $product->get_regular_price( 'edit' );
 				$sale_cur = $product->get_sale_price( 'edit' );
-				$res = self::calc_sale( $op, $regular, $value );
+				$res = self::calc_sale( $op, $regular, $value, $sale_cur, $id );
 				if ( ! $res['ok'] ) {
 					return array( 'status' => 'error', 'message' => '#' . $id . ' ' . $res['msg'], 'entry' => null );
 				}
@@ -503,7 +532,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 				}
 
 				$retail = $product->get_price( 'edit' );
-				$res    = self::calc_wholesale( $op, $current, $retail, $value );
+				$res    = self::calc_wholesale( $op, $current, $retail, $value, $id );
 				if ( ! $res['ok'] ) {
 					return array( 'status' => 'error', 'message' => '#' . $id . ' ' . $res['msg'], 'entry' => null );
 				}
@@ -645,6 +674,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 			if ( ! is_array( $args ) ) {
 				return array( 'ok' => false, 'msg' => 'دادهٔ اجرا خراب است؛ اجرا را از نو بساز.', 'data' => array() );
 			}
+			self::set_round_mode( isset( $args['round_mode'] ) ? $args['round_mode'] : 'none' );
 			$settings   = TCP_Settings::get_settings();
 			// دسته از زمان شروعِ اجرا ذخیره شده تا با تغییر تنظیمات وسط اجرا جابه‌جا نشود.
 			$batch_size = isset( $args['batch'] ) ? absint( $args['batch'] ) : absint( $settings['batch_size'] );
@@ -914,7 +944,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 					return $row;
 				}
 				$retail = $p->get_price( 'edit' );
-				$res    = self::calc_wholesale( $op, $current, $retail, $value );
+				$res    = self::calc_wholesale( $op, $current, $retail, $value, $p->get_id() );
 				if ( ! $res['ok'] ) {
 					$row['state'] = 'error';
 					$row['note']  = $res['msg'];
@@ -932,7 +962,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 			if ( self::is_regular_op( $op ) ) {
 				$cur = (string) $p->get_regular_price( 'edit' );
 				$row['before'] = '' === $cur ? '' : wc_format_decimal( $cur );
-				$res = self::calc_regular( $op, $cur, $value );
+				$res = self::calc_regular( $op, $cur, $value, $p->get_id() );
 				if ( '' === $cur && 'regular_set' !== $op ) {
 					$row['state'] = 'skip';
 					$row['note']  = 'قیمت عادی ندارد.';
@@ -965,7 +995,7 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 				$row['note']  = 'قیمت عادی ندارد.';
 				return $row;
 			}
-			$res = self::calc_sale( $op, $regular_raw, $value, $sale_cur );
+			$res = self::calc_sale( $op, $regular_raw, $value, $sale_cur, $p->get_id() );
 			if ( ! $res['ok'] ) {
 				$row['state'] = 'error';
 				$row['note']  = $res['msg'];

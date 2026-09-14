@@ -259,7 +259,7 @@
 | ۷ | استخراج SDK مشترک (batch/lock/rollback) و افزودن تست برای بقیه | پروژهٔ جدا |
 
 
-## افزونهٔ ادغامی `tisacase-pricing` (1.0.0)
+## افزونهٔ ادغامی `tisacase-pricing` (1.1.0)
 
 جایگزین کامل `tisacase-bulk-price-manager` + `tisacase-pricing-manager`؛ از صفر با همان قابلیت‌ها:
 
@@ -268,3 +268,4 @@
 - `class-tcp-db.php` / `-ops.php` / `-ajax.php` / `-scheduler.php` — عملیات گروهی (جدول‌های `tcp_runs`/`tcp_log`، پیش‌نمایش با توکن، اجرای صفحه‌ای، بازگردانی، CSV، صف WP-Cron).
 - `class-tcp-admin.php` + `views/{rules,bulk,runs,settings}.php` — یک صفحه زیر ووکامرس (`admin.php?page=tisacase-pricing`) با سر سبز و چهار تب قرصی.
 - تاریخچهٔ اجراهای افزونهٔ قدیمی منتقل نمی‌شود (جدول‌های جدید)؛ قیمت‌ها/متاها دست‌نخورده‌اند.
+- **1.1.0:** `class-tcp-round.php` (رند به رقم دلخواه/گام، تخفیف متغیر ±J قطعی بر اساس شناسه)؛ قوانین داینامیک: حالت رند per-rule (none/round/jitter)، بازهٔ زمانی، کف/سقف، استثنا؛ تغییر گروهی: تاگل «رند به ۸» + «تخفیف متغیر» (فقط عملیات درصد تخفیف) داخل args/توکن؛ تنظیمات: رقم رند، گام، دامنهٔ نوسان؛ همهٔ چک‌باکس‌ها → `tisa-switch`.

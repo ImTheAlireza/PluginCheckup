@@ -72,7 +72,7 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 
 		public static function defaults() {
 			return array(
-				'global'     => array( 'enabled' => 0, 'increase' => 10, 'sale' => 10 ),
+				'global'     => array( 'enabled' => 0, 'increase' => 10, 'sale' => 10, 'mode' => 'round' ),
 				'products'   => array(),
 				'categories' => array(),
 			);
@@ -83,13 +83,58 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 			return max( 0, min( $max, $value ) );
 		}
 
+		public static function modes() {
+			return array(
+				'none'   => 'بدون رند',
+				'round'  => 'رند به ۸',
+				'jitter' => 'تخفیف متغیر (رند به ۸)',
+			);
+		}
+
+		private static function date( $v ) {
+			$v = trim( (string) $v );
+			return preg_match( '/^\d{4}-\d{2}-\d{2}$/', $v ) ? $v : '';
+		}
+
+		private static function money( $v ) {
+			$v = TCP_Ops::number( $v );
+			return ( null === $v || $v <= 0 ) ? 0 : (float) $v;
+		}
+
 		public static function normalize_rule( $rule ) {
 			$rule = is_array( $rule ) ? $rule : array();
+			$mode = isset( $rule['mode'] ) ? sanitize_key( $rule['mode'] ) : 'round';
+			$min  = self::money( isset( $rule['min'] ) ? $rule['min'] : 0 );
+			$max  = self::money( isset( $rule['max'] ) ? $rule['max'] : 0 );
+			if ( $min && $max && $min > $max ) {
+				$max = 0;
+			}
 			return array(
 				'enabled'  => ! empty( $rule['enabled'] ) ? 1 : 0,
+				'exclude'  => ! empty( $rule['exclude'] ) ? 1 : 0,
 				'increase' => self::percent( isset( $rule['increase'] ) ? $rule['increase'] : 0, 500 ),
 				'sale'     => self::percent( isset( $rule['sale'] ) ? $rule['sale'] : 0, 99.9 ),
+				'mode'     => array_key_exists( $mode, self::modes() ) ? $mode : 'round',
+				'from'     => self::date( isset( $rule['from'] ) ? $rule['from'] : '' ),
+				'to'       => self::date( isset( $rule['to'] ) ? $rule['to'] : '' ),
+				'min'      => $min,
+				'max'      => $max,
 			);
+		}
+
+		/** آیا قانون الان (با توجه به بازهٔ زمانی) فعال است؟ */
+		public static function rule_live( $rule ) {
+			if ( empty( $rule['enabled'] ) ) {
+				return false;
+			}
+			$today = current_time( 'Y-m-d' );
+			if ( '' !== $rule['from'] && $today < $rule['from'] ) {
+				return false;
+			}
+			if ( '' !== $rule['to'] && $today > $rule['to'] ) {
+				return false;
+			}
+			return true;
 		}
 
 		public static function settings() {
@@ -171,19 +216,27 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 			$s    = self::settings();
 			$rule = null;
 
-			if ( isset( $s['products'][ $scope_id ] ) && ! empty( $s['products'][ $scope_id ]['enabled'] ) ) {
-				$rule = $s['products'][ $scope_id ];
-			} else {
+			// ۱) قانون/استثنای خود محصول.
+			if ( isset( $s['products'][ $scope_id ] ) && self::rule_live( $s['products'][ $scope_id ] ) ) {
+				$pr   = $s['products'][ $scope_id ];
+				$rule = ! empty( $pr['exclude'] ) ? false : $pr;
+			}
+			// ۲) اولین دستهٔ منطبق (استثنا یعنی هیچ قانونی، حتی سراسری).
+			if ( null === $rule ) {
 				$cats = self::product_category_ids( $scope_id );
 				foreach ( $s['categories'] as $category_id => $cat_rule ) {
-					if ( ! empty( $cat_rule['enabled'] ) && self::category_matches( $category_id, $cats ) ) {
-						$rule = $cat_rule;
+					if ( self::rule_live( $cat_rule ) && self::category_matches( $category_id, $cats ) ) {
+						$rule = ! empty( $cat_rule['exclude'] ) ? false : $cat_rule;
 						break;
 					}
 				}
-				if ( null === $rule && ! empty( $s['global']['enabled'] ) ) {
-					$rule = $s['global'];
-				}
+			}
+			// ۳) سراسری.
+			if ( null === $rule && self::rule_live( $s['global'] ) ) {
+				$rule = $s['global'];
+			}
+			if ( false === $rule ) {
+				$rule = null;
 			}
 			self::$rule_cache[ $scope_id ] = $rule;
 			return $rule;
@@ -239,17 +292,6 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 			return self::$wholesale[ $id ];
 		}
 
-		/** واحد ارز تعیین می‌کند قیمت به «…۸۰,۰۰۰» (ریال) یا «…۸,۰۰۰» (تومان) گرد شود. */
-		private static function step() {
-			$currency = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'IRT';
-			return 'IRR' === $currency ? array( 100000, 80000 ) : array( 10000, 8000 );
-		}
-
-		public static function round_to_8( $price ) {
-			list( $step, $ending ) = self::step();
-			return ( floor( (float) $price / $step ) * $step ) + $ending;
-		}
-
 		private static function calculated_regular( $product, $rule ) {
 			if ( self::has_real_sale( $product ) ) {
 				return '';
@@ -258,7 +300,14 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 			if ( '' === $regular || ! is_numeric( $regular ) || (float) $regular <= 0 ) {
 				return '';
 			}
-			return self::round_to_8( (float) $regular * ( 1 + ( (float) $rule['increase'] / 100 ) ) );
+			$v = (float) $regular * ( 1 + ( (float) $rule['increase'] / 100 ) );
+			if ( ! empty( $rule['min'] ) && $v < $rule['min'] ) {
+				$v = (float) $rule['min'];
+			}
+			if ( ! empty( $rule['max'] ) && $v > $rule['max'] ) {
+				$v = (float) $rule['max'];
+			}
+			return 'none' === $rule['mode'] ? round( $v ) : TCP_Round::down( $v );
 		}
 
 		private static function calculated_sale( $product, $rule ) {
@@ -269,10 +318,10 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 			if ( '' === $regular || (float) $regular <= 0 ) {
 				return '';
 			}
-			$sale = self::round_to_8( (float) $regular * ( 1 - ( (float) $rule['sale'] / 100 ) ) );
-			if ( $sale >= (float) $regular ) {
-				list( $step ) = self::step();
-				$sale         = max( 0, $sale - $step );
+			$res  = TCP_Round::discount( (float) $regular, (float) $rule['sale'], $rule['mode'], $product->get_id() );
+			$sale = 'none' === $rule['mode'] ? round( $res['price'] ) : $res['price'];
+			if ( $sale >= (float) $regular || $sale <= 0 ) {
+				return '';
 			}
 			return $sale;
 		}
@@ -415,7 +464,7 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 			}
 			check_admin_referer( self::ACTION_SYNC );
 			$settings           = self::settings();
-			$settings['global'] = array( 'enabled' => 1, 'increase' => 10, 'sale' => 10 );
+			$settings['global'] = array_merge( $settings['global'], array( 'enabled' => 1, 'increase' => 10, 'sale' => 10 ) );
 			self::persist( $settings );
 			self::redirect( 'synced' );
 		}

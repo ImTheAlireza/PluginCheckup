@@ -37,7 +37,7 @@ $tcp_currency = function_exists( 'get_woocommerce_currency_symbol' ) ? get_wooco
 					<option value="<?php echo esc_attr( $cat->term_id ); ?>"><?php echo esc_html( TCP_Admin::cat_label( $cat ) ); ?></option>
 				<?php endforeach; ?>
 			</select>
-			<label class="tcp-check"><input type="checkbox" id="tcp-children"> زیردسته‌ها هم شامل شوند <span class="tcp-muted">— پیش‌فرض خاموش</span></label>
+			<label class="tisa-switch tcp-toggle"><input type="checkbox" id="tcp-children"><span class="tisa-switch__track" aria-hidden="true"></span><span>زیردسته‌ها هم شامل شوند <span class="tcp-muted">— پیش‌فرض خاموش</span></span></label>
 			<div id="tcp-children-warning" class="tcp-alert tcp-alert--danger" style="display:none"><strong>هشدار:</strong> محصولات تمام زیردسته‌های دسته‌های انتخاب‌شده هم وارد عملیات می‌شوند.</div>
 		</div>
 
@@ -81,6 +81,13 @@ $tcp_currency = function_exists( 'get_woocommerce_currency_symbol' ) ? get_wooco
 			</div>
 		</div>
 
+		<div id="tcp-round-box" class="tcp-field tcp-round-box">
+			<label class="tisa-switch tcp-toggle"><input type="checkbox" id="tcp-round" checked><span class="tisa-switch__track" aria-hidden="true"></span><span>رند به ۸ <span class="tcp-muted">— قیمت نهایی به پایین روی <?php echo esc_html( TCP_Round::describe() ); ?> می‌رود؛ مثلاً ۶۱۲٬۳۰۰ ← ۶۰۸٬۰۰۰</span></span></label>
+			<div id="tcp-round-jitter-row" style="display:none">
+				<label class="tisa-switch tcp-toggle"><input type="checkbox" id="tcp-round-jitter"><span class="tisa-switch__track" aria-hidden="true"></span><span>تخفیف متغیر <span class="tcp-muted">— به‌جای دقیقاً X٪، هر آیتم درصدی در بازهٔ X±<?php echo esc_html( TCP_Round::jitter() ); ?>٪ می‌گیرد که قیمتش دقیقاً روی ۸ بیفتد. دامنه در «تنظیمات».</span></span></label>
+			</div>
+		</div>
+
 		<p class="tcp-muted">
 			مبلغ ثابت را با واحد قیمت فروشگاه وارد کن<?php echo $tcp_currency ? ' (' . esc_html( $tcp_currency ) . ')' : ''; ?>.
 			فروش ویژهٔ مساوی یا بیشتر از قیمت عادی ذخیره نمی‌شود. عملیات عمده فقط روی آیتم‌هایی که از قبل قیمت عمده دارند اثر می‌گذارد.
@@ -117,8 +124,8 @@ $tcp_currency = function_exists( 'get_woocommerce_currency_symbol' ) ? get_wooco
 				<input type="text" id="tcp-price-max" inputmode="decimal" class="tcp-price-input" placeholder="مثلاً 5000000">
 			</div>
 		</div>
-		<p id="tcp-sale-only-row" style="display:none"><label class="tcp-check"><input type="checkbox" id="tcp-filter-only-sale"> فقط محصولاتی که اکنون فروش ویژه دارند</label></p>
-		<p id="tcp-wholesale-only-row" style="display:none"><label class="tcp-check"><input type="checkbox" id="tcp-filter-only-wholesale"> فقط محصولاتی که اکنون قیمت عمده دارند</label></p>
+		<div id="tcp-sale-only-row" class="tcp-field" style="display:none"><label class="tisa-switch tcp-toggle"><input type="checkbox" id="tcp-filter-only-sale"><span class="tisa-switch__track" aria-hidden="true"></span><span>فقط محصولاتی که اکنون فروش ویژه دارند</span></label></div>
+		<div id="tcp-wholesale-only-row" class="tcp-field" style="display:none"><label class="tisa-switch tcp-toggle"><input type="checkbox" id="tcp-filter-only-wholesale"><span class="tisa-switch__track" aria-hidden="true"></span><span>فقط محصولاتی که اکنون قیمت عمده دارند</span></label></div>
 	</div>
 </section>
 

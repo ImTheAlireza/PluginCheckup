@@ -104,6 +104,7 @@ if ( ! class_exists( 'TCP_Admin' ) ) {
 						'minChars'   => 2,
 						'productAct' => TCP_Rules::AJAX_PRODUCTS,
 						'catAct'     => TCP_Rules::AJAX_CATS,
+						'modes'      => TCP_Rules::modes(),
 					)
 				);
 				return;

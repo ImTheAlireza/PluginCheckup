@@ -129,6 +129,9 @@ if ( ! class_exists( 'TCP_Settings' ) ) {
 				'max_amount'        => 1000000000,
 				'sample_size'       => 8,
 				'cron_pages'        => 20,
+				'round_digit'       => 8,   // رقم پایانی قیمت‌های رند (…۸٬۰۰۰)
+				'round_step'        => 0,   // ۰ = خودکار بر اساس واحد پول (ریال ۱۰۰٬۰۰۰ / تومان ۱۰٬۰۰۰)
+				'jitter_percent'    => 5.0, // دامنهٔ تخفیف متغیر (±)
 			);
 		}
 
@@ -158,12 +161,16 @@ if ( ! class_exists( 'TCP_Settings' ) ) {
 				if ( ! isset( $raw[ $k ] ) || '' === $raw[ $k ] ) {
 					continue;
 				}
-				if ( is_int( $v ) ) {
+				if ( in_array( $k, array( 'round_digit', 'round_step' ), true ) ) {
+					$clean[ $k ] = absint( $raw[ $k ] );
+				} elseif ( is_int( $v ) ) {
 					$clean[ $k ] = max( 1, absint( $raw[ $k ] ) );
 				} elseif ( is_float( $v ) ) {
 					$clean[ $k ] = max( 0, (float) $raw[ $k ] );
 				}
 			}
+			$clean['round_digit']    = min( 9, $clean['round_digit'] );
+			$clean['jitter_percent'] = max( 0.1, min( 50, (float) $clean['jitter_percent'] ) );
 			$cap                     = isset( $raw['min_capability'] ) ? sanitize_key( $raw['min_capability'] ) : '';
 			$clean['min_capability'] = in_array( $cap, array( 'manage_woocommerce', 'edit_products', 'manage_options' ), true ) ? $cap : $defaults['min_capability'];
 			update_option( self::OPTION, $clean );

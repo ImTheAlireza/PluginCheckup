@@ -142,6 +142,7 @@
 				include_children: $('#tcp-children').is(':checked') ? '1' : '0',
 				operation: currentOp(),
 				value: $('#tcp-value').val() || '',
+				round_mode: $('#tcp-round-jitter').is(':checked') ? 'jitter' : ($('#tcp-round').is(':checked') ? 'round' : 'none'),
 				filters: JSON.stringify(filtersPayload())
 			};
 			return $.extend(p, extra || {});
@@ -192,6 +193,10 @@
 			updateProductSearch();
 			updateFilterVisibility();
 			invalidatePreview();
+			var m = opMeta(currentOp());
+			$('#tcp-round-box').toggle(kind !== 'none');
+			$('#tcp-round-jitter-row').toggle(!!m.cap100);
+			if (!m.cap100) { $('#tcp-round-jitter').prop('checked', false); }
 			if (kind === 'none') { $('#tcp-value-box').hide(); return; }
 			$('#tcp-value-box').show();
 			if (kind === 'percent') {
@@ -213,7 +218,7 @@
 			$('#tcp-preview').prop('disabled', v);
 			$('#tcp-start').prop('disabled', v ? true : !previewValid);
 			$('#tcp-schedule').prop('disabled', v ? true : !previewValid);
-			$('input[name="tcp_target"],#tcp-children,#tcp-op,#tcp-value').prop('disabled', v);
+			$('input[name="tcp_target"],#tcp-children,#tcp-op,#tcp-value,#tcp-round,#tcp-round-jitter').prop('disabled', v);
 			$('#tcp-cats,#tcp-products,#tcp-wholesale-products,#tcp-filter-types,#tcp-filter-statuses,#tcp-price-min,#tcp-price-max,#tcp-filter-only-sale,#tcp-filter-only-wholesale')
 				.prop('disabled', v);
 			$('#tcp-cats,#tcp-products,#tcp-wholesale-products,#tcp-filter-types,#tcp-filter-statuses').trigger('change.select2');
@@ -326,6 +331,11 @@
 					previewInfo = d;
 
 					var html = '<p><strong>نوع عملیات:</strong> ' + esc(d.operation_label || '') + '</p>';
+					if (d.round_mode === 'jitter') {
+						html += '<p><strong>رند:</strong> تخفیف متغیر ±' + esc(d.jitter) + '٪ — هر آیتم درصدی می‌گیرد که قیمتش روی ' + esc(d.round_label) + ' بیفتد.</p>';
+					} else if (d.round_mode === 'round') {
+						html += '<p><strong>رند:</strong> قیمت نهایی به پایین روی ' + esc(d.round_label) + ' رند می‌شود.</p>';
+					}
 					html += '<p><strong>محدوده انتخاب:</strong> ' + (d.target_type === 'products' ? 'محصولات انتخاب‌شده به صورت مستقیم' : (d.include_children ? 'دسته‌بندی + تمام زیردسته‌ها' : 'فقط خود دسته‌بندی‌ها؛ بدون زیردسته')) + '</p>';
 					if (d.category_labels && d.category_labels.length) {
 						html += '<p><strong>دسته‌ها:</strong> ' + esc(d.category_labels.join(' ، ')) + '</p>';
@@ -497,6 +507,8 @@
 
 		/* ---- رویدادها ---- */
 		$('input[name="tcp_target"]').on('change', updateTarget);
+		$('#tcp-round-jitter').on('change', function () { if ($(this).is(':checked')) { $('#tcp-round').prop('checked', true); } });
+		$('#tcp-round').on('change', function () { if (!$(this).is(':checked')) { $('#tcp-round-jitter').prop('checked', false); } });
 		$('#tcp-op').on('change', updateOpUi);
 		$('#tcp-children').on('change', function () {
 			$('#tcp-children-warning').toggle($(this).is(':checked'));
