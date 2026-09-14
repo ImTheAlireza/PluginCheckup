@@ -194,7 +194,7 @@
 			updateFilterVisibility();
 			invalidatePreview();
 			var m = opMeta(currentOp());
-			$('#tcp-round-box').toggle(kind !== 'none');
+			$('#tcp-round-box').toggle(kind === 'percent' || kind === 'amount');
 			$('#tcp-round-jitter-row').toggle(!!m.cap100);
 			if (!m.cap100) { $('#tcp-round-jitter').prop('checked', false); }
 			if (kind === 'none') { $('#tcp-value-box').hide(); return; }

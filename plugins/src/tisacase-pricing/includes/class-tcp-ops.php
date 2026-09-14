@@ -35,12 +35,21 @@ if ( ! class_exists( 'TCP_Ops' ) ) {
 			if ( 'none' === self::$round_mode || null === $new || ! is_finite( (float) $new ) ) {
 				return $new;
 			}
+			// «تعیین قیمت دقیق» یعنی همان عددی که کاربر زده؛ رند نمی‌شود.
+			if ( self::KIND_SET === self::op_kind( $op ) ) {
+				return $new;
+			}
+			// قیمت‌های کوچک‌تر از دو گام رند (مثلاً ۱۵٬۰۰۰ با گام ۱۰٬۰۰۰) قابل رند نیستند؛ دست‌نخورده.
+			if ( (float) $new < 2 * TCP_Round::step() ) {
+				return $new;
+			}
 			$discount_ops = array( 'regular_decrease_percent', 'sale_discount_percent', 'wholesale_decrease_percent', 'wholesale_from_retail_percent' );
 			if ( 'jitter' === self::$round_mode && in_array( $op, $discount_ops, true ) && (float) $base > 0 ) {
 				$r = TCP_Round::jittered_discount( (float) $base, (float) $value, $seed );
-				return $r['price'];
+				return $r['price'] > 0 ? $r['price'] : $new;
 			}
-			return TCP_Round::down( (float) $new );
+			$rounded = TCP_Round::down( (float) $new );
+			return $rounded > 0 ? $rounded : $new;
 		}
 
 		/* -----------------------------------------------------------------

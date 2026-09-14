@@ -199,6 +199,7 @@ html[dir="ltr"] .tcp-toggle input:checked + .tisa-switch__track::after { transfo
 .tcp-help em { font-style: normal; font-weight: 700; }
 
 /* ردیف قانون */
+.tcp-wrap .tisa-input--sm { height: 32px; padding: 0 8px; font-size: var(--tisa-fs-meta, 12px); }
 .tcp-rules-table { min-width: 1040px; }
 .tcp-rule-dates, .tcp-rule-limits { white-space: nowrap; }
 .tcp-rule-dates .tisa-input--sm, .tcp-rule-limits .tisa-input--sm { width: 128px; margin: 1px 0; }

@@ -307,7 +307,10 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 			if ( ! empty( $rule['max'] ) && $v > $rule['max'] ) {
 				$v = (float) $rule['max'];
 			}
-			return 'none' === $rule['mode'] ? round( $v ) : TCP_Round::down( $v );
+			if ( 'none' === $rule['mode'] || $v < 2 * TCP_Round::step() ) {
+				return round( $v );
+			}
+			return TCP_Round::down( $v );
 		}
 
 		private static function calculated_sale( $product, $rule ) {
@@ -318,8 +321,9 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 			if ( '' === $regular || (float) $regular <= 0 ) {
 				return '';
 			}
-			$res  = TCP_Round::discount( (float) $regular, (float) $rule['sale'], $rule['mode'], $product->get_id() );
-			$sale = 'none' === $rule['mode'] ? round( $res['price'] ) : $res['price'];
+			$mode = (float) $regular < 2 * TCP_Round::step() ? 'none' : $rule['mode'];
+			$res  = TCP_Round::discount( (float) $regular, (float) $rule['sale'], $mode, $product->get_id() );
+			$sale = 'none' === $mode ? round( $res['price'] ) : $res['price'];
 			if ( $sale >= (float) $regular || $sale <= 0 ) {
 				return '';
 			}
@@ -399,6 +403,7 @@ if ( ! class_exists( 'TCP_Rules' ) ) {
 				'plugin'  => TCP_VERSION,
 				'version' => (int) get_option( self::CACHE_VERSION, 1 ),
 				'mode'    => self::is_partner() ? 'partner' : 'retail',
+				'day'     => current_time( 'Y-m-d' ), // بازه‌های زمانی قوانین بدون ذخیرهٔ مجدد اثر کنند.
 			);
 			return $hash;
 		}

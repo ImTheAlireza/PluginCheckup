@@ -80,6 +80,20 @@ if ( ! class_exists( 'TCP_Admin' ) ) {
 				. '</svg>';
 		}
 
+		/** ذخیرهٔ تنظیمات — روی admin_init تا پیش از هر خروجی بتوان redirect کرد. */
+		public static function handle_settings_post() {
+			if ( empty( $_POST['tcp_settings_save'] ) || ! self::is_our_screen() ) {
+				return;
+			}
+			if ( ! TCP_Settings::can() ) {
+				wp_die( 'دسترسی غیرمجاز است.' );
+			}
+			check_admin_referer( TCP_Settings::NONCE, '_wpnonce' );
+			TCP_Settings::update_settings( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- در update_settings پاک‌سازی می‌شود.
+			wp_safe_redirect( self::url( 'settings', array( 'saved' => 1 ) ) );
+			exit;
+		}
+
 		/* -----------------------------------------------------------------
 		 * asset ها
 		 * --------------------------------------------------------------- */
@@ -197,12 +211,6 @@ if ( ! class_exists( 'TCP_Admin' ) ) {
 			}
 			$tab = self::current_tab();
 
-			if ( 'settings' === $tab && ! empty( $_POST['tcp_settings_save'] ) ) {
-				check_admin_referer( TCP_Settings::NONCE, '_wpnonce' );
-				TCP_Settings::update_settings( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- در update_settings پاک‌سازی می‌شود.
-				wp_safe_redirect( self::url( 'settings', array( 'saved' => 1 ) ) );
-				exit;
-			}
 			if ( 'runs' === $tab ) {
 				// اجراهای running که بیش از حدِ قفل به‌روز نشده‌اند interrupted می‌شوند تا دکمهٔ ادامه درست دیده شود.
 				TCP_DB::busy_slot( 0 );

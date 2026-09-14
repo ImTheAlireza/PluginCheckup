@@ -63,6 +63,7 @@ if ( ! class_exists( 'TCP_Settings' ) ) {
 			add_action( 'wp_ajax_' . self::AJAX_CANCEL, array( 'TCP_Ajax', 'ajax_cancel_scheduled' ) );
 			add_action( 'wp_ajax_' . self::AJAX_SEARCH, array( 'TCP_Ajax', 'ajax_search_wholesale_products' ) );
 			add_action( 'admin_init', array( 'TCP_DB', 'maybe_install' ) );
+			add_action( 'admin_init', array( 'TCP_Admin', 'handle_settings_post' ) );
 			add_action( 'admin_init', array( __CLASS__, 'maybe_migrate' ) );
 			add_action( 'init', array( 'TCP_Scheduler', 'register_cron' ) );
 			add_action( self::CRON_TICK, array( 'TCP_Scheduler', 'cron_tick' ) );
