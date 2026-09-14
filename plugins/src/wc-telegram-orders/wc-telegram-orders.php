@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ارسال سفارش‌ها به تلگرام ووکامرس
  * Description:       ارسال خودکار سفارش‌های جدید ووکامرس به تلگرام با فرمت فارسی دلخواه + گزارش روزانه فروش (با سنجاق خودکار) + اعلان کمبود موجودی محصولات + سیستم لاگ رویدادها در پنل.
- * Version:           1.12.0
+ * Version:           1.12.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            علیرضا شعبان زاده
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_TELEGRAM_ORDERS_VERSION', '1.12.0');
+define('WC_TELEGRAM_ORDERS_VERSION', '1.12.1');
 define('WC_TELEGRAM_ORDERS_OPTION', 'wc_telegram_orders_settings');
 define('WC_TELEGRAM_ORDERS_FILE', __FILE__);
 
@@ -337,6 +337,7 @@ class WC_Telegram_Orders {
             wp_style_is('tisacase-ui', 'registered') ? ['tisacase-ui'] : [],
             WC_TELEGRAM_ORDERS_VERSION
         );
+        wp_enqueue_script('wcto-admin', plugin_dir_url(__FILE__) . 'assets/admin.js', [], WC_TELEGRAM_ORDERS_VERSION, true);
     }
 
     public function register_settings() {
@@ -522,199 +523,172 @@ class WC_Telegram_Orders {
         <?php
     }
 
+
+    // چیپ‌های متغیر: کلیک → درج در جای مکان‌نما (assets/admin.js)
+    private function var_chips(array $vars, $target_id) {
+        $out = '<div class="wcto-vars" data-target="' . esc_attr($target_id) . '">';
+        foreach ($vars as $v => $label) {
+            $out .= '<button type="button" class="wcto-var" data-var="' . esc_attr($v) . '" title="' . esc_attr($label) . '"><span dir="ltr">' . esc_html($v) . '</span></button>';
+        }
+        return $out . '</div>';
+    }
+
+    private function order_vars() {
+        return [
+            '{order_number}' => 'شماره سفارش', '{order_date}' => 'تاریخ', '{order_status}' => 'وضعیت', '{order_total}' => 'مجموع سفارش',
+            '{paid_amount}' => 'پرداختی نقدی', '{wallet_amount}' => 'سهم کیف پول', '{subtotal}' => 'جمع محصولات', '{shipping_total}' => 'هزینه ارسال',
+            '{shipping_method}' => 'روش ارسال', '{payment_method}' => 'روش پرداخت', '{items}' => 'لیست آیتم‌ها', '{items_count}' => 'تعداد آیتم',
+            '{customer_name}' => 'نام مشتری', '{customer_phone}' => 'تلفن', '{customer_email}' => 'ایمیل', '{customer_address}' => 'آدرس',
+            '{customer_postcode}' => 'کد پستی', '{customer_note}' => 'یادداشت مشتری', '{order_url}' => 'لینک سفارش', '{site_name}' => 'نام سایت',
+            '{if_wallet}…{/if_wallet}' => 'فقط وقتی کیف پول استفاده شده',
+        ];
+    }
+
+    private function status_vars() {
+        return ['{order_number}' => 'شماره سفارش', '{old_status}' => 'وضعیت قبلی', '{new_status}' => 'وضعیت جدید', '{customer_name}' => 'نام مشتری', '{order_total}' => 'مجموع سفارش', '{order_url}' => 'لینک سفارش', '{site_name}' => 'نام سایت'];
+    }
+
+    private function stock_vars() {
+        return ['{stock_emoji}' => 'ایموجی وضعیت', '{stock_label}' => 'عنوان هشدار', '{product_name}' => 'نام محصول', '{variation}' => 'متغیر (مدل/رنگ)', '{stock}' => 'موجودی فعلی', '{threshold}' => 'آستانه', '{sku}' => 'SKU', '{price}' => 'قیمت', '{order_info}' => 'سفارش عامل', '{product_link}' => 'لینک محصول', '{site_name}' => 'نام سایت'];
+    }
+
     /* ---------- تب ۱: ارسال سفارشات جدید ---------- */
     private function render_orders_tab($s, $opt) {
+        $has_token = !empty($s['bot_token']);
         ?>
-        <p>هر سفارش جدید ووکامرس به‌صورت خودکار با فرمت فارسی شما به تلگرام ارسال می‌شود.</p>
-
         <?php $this->maybe_render_debug(); ?>
 
-        <form method="post" action="options.php" class="wcto-card">
-            <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>اتصال و پیام سفارش</h2><p>توکن ربات، مقصد پیام‌ها و قالب پیام سفارش جدید.</p></div></div>
+        <form method="post" action="options.php">
             <?php settings_fields('wc_telegram_orders_group'); ?>
             <input type="hidden" name="<?php echo esc_attr($opt); ?>[_tab]" value="orders" />
-            <table class="form-table wcto-form" role="presentation">
-                <tr>
-                    <th scope="row">فعال‌سازی</th>
-                    <td>
-                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[enabled]" value="yes" <?php checked($s['enabled'], 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>ارسال سفارش‌های جدید به تلگرام</span></label>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-token">توکن ربات</label></th>
-                    <td>
-                        <?php if (!empty($s['bot_token'])): ?>
-                            <p class="wcto-token-saved">
-                                <span class="tisa-code" dir="ltr"><?php echo esc_html($this->mask_token($s['bot_token'])); ?></span>
-                                توکن ذخیره شده است (برای امنیت، کامل نمایش داده نمی‌شود).
-                            </p>
-                            <input type="password" id="wc-tg-token" name="<?php echo esc_attr($opt); ?>[bot_token]"
-                                value="" class="tisa-input tisa-input--code" autocomplete="off" dir="ltr"
-                                placeholder="برای تغییر، توکن جدید را وارد کنید" />
-                            <div class="wcto-gap"></div>
-                            <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[remove_token]" value="yes" /><span class="tisa-switch__track" aria-hidden="true"></span><span>حذف توکن ذخیره‌شده</span></label>
-                            <p class="description">از <bdi>@BotFather</bdi> در تلگرام دریافت کنید. (همین توکن برای اعلانات محصولات هم استفاده می‌شود.) اگر فیلد را خالی بگذارید، توکن قبلی حفظ می‌شود.</p>
-                        <?php else: ?>
-                            <input type="password" id="wc-tg-token" name="<?php echo esc_attr($opt); ?>[bot_token]"
-                                value="" class="tisa-input tisa-input--code" autocomplete="off" dir="ltr"
-                                placeholder="123456789:AAH..." />
-                            <p class="description">از <bdi>@BotFather</bdi> در تلگرام دریافت کنید. (همین توکن برای اعلانات محصولات هم استفاده می‌شود.)</p>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-chats">شناسه چت (Chat ID)</label></th>
-                    <td>
-                        <input type="text" id="wc-tg-chats" name="<?php echo esc_attr($opt); ?>[chat_ids]"
-                            value="<?php echo esc_attr($s['chat_ids']); ?>" class="tisa-input" dir="ltr"
-                            placeholder="-1001234567890" />
-                        <p class="description">
-                            آیدی عددی چت شخصی، گروه یا کانال. برای ارسال به چند مقصد با ویرگول جدا کنید (مثال: <bdi>123456789, -1001234567890</bdi>).<br>
-                            ربات حتماً باید در گروه/کانال عضو و ادمین باشد.
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-template">فرمت پیام</label></th>
-                    <td>
-                        <textarea id="wc-tg-template" name="<?php echo esc_attr($opt); ?>[template]"
-                            rows="22" cols="70" class="tisa-input tisa-input--code wcto-tpl" dir="auto"><?php echo esc_textarea($s['template']); ?></textarea>
-                        <p class="description">
-                            متغیرهای قابل استفاده:<br>
-                            <code dir="ltr">{order_number} {order_id} {order_date} {order_status} {order_total}<br>
-                            {subtotal} {shipping_total} {tax_total} {payment_method} {shipping_method}<br>
-                            {customer_name} {customer_phone} {customer_email} {customer_address} {customer_postcode}<br>
-                            {billing_address} {shipping_address} {customer_note} {items} {items_count} {site_name} {order_url}<br>
-                            {paid_amount} {wallet_amount} {wallet_number}</code><br>
-                            <b>بلاک شرطی کیف پول:</b> <code dir="ltr">{if_wallet} ... {/if_wallet}</code> — فقط وقتی بخشی از سفارش با کیف پول پرداخت شده باشد چاپ می‌شود (وگرنه همراه خطِ خودش حذف می‌شود).<br>
-                            مثال: <code dir="ltr">{if_wallet}💵 &lt;b&gt;پرداختی: {paid_amount}&lt;/b&gt; ({wallet_amount} از کیف پول){/if_wallet}</code>
-                        </p>
-                        <p>
-                            <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[items_link]" value="yes" <?php checked(isset($s['items_link']) ? $s['items_link'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>عنوان هر محصول در لیست آیتم‌ها به <b>صفحهٔ همان محصول</b> در سایت لینک شود</span></label>
-                            <br>
-                            <span class="description">برای محصولات متغیر، لینکِ عمیق همان متغیر (مدل/رنگ از قبل انتخاب‌شده) فرستاده می‌شود. غیرفعال کردن این گزینه فقط متنِ عنوان را می‌فرستد.</span>
-                        </p>
-                        <p>
-                            <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=wc_telegram_reset'), 'wc_telegram_reset_nonce')); ?>" class="tisa-btn tisa-btn--ghost tisa-btn--sm">
-                                بازنشانی به فرمت فارسی پیش‌فرض
-                            </a>
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-currency">واحد پول در پیام‌ها</label></th>
-                    <td>
-                        <input type="text" id="wc-tg-currency" name="<?php echo esc_attr($opt); ?>[currency_label]"
-                            value="<?php echo esc_attr($s['currency_label']); ?>" class="tisa-input" />
-                        <p class="description">در انتهای مبالغ پیام‌ها نمایش داده می‌شود (پیش‌ف�ncy_label']); ?>" class="tisa-input" />
-                        <p class="description">در انتهای مبالغ پیام‌ها نمایش داده می‌شود (پیش‌فرض: تومان). اگر فروشگاه شما با ریال یا ارز دیگری کار می‌کند همین‌جا بنویسید. خالی بگذارید تا کد ارز ووکامرس (مثل <code dir="ltr">IRT</code>) چاپ شود.</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-wallet-key">کیف پول / اعتبار</label></th>
-                    <td>
-                        <input type="text" id="wc-tg-wallet-key" name="<?php echo esc_attr($opt); ?>[wallet_meta_key]"
-                            value="<?php echo esc_attr(isset($s['wallet_meta_key']) ? $s['wallet_meta_key'] : ''); ?>" class="tisa-input tisa-input--code" dir="ltr"
-                            placeholder="(خالی = تشخیص خودکار)" />
-                        <p class="description">
-                            اگر بخشی از سفارش‌ها با <b>کیف پول/اعتبار</b> پرداخت می‌شود، افزونه مبلغ آن را خودکار از متاهای سفارش پیدا می‌کند
-                            و خط «💵 پرداختی: … (… از کیف پول)» را به پیام اضافه می‌کند.<br>
-                            اگر افزونهٔ کیف پول شما شناسایی نشد، از بخش «عیب‌یابی سفارش» (پایین همین صفحه) نام کلید متا را پیدا کنید و اینجا بنویسید
-                            (مثال: <code dir="ltr">_wallet_payment_amount</code>).
-                        </p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">اطلاع تغییر وضعیت سفارش</th>
-                    <td>
-                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[status_enabled]" value="yes" <?php checked($s['status_enabled'], 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>با هر تغییر وضعیت (لغو، تکمیل، استرداد و...) پیام کوتاه به تلگرام ارسال شود</span></label>
-                        <div class="wcto-gap"></div>
-                        <label for="wc-tg-status-tpl">قالب پیام کوتاه:</label><br>
-                        <textarea id="wc-tg-status-tpl" name="<?php echo esc_attr($opt); ?>[status_template]"
-                            rows="6" cols="70" class="tisa-input tisa-input--code wcto-tpl" dir="auto"><?php echo esc_textarea($s['status_template']); ?></textarea>
-                        <p class="description">
-                            متغیرهای قابل استفاده:<br>
-                            <code dir="ltr">{order_number} {order_id} {old_status} {new_status} {customer_name} {order_total} {order_url} {site_name}</code>
-                        </p>
-                        <div class="wcto-gap"></div>
-                        <label for="wc-tg-status-ignore">وضعیت‌هایی که پیام نمی‌گیرند:</label>
-                        <input type="text" id="wc-tg-status-ignore" name="<?php echo esc_attr($opt); ?>[status_ignore]"
-                            value="<?php echo esc_attr(isset($s['status_ignore']) ? $s['status_ignore'] : ''); ?>" class="tisa-input tisa-input--code" dir="ltr"
-                            placeholder="pws-in-stock, completed" />
-                        <p class="description">اسلاگ وضعیت‌ها با کاما (بدون <code dir="ltr">wc-</code>). برای وضعیت‌های داخلی/انبوه مثل «موجود در انبار» که به کانال ربطی ندارند.</p>
-                        <div class="wcto-gap"></div>
-                        <label for="wc-tg-status-gap">فاصلهٔ بین پیام‌های وضعیت:</label>
-                        <input type="number" id="wc-tg-status-gap" name="<?php echo esc_attr($opt); ?>[status_gap]"
-                            value="<?php echo (int) (isset($s['status_gap']) ? $s['status_gap'] : 3); ?>" min="0" max="60" step="1" dir="ltr" class="tisa-input tisa-input--w-sm" />
-                        ثانیه
-                        <p class="description">پیام‌های وضعیت در صف می‌روند و با این فاصله ارسال می‌شوند؛ تغییر گروهی وضعیت دیگر باعث خطای «Too Many Requests» تلگرام و گم‌شدن پیام نمی‌شود.</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">گزارش روزانه فروش</th>
-                    <td>
-                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[daily_enabled]" value="yes" <?php checked($s['daily_enabled'], 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>هر شب گزارش فروش به تلگرام ارسال شود (بازه: از پایان گزارش قبلی تا لحظه ارسال)</span></label>
-                        <div class="wcto-gap"></div>
-                        <label for="wc-tg-time">ساعت ارسال:</label>
-                        <input type="time" id="wc-tg-time" name="<?php echo esc_attr($opt); ?>[daily_time]"
-                            value="<?php echo esc_attr(isset($s['daily_time']) ? $s['daily_time'] : '23:59'); ?>" dir="ltr" class="tisa-input tisa-input--w-sm" />
-                        <p class="description">
-                            به وقت منطقه زمانی انتخاب‌شده در پایین.<br>
-                            دقت: WP-Cron با بازدید سایت اجرا می‌شود؛ اگر کرون با تأخیر اجرا شود مشکلی نیست — بازه گزارش از پایان گزارش قبلی حساب می‌شود و هیچ سفارشی بین دو گزارش جا نمی‌ماند. برای دقت رأس ساعت، کرون واقعی سرور را روی <code dir="ltr">wp-cron.php</code> تنظیم کنید.
-                        </p>
-                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[daily_paid_only]" value="yes" <?php checked(isset($s['daily_paid_only']) ? $s['daily_paid_only'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>در لیست جزئیات فقط سفارش‌های پرداخت‌شده باشد (لغوشده‌ها فقط در آمار می‌آیند)</span></label>
-                        <br>
-                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[daily_pin]" value="yes" <?php checked(isset($s['daily_pin']) ? $s['daily_pin'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>📌 پیام گزارش به‌صورت خودکار در چت سنجاق (پین) شود — گزارش قبلی از سنجاق خارج می‌شود</span></label>
-                        <p class="description">برای سنجاق کردن، ربات باید در گروه ادمین با دسترسی «Pin Messages» (و در کانال «Edit Messages») باشد. در چت خصوصی نیازی به دسترسی نیست.</p>
-                        <br>
-                        <label for="wc-tg-tz">منطقه زمانی گزارش‌ها و زمان‌بندی:</label>
-                        <select id="wc-tg-tz" name="<?php echo esc_attr($opt); ?>[timezone]" dir="ltr" class="tisa-input">
-                            <option value="Asia/Tehran" <?php selected(isset($s['timezone']) ? $s['timezone'] : 'Asia/Tehran', 'Asia/Tehran'); ?>>Asia/Tehran (تهران)</option>
-                            <option value="site" <?php selected(isset($s['timezone']) ? $s['timezone'] : 'Asia/Tehran', 'site'); ?>>همان منطقه زمانی وردپرس</option>
-                        </select>
-                        <p class="description">فقط همین پلاگین را تحت تأثیر قرار می‌دهد؛ تنظیمات وردپرس و ساعت ثبت سفارش‌ها و محصولات دست نمی‌خورد.</p>
-                    </td>
-                </tr>
-            </table>
-            <div class="wcto-actions"><button type="submit" class="tisa-btn tisa-btn--primary tisa-btn--lg">ذخیرهٔ تنظیمات</button></div>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>اتصال</h2><p>ربات را از <bdi>@BotFather</bdi> بسازید؛ ربات باید در گروه/کانال ادمین باشد.</p></div></div>
+                <div class="wcto-card-body">
+                    <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[enabled]" value="yes" <?php checked($s['enabled'], 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>ارسال سفارش‌های جدید به تلگرام</span></label>
+
+                    <div class="wcto-row">
+                        <div class="wcto-field">
+                            <label class="wcto-label" for="wc-tg-token">توکن ربات</label>
+                            <input type="password" id="wc-tg-token" name="<?php echo esc_attr($opt); ?>[bot_token]" value="" class="tisa-input tisa-input--code" autocomplete="off" dir="ltr"
+                                placeholder="<?php echo $has_token ? esc_attr($this->mask_token($s['bot_token'])) : '123456789:AAH...'; ?>" />
+                            <?php if ($has_token): ?>
+                                <p class="wcto-hint">توکن ذخیره شده است؛ برای تغییر، توکن جدید را وارد کنید.</p>
+                                <label class="wcto-check"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[remove_token]" value="yes" /> حذف توکن ذخیره‌شده</label>
+                            <?php endif; ?>
+                        </div>
+                        <div class="wcto-field">
+                            <label class="wcto-label" for="wc-tg-chats">شناسه چت (Chat ID)</label>
+                            <input type="text" id="wc-tg-chats" name="<?php echo esc_attr($opt); ?>[chat_ids]" value="<?php echo esc_attr($s['chat_ids']); ?>" class="tisa-input tisa-input--code" dir="ltr" placeholder="-1001234567890" />
+                            <p class="wcto-hint">چند مقصد را با ویرگول جدا کنید.</p>
+                        </div>
+                    </div>
+                    <div class="wcto-row">
+                        <div class="wcto-field">
+                            <label class="wcto-label" for="wc-tg-currency">واحد پول در پیام‌ها</label>
+                            <input type="text" id="wc-tg-currency" name="<?php echo esc_attr($opt); ?>[currency_label]" value="<?php echo esc_attr($s['currency_label']); ?>" class="tisa-input" />
+                        </div>
+                        <div class="wcto-field">
+                            <label class="wcto-label" for="wc-tg-wallet-key">کلید متای کیف پول <span class="wcto-opt">اختیاری</span></label>
+                            <input type="text" id="wc-tg-wallet-key" name="<?php echo esc_attr($opt); ?>[wallet_meta_key]" value="<?php echo esc_attr(isset($s['wallet_meta_key']) ? $s['wallet_meta_key'] : ''); ?>" class="tisa-input tisa-input--code" dir="ltr" placeholder="خالی = تشخیص خودکار" />
+                            <p class="wcto-hint">فقط اگر سهم کیف پول اشتباه تشخیص داده شد؛ کلید را از «عیب‌یابی سفارش» بردارید.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>پیام سفارش جدید</h2><p>روی هر متغیر کلیک کنید تا در جای مکان‌نما درج شود.</p></div></div>
+                <div class="wcto-card-body">
+                    <?php echo $this->var_chips($this->order_vars(), 'wc-tg-template'); // phpcs:ignore ?>
+                    <textarea id="wc-tg-template" name="<?php echo esc_attr($opt); ?>[template]" rows="18" class="tisa-input tisa-input--code wcto-tpl" dir="auto"><?php echo esc_textarea($s['template']); ?></textarea>
+                    <div class="wcto-between">
+                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[items_link]" value="yes" <?php checked(isset($s['items_link']) ? $s['items_link'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>عنوان هر آیتم به صفحهٔ محصول لینک شود</span></label>
+                        <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=wc_telegram_reset'), 'wc_telegram_reset_nonce')); ?>" class="tisa-btn tisa-btn--ghost tisa-btn--sm">بازنشانی به قالب پیش‌فرض</a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>تغییر وضعیت سفارش</h2><p>پیام کوتاه با هر تغییر وضعیت (لغو، تکمیل، استرداد…).</p></div></div>
+                <div class="wcto-card-body">
+                    <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[status_enabled]" value="yes" <?php checked($s['status_enabled'], 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>ارسال پیام تغییر وضعیت</span></label>
+                    <?php echo $this->var_chips($this->status_vars(), 'wc-tg-status-tpl'); // phpcs:ignore ?>
+                    <textarea id="wc-tg-status-tpl" name="<?php echo esc_attr($opt); ?>[status_template]" rows="5" class="tisa-input tisa-input--code wcto-tpl" dir="auto"><?php echo esc_textarea($s['status_template']); ?></textarea>
+                    <div class="wcto-row">
+                        <div class="wcto-field">
+                            <label class="wcto-label" for="wc-tg-status-ignore">وضعیت‌های بدون پیام</label>
+                            <input type="text" id="wc-tg-status-ignore" name="<?php echo esc_attr($opt); ?>[status_ignore]" value="<?php echo esc_attr(isset($s['status_ignore']) ? $s['status_ignore'] : ''); ?>" class="tisa-input tisa-input--code" dir="ltr" placeholder="pws-in-stock, completed" />
+                            <p class="wcto-hint">اسلاگ وضعیت‌ها با کاما.</p>
+                        </div>
+                        <div class="wcto-field wcto-field--sm">
+                            <label class="wcto-label" for="wc-tg-status-gap">فاصلهٔ بین پیام‌ها</label>
+                            <div class="wcto-unit"><input type="number" id="wc-tg-status-gap" name="<?php echo esc_attr($opt); ?>[status_gap]" value="<?php echo (int) (isset($s['status_gap']) ? $s['status_gap'] : 3); ?>" min="0" max="60" step="1" dir="ltr" class="tisa-input" /><span>ثانیه</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>گزارش روزانه فروش</h2><p>هر شب رأس ساعت تعیین‌شده؛ بازه از پایان گزارش قبلی حساب می‌شود.</p></div></div>
+                <div class="wcto-card-body">
+                    <div class="wcto-switches">
+                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[daily_enabled]" value="yes" <?php checked($s['daily_enabled'], 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>ارسال گزارش شبانه</span></label>
+                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[daily_paid_only]" value="yes" <?php checked(isset($s['daily_paid_only']) ? $s['daily_paid_only'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>در جزئیات فقط سفارش‌های پرداخت‌شده</span></label>
+                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[daily_pin]" value="yes" <?php checked(isset($s['daily_pin']) ? $s['daily_pin'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>گزارش در چت سنجاق شود</span></label>
+                    </div>
+                    <div class="wcto-row">
+                        <div class="wcto-field wcto-field--sm">
+                            <label class="wcto-label" for="wc-tg-time">ساعت ارسال</label>
+                            <input type="time" id="wc-tg-time" name="<?php echo esc_attr($opt); ?>[daily_time]" value="<?php echo esc_attr(isset($s['daily_time']) ? $s['daily_time'] : '23:59'); ?>" dir="ltr" class="tisa-input" />
+                        </div>
+                        <div class="wcto-field">
+                            <label class="wcto-label" for="wc-tg-tz">منطقه زمانی</label>
+                            <select id="wc-tg-tz" name="<?php echo esc_attr($opt); ?>[timezone]" dir="ltr" class="tisa-input">
+                                <option value="Asia/Tehran" <?php selected(isset($s['timezone']) ? $s['timezone'] : 'Asia/Tehran', 'Asia/Tehran'); ?>>Asia/Tehran</option>
+                                <option value="site" <?php selected(isset($s['timezone']) ? $s['timezone'] : 'Asia/Tehran', 'site'); ?>>منطقه زمانی وردپرس</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="wcto-savebar">
+                <button type="submit" class="tisa-btn tisa-btn--primary tisa-btn--lg">ذخیرهٔ تنظیمات</button>
+            </div>
         </form>
 
         <div class="wcto-grid-3">
-        <section class="wcto-card">
-            <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>پیام تست</h2><p>اول تنظیمات را ذخیره کنید، بعد از اتصال ربات مطمئن شوید.</p></div></div>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body">
-                <input type="hidden" name="action" value="wc_telegram_test" />
-                <?php wp_nonce_field('wc_telegram_test_nonce'); ?>
-                <button type="submit" class="tisa-btn tisa-btn--secondary">ارسال تست به تلگرام</button>
-            </form>
-        </section>
-
-        <section class="wcto-card">
-            <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>گزارش دستی</h2><p>
-            یک گزارش فوری به تلگرام می‌فرستد — <b>کاملاً مستقل از گزارش خودکارِ شبانه</b>:
-            نه بازهٔ گزارش شبانه را جابه‌جا می‌کند، نه سنجاقِ آن را عوض می‌کند.
-            پس هر چند بار که اینجا گزارش بگیرید، گزارش شبانه همان ۲۴ ساعت گذشته را کامل می‌فرستد.</p></div></div>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body wcto-inline">
-            <input type="hidden" name="action" value="wc_telegram_daily_now" />
-            <select name="range" class="tisa-input">
-                <option value="today">امروز (از ابتدای روز تا الان)</option>
-                <option value="24h">۲۴ ساعت گذشته</option>
-                <option value="7d">۷ روز گذشته</option>
-            </select>
-            <?php wp_nonce_field('wc_telegram_daily_nonce'); ?>
-            <button type="submit" class="tisa-btn tisa-btn--secondary">ارسال گزارش دستی</button>
-            </form>
-        </section>
-
-        <section class="wcto-card">
-            <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>عیب‌یابی سفارش</h2><p>اگر شهر یا بخشی از آدرس جا می‌افتد، شناسه سفارش را بدهید تا مقادیر خام را ببینیم.</p></div></div>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body wcto-inline">
-            <input type="hidden" name="action" value="wc_telegram_debug" />
-            <?php wp_nonce_field('wc_telegram_debug_nonce'); ?>
-            <input type="number" name="order_id" value="" min="1" required dir="ltr" class="tisa-input tisa-input--w-sm" placeholder="شناسه سفارش" aria-label="شناسه سفارش" />
-            <button type="submit" class="tisa-btn tisa-btn--secondary">نمایش فیلدها</button>
-            </form>
-        </section>
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>پیام تست</h2></div></div>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body">
+                    <input type="hidden" name="action" value="wc_telegram_test" />
+                    <?php wp_nonce_field('wc_telegram_test_nonce'); ?>
+                    <button type="submit" class="tisa-btn tisa-btn--secondary">ارسال تست به تلگرام</button>
+                </form>
+            </section>
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>گزارش دستی</h2><p>مستقل از گزارش شبانه.</p></div></div>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body wcto-inline">
+                    <input type="hidden" name="action" value="wc_telegram_daily_now" />
+                    <select name="range" class="tisa-input">
+                        <option value="today">امروز</option>
+                        <option value="24h">۲۴ ساعت گذشته</option>
+                        <option value="7d">۷ روز گذشته</option>
+                    </select>
+                    <?php wp_nonce_field('wc_telegram_daily_nonce'); ?>
+                    <button type="submit" class="tisa-btn tisa-btn--secondary">ارسال</button>
+                </form>
+            </section>
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>عیب‌یابی سفارش</h2><p>آدرس و کیف پول یک سفارش.</p></div></div>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body wcto-inline">
+                    <input type="hidden" name="action" value="wc_telegram_debug" />
+                    <?php wp_nonce_field('wc_telegram_debug_nonce'); ?>
+                    <input type="number" name="order_id" value="" min="1" required dir="ltr" class="tisa-input" placeholder="شناسه سفارش" aria-label="شناسه سفارش" />
+                    <button type="submit" class="tisa-btn tisa-btn--secondary">بررسی</button>
+                </form>
+            </section>
         </div>
         <?php
     }
@@ -723,76 +697,62 @@ class WC_Telegram_Orders {
     private function render_products_tab($s, $opt) {
         $threshold = isset($s['stock_threshold']) ? (int) $s['stock_threshold'] : 5;
         ?>
-        <form method="post" action="options.php" class="wcto-card">
-            <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>اعلان کمبود موجودی</h2><p>هر بار موجودی یک محصول (یا یکی از متغیرهایش) به <b>کمتر از <?php echo (int) $threshold; ?> عدد</b> برسد، یک اعلان می‌رود. برای هر محصول فقط <b>یک بار</b>؛ بعد از شارژ مجدد و عبور از آستانه، دوباره آماده می‌شود.</p></div></div>
+        <form method="post" action="options.php">
             <?php settings_fields('wc_telegram_orders_group'); ?>
             <input type="hidden" name="<?php echo esc_attr($opt); ?>[_tab]" value="products" />
-            <table class="form-table wcto-form" role="presentation">
-                <tr>
-                    <th scope="row">فعال‌سازی</th>
-                    <td>
-                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[stock_enabled]" value="yes" <?php checked(isset($s['stock_enabled']) ? $s['stock_enabled'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>ارسال اعلان کمبود موجودی محصولات به تلگرام</span></label>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-stock-th">آستانه هشدار</label></th>
-                    <td>
-                        موجودی کمتر از
-                        <input type="number" id="wc-tg-stock-th" name="<?php echo esc_attr($opt); ?>[stock_threshold]"
-                            value="<?php echo (int) $threshold; ?>" min="1" max="1000" step="1" dir="ltr" class="tisa-input tisa-input--w-sm" />
-                        عدد
-                        <p class="description">مثال: با عدد ۵، وقتی موجودی به ۴ یا کمتر برسد اعلان می‌رود.</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row">اتمام موجودی</th>
-                    <td>
-                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[stock_out_enabled]" value="yes" <?php checked(isset($s['stock_out_enabled']) ? $s['stock_out_enabled'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>وقتی موجودی به صفر رسید هم یک اعلان جداگانه «🚫 اتمام موجودی» ارسال شود</span></label>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-stock-chats">شناسه چت اعلانات محصولات</label></th>
-                    <td>
-                        <input type="text" id="wc-tg-stock-chats" name="<?php echo esc_attr($opt); ?>[stock_chat_ids]"
-                            value="<?php echo esc_attr(isset($s['stock_chat_ids']) ? $s['stock_chat_ids'] : ''); ?>" class="tisa-input" dir="ltr"
-                            placeholder="<?php echo esc_attr($s['chat_ids'] ? $s['chat_ids'] : '-1001234567890'); ?>" />
-                        <p class="description">اختیاری. اگر خالی بماند، اعلان‌ها به همان چت سفارش‌ها (<bdi><?php echo esc_html($s['chat_ids'] ? $s['chat_ids'] : '—'); ?></bdi>) می‌رود. برای گروه جدا (مثلاً گروه انبار) آیدی آن را اینجا بنویسید.</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-stock-tpl">فرمت پیام</label></th>
-                    <td>
-                        <textarea id="wc-tg-stock-tpl" name="<?php echo esc_attr($opt); ?>[stock_template]"
-                            rows="9" cols="70" class="tisa-input tisa-input--code wcto-tpl" dir="auto"><?php echo esc_textarea(!empty($s['stock_template']) ? $s['stock_template'] : $this->default_stock_template()); ?></textarea>
-                        <p class="description">
-                            متغیرهای قابل استفاده:<br>
-                            <code dir="ltr">{stock_emoji} {stock_label} {product_name} {variation} {stock} {threshold} {sku} {price} {order_info} {product_url} {product_link} {site_name}</code><br>
-                            <span>{variation}</span>: متغیرهای محصول (مدل/رنگ/...) — برای محصول ساده خالی می‌ماند.
-                            <span>{order_info}</span>: شماره سفارشی که باعث کم شدن موجودی شد — اگر تغییر دستی بوده خالی می‌ماند.
-                        </p>
-                    </td>
-                </tr>
-            </table>
-            <div class="wcto-actions"><button type="submit" class="tisa-btn tisa-btn--primary tisa-btn--lg">ذخیرهٔ تنظیمات</button></div>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>هشدار موجودی</h2><p>وقتی موجودی محصول (یا متغیرش) زیر آستانه برود، یک بار اعلان می‌رود؛ بعد از شارژ مجدد دوباره فعال می‌شود.</p></div></div>
+                <div class="wcto-card-body">
+                    <div class="wcto-switches">
+                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[stock_enabled]" value="yes" <?php checked(isset($s['stock_enabled']) ? $s['stock_enabled'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>اعلان کمبود موجودی</span></label>
+                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[stock_out_enabled]" value="yes" <?php checked(isset($s['stock_out_enabled']) ? $s['stock_out_enabled'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>اعلان جداگانه برای اتمام موجودی</span></label>
+                    </div>
+                    <div class="wcto-row">
+                        <div class="wcto-field wcto-field--sm">
+                            <label class="wcto-label" for="wc-tg-stock-th">آستانه هشدار</label>
+                            <div class="wcto-unit"><input type="number" id="wc-tg-stock-th" name="<?php echo esc_attr($opt); ?>[stock_threshold]" value="<?php echo (int) $threshold; ?>" min="1" max="1000" step="1" dir="ltr" class="tisa-input" /><span>عدد</span></div>
+                            <p class="wcto-hint">کمتر از این مقدار → اعلان.</p>
+                        </div>
+                        <div class="wcto-field">
+                            <label class="wcto-label" for="wc-tg-stock-chats">چت اعلان‌های موجودی <span class="wcto-opt">اختیاری</span></label>
+                            <input type="text" id="wc-tg-stock-chats" name="<?php echo esc_attr($opt); ?>[stock_chat_ids]" value="<?php echo esc_attr(isset($s['stock_chat_ids']) ? $s['stock_chat_ids'] : ''); ?>" class="tisa-input tisa-input--code" dir="ltr" placeholder="<?php echo esc_attr($s['chat_ids'] ? $s['chat_ids'] : '-1001234567890'); ?>" />
+                            <p class="wcto-hint">خالی = همان چت سفارش‌ها.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>قالب اعلان</h2><p>روی هر متغیر کلیک کنید تا در جای مکان‌نما درج شود.</p></div></div>
+                <div class="wcto-card-body">
+                    <?php echo $this->var_chips($this->stock_vars(), 'wc-tg-stock-tpl'); // phpcs:ignore ?>
+                    <textarea id="wc-tg-stock-tpl" name="<?php echo esc_attr($opt); ?>[stock_template]" rows="8" class="tisa-input tisa-input--code wcto-tpl" dir="auto"><?php echo esc_textarea(!empty($s['stock_template']) ? $s['stock_template'] : $this->default_stock_template()); ?></textarea>
+                </div>
+            </section>
+
+            <div class="wcto-savebar">
+                <button type="submit" class="tisa-btn tisa-btn--primary tisa-btn--lg">ذخیرهٔ تنظیمات</button>
+            </div>
         </form>
 
         <div class="wcto-grid-2">
-        <section class="wcto-card">
-            <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>اعلان تست</h2><p>یک اعلان نمونه با اطلاعات فرضی به چت اعلانات محصولات می‌فرستد.</p></div></div>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body">
-                <input type="hidden" name="action" value="wc_telegram_stock_test" />
-                <?php wp_nonce_field('wc_telegram_stock_test_nonce'); ?>
-                <button type="submit" class="tisa-btn tisa-btn--secondary">ارسال اعلان تست</button>
-            </form>
-        </section>
-        <section class="wcto-card">
-            <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>اسکن انبار</h2><p>همهٔ محصولاتی که <b>همین الان</b> زیر آستانه‌اند را در یک پیام خلاصه می‌فرستد و علامت می‌زند تا تکرار نشوند.</p></div></div>
-            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body">
-                <input type="hidden" name="action" value="wc_telegram_stock_scan" />
-                <?php wp_nonce_field('wc_telegram_stock_scan_nonce'); ?>
-                <button type="submit" class="tisa-btn tisa-btn--secondary">اسکن انبار و ارسال لیست کم‌موجودها</button>
-            </form>
-        </section>
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>اعلان تست</h2><p>یک اعلان نمونه به چت موجودی.</p></div></div>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body">
+                    <input type="hidden" name="action" value="wc_telegram_stock_test" />
+                    <?php wp_nonce_field('wc_telegram_stock_test_nonce'); ?>
+                    <button type="submit" class="tisa-btn tisa-btn--secondary">ارسال اعلان تست</button>
+                </form>
+            </section>
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>اسکن انبار</h2><p>همهٔ محصولات زیر آستانه در یک پیام.</p></div></div>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="wcto-card-body">
+                    <input type="hidden" name="action" value="wc_telegram_stock_scan" />
+                    <?php wp_nonce_field('wc_telegram_stock_scan_nonce'); ?>
+                    <button type="submit" class="tisa-btn tisa-btn--secondary">اسکن و ارسال</button>
+                </form>
+            </section>
         </div>
         <?php
     }
@@ -3844,40 +3804,31 @@ class WC_Telegram_Orders {
         <form method="post" action="options.php" class="wcto-log-settings">
             <?php settings_fields('wc_telegram_orders_group'); ?>
             <input type="hidden" name="<?php echo esc_attr($opt); ?>[_tab]" value="<?php echo esc_attr($tab); ?>" />
-            <table class="form-table wcto-form" role="presentation">
-                <tr>
-                    <th scope="row">ضبط لاگ</th>
-                    <td>
-                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[log_enabled]" value="yes" <?php checked(isset($s['log_enabled']) ? $s['log_enabled'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>ثبت رویدادهای افزونه در جدول لاگ</span></label>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-log-level">حداقل سطح ثبت</label></th>
-                    <td>
-                        <select id="wc-tg-log-level" name="<?php echo esc_attr($opt); ?>[log_level]" class="tisa-input">
-                            <?php
-                            $min_levels = ['debug' => 'همه چیز (جزئی)', 'info' => 'اطلاعات به بالا', 'warning' => 'فقط هشدار و خطا', 'error' => 'فقط خطا'];
-                            foreach ($min_levels as $slug => $label):
-                                ?>
-                                <option value="<?php echo esc_attr($slug); ?>" <?php selected(isset($s['log_level']) ? $s['log_level'] : 'info', $slug); ?>><?php echo esc_html($label); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <p class="description">برای عیب‌یابی (مثلاً بررسی تکرار اعلان موجودی) «همه چیز» را انتخاب کنید.</p>
-                    </td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="wc-tg-log-days">نگهداری</label></th>
-                    <td>
-                        حذف ردیف‌های قدیمی‌تر از
-                        <input type="number" id="wc-tg-log-days" name="<?php echo esc_attr($opt); ?>[log_retention_days]"
-                            value="<?php echo (int) (isset($s['log_retention_days']) ? $s['log_retention_days'] : 30); ?>" min="0" max="365" step="1" dir="ltr" class="tisa-input tisa-input--w-sm" />
-                        روز (۰ = بدون محدودیت زمانی) — حداکثر
-                        <input type="number" name="<?php echo esc_attr($opt); ?>[log_max_rows]"
-                            value="<?php echo (int) (isset($s['log_max_rows']) ? $s['log_max_rows'] : 2000); ?>" min="100" max="50000" step="100" dir="ltr" class="tisa-input tisa-input--w-sm" />
-                        ردیف نگه داشته می‌شود.
-                    </td>
-                </tr>
-            </table>
+            <div class="wcto-row wcto-row--4">
+                <div class="wcto-field">
+                    <span class="wcto-label">ضبط لاگ</span>
+                    <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[log_enabled]" value="yes" <?php checked(isset($s['log_enabled']) ? $s['log_enabled'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>فعال</span></label>
+                </div>
+                <div class="wcto-field">
+                    <label class="wcto-label" for="wc-tg-log-level">حداقل سطح</label>
+                    <select id="wc-tg-log-level" name="<?php echo esc_attr($opt); ?>[log_level]" class="tisa-input">
+                        <?php
+                        $min_levels = ['debug' => 'همه چیز', 'info' => 'اطلاعات به بالا', 'warning' => 'هشدار و خطا', 'error' => 'فقط خطا'];
+                        foreach ($min_levels as $slug => $label):
+                            ?>
+                            <option value="<?php echo esc_attr($slug); ?>" <?php selected(isset($s['log_level']) ? $s['log_level'] : 'info', $slug); ?>><?php echo esc_html($label); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="wcto-field">
+                    <label class="wcto-label" for="wc-tg-log-days">نگهداری</label>
+                    <div class="wcto-unit"><input type="number" id="wc-tg-log-days" name="<?php echo esc_attr($opt); ?>[log_retention_days]" value="<?php echo (int) (isset($s['log_retention_days']) ? $s['log_retention_days'] : 30); ?>" min="0" max="365" step="1" dir="ltr" class="tisa-input" /><span>روز</span></div>
+                </div>
+                <div class="wcto-field">
+                    <label class="wcto-label" for="wc-tg-log-max">حداکثر ردیف</label>
+                    <input type="number" id="wc-tg-log-max" name="<?php echo esc_attr($opt); ?>[log_max_rows]" value="<?php echo (int) (isset($s['log_max_rows']) ? $s['log_max_rows'] : 2000); ?>" min="100" max="50000" step="100" dir="ltr" class="tisa-input" />
+                </div>
+            </div>
             <div class="wcto-actions"><button type="submit" class="tisa-btn tisa-btn--secondary">ذخیرهٔ تنظیمات لاگ</button></div>
         </form>
         </div>

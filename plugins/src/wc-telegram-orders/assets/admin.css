@@ -84,18 +84,18 @@ body.woocommerce_page_wc-telegram-orders #wpcontent { background: var(--tisa-bg,
 
 /* ---------- کارت ---------- */
 .wcto-card {
-	margin: 0 0 var(--tisa-sp-4, 16px);
+	margin: 0 0 var(--tisa-sp-5, 24px);
 	border: 1px solid var(--tisa-border, #E3E1DA);
 	border-radius: var(--tisa-r-lg, 18px);
 	background: var(--tisa-surface, #fff);
 }
-.wcto-card-head { display: flex; align-items: flex-start; gap: 12px; padding: var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px) 0; }
+.wcto-card-head { display: flex; align-items: flex-start; gap: 12px; padding: var(--tisa-sp-5, 24px) var(--tisa-sp-6, 32px) 0; }
 .wcto-card-head h2 { margin: 0 0 3px; padding: 0; font-size: var(--tisa-fs-h3, 15.5px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
 .wcto-card-head p { margin: 0; font-size: var(--tisa-fs-meta, 12.5px); line-height: 1.8; color: var(--tisa-muted, #77828A); }
 .wcto-card-head p b { color: var(--tisa-ink, #1F2A2E); font-weight: 600; }
 .wcto-dot { flex: 0 0 auto; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--tisa-primary, #0E7C6B); }
 .wcto-dot--muted { background: var(--tisa-border-strong, #C9DCD7); }
-.wcto-card-body { padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px); }
+.wcto-card-body { padding: var(--tisa-sp-5, 24px) var(--tisa-sp-6, 32px) var(--tisa-sp-6, 32px); }
 .wcto-warn { display: block; margin-top: 4px; color: var(--tisa-danger-ink, #8E3128); font-weight: 600; }
 
 .wcto-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--tisa-sp-4, 16px); }
@@ -104,34 +104,50 @@ body.woocommerce_page_wc-telegram-orders #wpcontent { background: var(--tisa-bg,
 @media (max-width: 1000px) { .wcto-grid-3 { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .wcto-grid-2 { grid-template-columns: 1fr; } }
 
-/* ---------- form-table به شکل فرم کارتی ---------- */
-.wcto-wrap table.form-table.wcto-form { margin: var(--tisa-sp-2, 8px) 0 0; padding: 0 var(--tisa-sp-5, 24px); border-collapse: collapse; }
-.wcto-wrap .wcto-form tr { border-bottom: 1px dashed var(--tisa-border, #E3E1DA); }
-.wcto-wrap .wcto-form tr:last-child { border-bottom: 0; }
-.wcto-wrap .wcto-form th, .wcto-wrap .wcto-form td { padding: var(--tisa-sp-4, 16px) 0; line-height: 1.7; font-size: var(--tisa-fs-control, 13px); }
-.wcto-wrap .wcto-form th { width: 190px; padding-inline-end: var(--tisa-sp-4, 16px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); vertical-align: top; }
-.wcto-wrap .wcto-form td { color: var(--tisa-ink, #1F2A2E); }
-.wcto-wrap .wcto-form p { margin: 8px 0 0; }
-.wcto-wrap .wcto-form p.description { font-size: var(--tisa-fs-meta, 12px); line-height: 1.9; color: var(--tisa-muted, #77828A); }
-.wcto-wrap .wcto-form .description code, .wcto-wrap .wcto-form code {
-	display: inline-block; padding: 1px 6px;
-	border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-xs, 6px);
-	background: var(--tisa-surface-2, #FAFAF8); color: var(--tisa-ink, #1F2A2E);
-	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); font-size: var(--tisa-fs-tiny, 11px); line-height: 1.8;
+/* ---------- فرم کارتی ---------- */
+.wcto-card-body > * + * { margin-top: var(--tisa-sp-4, 16px); }
+.wcto-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px); }
+.wcto-row--4 { grid-template-columns: repeat(4, 1fr); }
+.wcto-row > .wcto-field--sm { max-width: 220px; }
+@media (max-width: 860px) { .wcto-row, .wcto-row--4 { grid-template-columns: 1fr; } }
+.wcto-field { min-width: 0; }
+.wcto-label { display: block; margin: 0 0 6px; font-size: var(--tisa-fs-control, 13px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
+.wcto-opt { margin-inline-start: 6px; font-size: var(--tisa-fs-tiny, 11px); font-weight: 500; color: var(--tisa-muted, #77828A); }
+.wcto-hint { margin: 6px 0 0; font-size: var(--tisa-fs-meta, 12px); line-height: 1.7; color: var(--tisa-muted, #77828A); }
+.wcto-check { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.wcto-check input { margin: 0; accent-color: var(--tisa-primary, #0E7C6B); }
+.wcto-wrap .wcto-field .tisa-input, .wcto-wrap .wcto-field select.tisa-input { width: 100%; }
+.wcto-unit { display: flex; align-items: center; gap: 8px; }
+.wcto-unit .tisa-input { width: 110px !important; }
+.wcto-unit span { font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.wcto-wrap textarea.tisa-input.wcto-tpl { width: 100%; min-height: 0; height: auto; padding: 12px 14px; line-height: 1.8; resize: vertical; white-space: pre; }
+.wcto-switch { display: inline-flex; align-items: center; gap: 10px; font-size: var(--tisa-fs-control, 13px); font-weight: 600; cursor: pointer; }
+.wcto-switches { display: flex; flex-direction: column; gap: 10px; }
+.wcto-between { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--tisa-sp-3, 12px); }
+.wcto-actions { display: flex; align-items: center; gap: var(--tisa-sp-3, 12px); }
+.wcto-savebar {
+	position: sticky; bottom: 0; z-index: 2;
+	display: flex; justify-content: flex-start;
+	margin: 0 0 var(--tisa-sp-6, 32px);
+	padding: var(--tisa-sp-3, 12px) 0;
+	background: linear-gradient(to top, var(--tisa-bg, #F4F2EC) 70%, rgba(244, 242, 236, 0));
 }
-.wcto-wrap .wcto-form label:not(.tisa-switch) { display: inline-block; margin: 0 0 4px; font-weight: 600; }
-.wcto-wrap .wcto-form .tisa-input { max-width: 520px; }
-.wcto-wrap .wcto-form textarea.tisa-input.wcto-tpl { max-width: none; min-height: 0; height: auto; padding: 10px 12px; line-height: 1.8; resize: vertical; white-space: pre; }
-.wcto-wrap .wcto-form .tisa-input--w-sm { width: 110px; display: inline-block; vertical-align: middle; margin: 0 4px; }
-.wcto-wrap .wcto-form select.tisa-input { width: auto; min-width: 220px; }
-.wcto-gap { height: var(--tisa-sp-3, 12px); }
-.wcto-switch { display: inline-flex; align-items: center; gap: 10px; margin: 4px 0; font-size: var(--tisa-fs-control, 13px); font-weight: 600; cursor: pointer; }
-.wcto-switch + br { display: none; }
-.wcto-token-saved { display: flex; align-items: center; gap: 8px; margin: 0 0 8px !important; font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
-.wcto-actions { display: flex; align-items: center; gap: var(--tisa-sp-3, 12px); padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px) var(--tisa-sp-5, 24px); }
 .wcto-inline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tisa-sp-2, 8px); }
-.wcto-inline .tisa-input { width: auto; }
-.wcto-hint { font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+.wcto-inline .tisa-input { width: auto; flex: 1 1 120px; }
+
+/* چیپ‌های متغیر */
+.wcto-vars { display: flex; flex-wrap: wrap; gap: 6px; }
+.wcto-var {
+	display: inline-flex; align-items: center;
+	height: 26px; padding: 0 10px;
+	border: 1px solid var(--tisa-border, #E3E1DA); border-radius: var(--tisa-r-pill, 999px);
+	background: var(--tisa-surface-2, #FAFAF8); color: var(--tisa-ink, #1F2A2E);
+	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace); font-size: var(--tisa-fs-tiny, 11px);
+	cursor: pointer; transition: border-color .12s, background .12s, color .12s;
+}
+.wcto-var:hover { border-color: var(--tisa-primary, #0E7C6B); color: var(--tisa-primary-ink, #0A5F52); background: var(--tisa-primary-soft, #E8F0EE); }
+.wcto-var.is-hit { background: var(--tisa-primary, #0E7C6B); border-color: var(--tisa-primary, #0E7C6B); color: var(--tisa-on-primary, #fff); }
+.wcto-var:focus-visible { outline: 0; box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22)); }
 
 /* ---------- لاگ ---------- */
 .wcto-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--tisa-sp-3, 12px); margin: 0 0 var(--tisa-sp-4, 16px); }
@@ -181,8 +197,8 @@ a.wcto-kpi:hover { border-color: var(--tisa-primary, #0E7C6B); }
 .wcto-log-actions form { margin: 0; }
 .wcto-wrap .wcto-danger-link { color: var(--tisa-danger, #B5453A); }
 .wcto-wrap .wcto-danger-link:hover { color: var(--tisa-danger-ink, #8E3128); background: var(--tisa-danger-soft, #FBECEA); }
-.wcto-log-settings { margin: 0 calc(-1 * var(--tisa-sp-5, 24px)); padding-top: var(--tisa-sp-2, 8px); border-top: 1px solid var(--tisa-border, #E3E1DA); }
-.wcto-log-settings .wcto-actions { padding-bottom: 0; }
+.wcto-log-settings { padding-top: var(--tisa-sp-4, 16px); border-top: 1px solid var(--tisa-border, #E3E1DA); }
+.wcto-log-settings .wcto-actions { margin-top: var(--tisa-sp-4, 16px); }
 
 /* ---------- عیب‌یابی سفارش ---------- */
 .wcto-debug .wcto-kv th { width: 260px; text-align: right; white-space: nowrap; font-weight: 600; }
