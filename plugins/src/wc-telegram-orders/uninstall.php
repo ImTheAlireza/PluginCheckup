@@ -17,12 +17,16 @@ delete_option('wc_telegram_last_report_end');
 delete_option('wc_telegram_migrated_version');
 delete_option('wc_telegram_template_version');
 delete_option('wc_telegram_log_db_version');
+delete_option('wc_telegram_status_last_slot');
+delete_option('wc_telegram_status_last_sent');
 delete_transient('wc_telegram_test_result');
 
 wp_clear_scheduled_hook('wc_telegram_daily_report');
 wp_clear_scheduled_hook('wc_telegram_send_order');
 wp_clear_scheduled_hook('wc_telegram_stock_flush');
 wp_clear_scheduled_hook('wc_telegram_maintenance');
+wp_clear_scheduled_hook('wc_telegram_send_status');
+wp_clear_scheduled_hook('wc_telegram_sweep_pending');
 
 // رویدادهایی که «با آرگومان» زمان‌بندی شده‌اند (ارسال سفارش/علان موجودی) با
 // wp_clear_scheduled_hook پاک نمی‌شوند؛ مستقیماً از آرایه کرون حذف می‌شوند

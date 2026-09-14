@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ارسال سفارش‌ها به تلگرام ووکامرس
  * Description:       ارسال خودکار سفارش‌های جدید ووکامرس به تلگرام با فرمت فارسی دلخواه + گزارش روزانه فروش (با سنجاق خودکار) + اعلان کمبود موجودی محصولات + سیستم لاگ رویدادها در پنل.
- * Version:           1.11.1
+ * Version:           1.12.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            علیرضا شعبان زاده
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_TELEGRAM_ORDERS_VERSION', '1.11.1');
+define('WC_TELEGRAM_ORDERS_VERSION', '1.12.0');
 define('WC_TELEGRAM_ORDERS_OPTION', 'wc_telegram_orders_settings');
 define('WC_TELEGRAM_ORDERS_FILE', __FILE__);
 
@@ -34,6 +34,8 @@ class WC_Telegram_Orders {
     const SEND_ORDER_HOOK  = 'wc_telegram_send_order';       // ارسال غیرهمزمان پیام سفارش
     const STOCK_FLUSH_HOOK = 'wc_telegram_stock_flush';      // ارسال غیرهمزمان اعلان‌های موجودی
     const MAINT_HOOK       = 'wc_telegram_maintenance';      // نگهداری دوره‌ای (پاک‌سازی لاگ)
+    const STATUS_HOOK      = 'wc_telegram_send_status';      // ارسال غیرهمزمان پیام تغییر وضعیت (صف + فاصله)
+    const SWEEP_HOOK       = 'wc_telegram_sweep_pending';    // جاروی دوره‌ای سفارش‌های معوق
     const LOG_DB_OPTION    = 'wc_telegram_log_db_version';   // نسخه ساختار جدول لاگ
     const LOG_COOLDOWN     = 600;                            // بازه توقف اعلان تکراری هر محصول (ثانیه)
     const PINNED_OPTION    = 'wc_telegram_pinned_messages';  // آخرین پیام سنجاق‌شده در هر چت
@@ -77,10 +79,21 @@ class WC_Telegram_Orders {
 
         // گزارش روزانه فروش (WP-Cron — هر شب ساعت مشخص)
         add_action('init', [$this, 'maybe_schedule_daily']);
+        add_filter('cron_schedules', function ($sch) {
+            if (!isset($sch['wc_telegram_15min'])) {
+                $sch['wc_telegram_15min'] = ['interval' => 15 * MINUTE_IN_SECONDS, 'display' => 'هر ۱۵ دقیقه (تلگرام ووکامرس)'];
+            }
+            return $sch;
+        });
         add_action(self::CRON_HOOK, [$this, 'send_daily_report']);
         add_action(self::MAINT_HOOK, [$this, 'prune_logs']);
         add_action(self::SEND_ORDER_HOOK, [$this, 'process_order_send']);
         add_action(self::STOCK_FLUSH_HOOK, [$this, 'process_stock_flush']);
+        add_action(self::STATUS_HOOK, [$this, 'process_status_send'], 10, 4);
+        add_action(self::SWEEP_HOOK, [$this, 'sweep_pending_orders']);
+        // اقلام سفارش بعد از ساخت سفارش اضافه می‌شوند (درگاه‌های زودهنگام) — همان لحظه پیام معوق بررسی شود
+        add_action('woocommerce_new_order_item', [$this, 'on_new_order_item'], 10, 3);
+        add_action('woocommerce_after_order_object_save', [$this, 'on_order_saved'], 10, 1);
         add_action('update_option_' . WC_TELEGRAM_ORDERS_OPTION, [$this, 'reset_settings_cache'], 5, 0);
         add_action('update_option_' . WC_TELEGRAM_ORDERS_OPTION, [$this, 'reschedule_on_settings'], 10, 2);
         add_action('update_option_' . WC_TELEGRAM_ORDERS_OPTION, [$this, 'log_settings_update'], 20, 2);
@@ -112,6 +125,8 @@ class WC_Telegram_Orders {
             'daily_time'      => '23:59',
             'status_enabled'  => 'yes',
             'status_template' => $this->default_status_template(),
+            'status_ignore'   => 'pws-in-stock',   // وضعیت‌هایی که پیام کوتاه نمی‌گیرند (با کاما)
+            'status_gap'      => 3,                // فاصلهٔ حداقلی بین دو پیام وضعیت (ثانیه) — جلوگیری از 429
             'daily_paid_only' => 'yes',
             'daily_pin'       => 'yes',
             'timezone'        => 'Asia/Tehran',
@@ -368,6 +383,15 @@ class WC_Telegram_Orders {
             if (isset($input['status_template'])) {
                 $out['status_template'] = wp_kses(wp_unslash($input['status_template']), $allowed);
             }
+            if (isset($input['status_ignore'])) {
+                $ign = array_filter(array_map(function ($x) {
+                    return sanitize_key(str_replace('wc-', '', trim($x)));
+                }, explode(',', (string) $input['status_ignore'])));
+                $out['status_ignore'] = implode(',', array_unique($ign));
+            }
+            if (isset($input['status_gap'])) {
+                $out['status_gap'] = max(0, min(60, (int) $input['status_gap']));
+            }
             $out['daily_paid_only'] = (!empty($input['daily_paid_only']) && $input['daily_paid_only'] === 'yes') ? 'yes' : 'no';
             $out['daily_pin'] = (!empty($input['daily_pin']) && $input['daily_pin'] === 'yes') ? 'yes' : 'no';
             $out['timezone'] = (isset($input['timezone']) && $input['timezone'] === 'site') ? 'site' : 'Asia/Tehran';
@@ -612,6 +636,18 @@ class WC_Telegram_Orders {
                             متغیرهای قابل استفاده:<br>
                             <code dir="ltr">{order_number} {order_id} {old_status} {new_status} {customer_name} {order_total} {order_url} {site_name}</code>
                         </p>
+                        <div class="wcto-gap"></div>
+                        <label for="wc-tg-status-ignore">وضعیت‌هایی که پیام نمی‌گیرند:</label>
+                        <input type="text" id="wc-tg-status-ignore" name="<?php echo esc_attr($opt); ?>[status_ignore]"
+                            value="<?php echo esc_attr(isset($s['status_ignore']) ? $s['status_ignore'] : ''); ?>" class="tisa-input tisa-input--code" dir="ltr"
+                            placeholder="pws-in-stock, completed" />
+                        <p class="description">اسلاگ وضعیت‌ها با کاما (بدون <code dir="ltr">wc-</code>). برای وضعیت‌های داخلی/انبوه مثل «موجود در انبار» که به کانال ربطی ندارند.</p>
+                        <div class="wcto-gap"></div>
+                        <label for="wc-tg-status-gap">فاصلهٔ بین پیام‌های وضعیت:</label>
+                        <input type="number" id="wc-tg-status-gap" name="<?php echo esc_attr($opt); ?>[status_gap]"
+                            value="<?php echo (int) (isset($s['status_gap']) ? $s['status_gap'] : 3); ?>" min="0" max="60" step="1" dir="ltr" class="tisa-input tisa-input--w-sm" />
+                        ثانیه
+                        <p class="description">پیام‌های وضعیت در صف می‌روند و با این فاصله ارسال می‌شوند؛ تغییر گروهی وضعیت دیگر باعث خطای «Too Many Requests» تلگرام و گم‌شدن پیام نمی‌شود.</p>
                     </td>
                 </tr>
                 <tr>
@@ -902,6 +938,68 @@ class WC_Telegram_Orders {
         if ($order->get_status() !== $new_status) {
             return;
         }
+        // وضعیت‌های نادیده‌گرفته‌شده (مثل «موجود در انبار» که تغییر داخلی/گروهی است)
+        if ($this->status_is_ignored($new_status, $s)) {
+            $this->log('debug', 'order', 'status_ignored', sprintf('تغییر وضعیت سفارش #%s به «%s» طبق تنظیمات نادیده گرفته شد.', $order->get_order_number(), wc_get_order_status_name($new_status)), ['old' => $old_status, 'new' => $new_status], $order_id);
+            return;
+        }
+        // به صف بفرست: ارسال با فاصلهٔ تنظیم‌شده، بدون بلاک‌کردن ذخیرهٔ سفارش و بدون 429
+        $this->enqueue_status_send($order_id, $old_status, $new_status);
+    }
+
+    private function status_is_ignored($status, $s = null) {
+        $s = $s ?: $this->get_settings();
+        $raw = isset($s['status_ignore']) ? (string) $s['status_ignore'] : '';
+        if ($raw === '') {
+            return false;
+        }
+        $list = array_filter(array_map('trim', explode(',', str_replace('wc-', '', $raw))));
+        return in_array(str_replace('wc-', '', (string) $status), $list, true);
+    }
+
+    // صف پیام‌های وضعیت: هر پیام روی یک اسلات زمانی جدا (فاصلهٔ status_gap ثانیه از آخرین اسلات)
+    private function enqueue_status_send($order_id, $old_status, $new_status) {
+        $s   = $this->get_settings();
+        $gap = isset($s['status_gap']) ? max(0, (int) $s['status_gap']) : 3;
+        $order_id = (int) $order_id;
+        $last = (int) get_option('wc_telegram_status_last_slot', 0);
+        $slot = max(time(), $last + $gap);
+        update_option('wc_telegram_status_last_slot', $slot, false);
+        $args = [$order_id, (string) $old_status, (string) $new_status, 1];
+        if (wp_schedule_single_event($slot, self::STATUS_HOOK, $args)) {
+            $this->log('debug', 'order', 'status_queued', sprintf('پیام تغییر وضعیت سفارش #%s در صف قرار گرفت (%d ثانیه دیگر).', $order_id, max(0, $slot - time())), ['old' => $old_status, 'new' => $new_status, 'slot' => $slot], $order_id);
+            $this->spawn_cron_now();
+            return;
+        }
+        // زمان‌بندی نشد — همان‌جا بفرست
+        $this->process_status_send($order_id, $old_status, $new_status, 1);
+    }
+
+    // پردازشگر کرون پیام وضعیت — با تلاش مجدد (۳ بار) در صورت 429/خطای شبکه
+    public function process_status_send($order_id, $old_status, $new_status, $attempt = 1) {
+        $s = $this->get_settings();
+        if ($s['enabled'] !== 'yes' || $s['status_enabled'] !== 'yes') {
+            return;
+        }
+        $order = wc_get_order((int) $order_id);
+        if (!$order instanceof WC_Order) {
+            return;
+        }
+        // اگر بین صف و ارسال دوباره عوض شده، پیام کهنه نفرست
+        if ($order->get_status() !== $new_status) {
+            $this->log('debug', 'order', 'status_stale', sprintf('پیام وضعیت سفارش #%s ارسال نشد: وضعیت دوباره تغییر کرده است.', $order->get_order_number()), ['queued_new' => $new_status, 'current' => $order->get_status()], (int) $order_id);
+            return;
+        }
+        if ($order->get_meta('_wc_telegram_sent') !== 'yes') {
+            return;
+        }
+        // فاصله‌گذاری سراسری: اگر پیام دیگری همین لحظه رفته، کمی جلوتر برو
+        $gap  = isset($s['status_gap']) ? max(0, (int) $s['status_gap']) : 3;
+        $last = (int) get_option('wc_telegram_status_last_sent', 0);
+        if ($gap > 0 && (time() - $last) < $gap) {
+            wp_schedule_single_event(time() + $gap, self::STATUS_HOOK, [(int) $order_id, (string) $old_status, (string) $new_status, (int) $attempt]);
+            return;
+        }
 
         $template = !empty($s['status_template']) ? $s['status_template'] : $this->default_status_template();
 
@@ -925,11 +1023,122 @@ class WC_Telegram_Orders {
             }
         }
 
+        update_option('wc_telegram_status_last_sent', time(), false);
         $result = $this->send_to_all_chats(strtr($template, $escaped));
         if (!empty($result['ok'])) {
-            $this->log('success', 'order', 'status_sent', sprintf('پیام تغییر وضعیت سفارش #%s ارسال شد (%s ← %s).', $order->get_order_number(), wc_get_order_status_name($old_status), wc_get_order_status_name($new_status)), ['old' => $old_status, 'new' => $new_status], $order_id);
-        } else {
-            $this->log('error', 'order', 'status_failed', sprintf('ارسال پیام تغییر وضعیت سفارش #%s ناموفق بود: %s', $order->get_order_number(), $result['message']), ['old' => $old_status, 'new' => $new_status, 'error' => $result['message']], $order_id);
+            $this->log('success', 'order', 'status_sent', sprintf('پیام تغییر وضعیت سفارش #%s ارسال شد (%s ← %s).', $order->get_order_number(), wc_get_order_status_name($old_status), wc_get_order_status_name($new_status)), ['old' => $old_status, 'new' => $new_status, 'attempt' => (int) $attempt], (int) $order_id);
+            return;
+        }
+        $attempt = (int) $attempt;
+        if ($attempt < 3) {
+            $delay = 60 * $attempt;
+            wp_schedule_single_event(time() + $delay, self::STATUS_HOOK, [(int) $order_id, (string) $old_status, (string) $new_status, $attempt + 1]);
+            $this->log('warning', 'order', 'status_retry', sprintf('ارسال پیام وضعیت سفارش #%s ناموفق بود (تلاش %d از ۳)؛ %d ثانیه دیگر دوباره تلاش می‌شود: %s', $order->get_order_number(), $attempt, $delay, $result['message']), ['old' => $old_status, 'new' => $new_status, 'attempt' => $attempt, 'error' => $result['message']], (int) $order_id);
+            return;
+        }
+        $this->log('error', 'order', 'status_failed', sprintf('ارسال پیام تغییر وضعیت سفارش #%s پس از ۳ تلاش ناموفق ماند: %s', $order->get_order_number(), $result['message']), ['old' => $old_status, 'new' => $new_status, 'error' => $result['message']], (int) $order_id);
+    }
+
+    /* ---------------- سفارش‌های معوق: واکنش به تکمیل اقلام + جاروی دوره‌ای ---------------- */
+
+    // درگاه‌هایی مثل ملت سفارش را خالی می‌سازند و اقلام را بعداً اضافه می‌کنند؛
+    // با آمدن هر آیتم، اگر سفارش معوق است و حالا کامل شده، پیام کامل زمان‌بندی می‌شود (در shutdown تا همهٔ اقلام بیایند).
+    public function on_new_order_item($item_id, $item, $order_id) {
+        $order_id = (int) $order_id;
+        if ($order_id <= 0 || isset($this->pending_check[$order_id])) {
+            return;
+        }
+        if (get_post_meta($order_id, '_wc_telegram_pending', true) !== 'yes' && !$this->hpos_pending($order_id)) {
+            return;
+        }
+        $this->pending_check[$order_id] = true;
+        if (!has_action('shutdown', [$this, 'flush_pending_checks'])) {
+            add_action('shutdown', [$this, 'flush_pending_checks'], 4);
+        }
+    }
+
+    private $pending_check = [];
+
+    private function hpos_pending($order_id) {
+        $o = wc_get_order($order_id);
+        return $o instanceof WC_Order && $o->get_meta('_wc_telegram_pending') === 'yes';
+    }
+
+    public function flush_pending_checks() {
+        $ids = array_keys($this->pending_check);
+        $this->pending_check = [];
+        foreach ($ids as $oid) {
+            $this->flush_pending_message($oid);
+        }
+    }
+
+    // هر ذخیرهٔ سفارش (از هر مسیری: REST، درگاه، افزونه) — ارزان است چون فقط سفارش‌های معوق را بررسی می‌کند
+    public function on_order_saved($order) {
+        if (!$order instanceof WC_Order || $order->get_meta('_wc_telegram_pending') !== 'yes') {
+            return;
+        }
+        $oid = $order->get_id();
+        if (isset($this->pending_check[$oid])) {
+            return;
+        }
+        $this->pending_check[$oid] = true;
+        if (!has_action('shutdown', [$this, 'flush_pending_checks'])) {
+            add_action('shutdown', [$this, 'flush_pending_checks'], 4);
+        }
+    }
+
+    /**
+     * جاروی دوره‌ای (هر ۱۵ دقیقه): سفارش‌های معوقی که هیچ هوکی برایشان نیامد.
+     *  - کامل شده یا به وضعیت پولی رسیده → پیام کامل
+     *  - لغو/ناموفق → پرچم پاک
+     *  - بیش از ۲۴ ساعت معوق و هنوز خالی (سبد رهاشده/پرداخت ناتمام) → بایگانی بی‌صدا
+     */
+    public function sweep_pending_orders() {
+        if (!function_exists('wc_get_orders')) {
+            return;
+        }
+        $s = $this->get_settings();
+        if ($s['enabled'] !== 'yes') {
+            return;
+        }
+        $orders = wc_get_orders([
+            'limit'      => 50,
+            'orderby'    => 'date',
+            'order'      => 'ASC',
+            'meta_key'   => '_wc_telegram_pending',   // phpcs:ignore WordPress.DB.SlowDBQuery
+            'meta_value' => 'yes',                    // phpcs:ignore WordPress.DB.SlowDBQuery
+            'return'     => 'objects',
+        ]);
+        $n = ['flushed' => 0, 'dropped' => 0, 'expired' => 0, 'waiting' => 0];
+        foreach ($orders as $order) {
+            if (!$order instanceof WC_Order) {
+                continue;
+            }
+            $st = $order->get_status();
+            if (in_array($st, ['cancelled', 'refunded', 'failed', 'trash'], true)) {
+                $order->delete_meta_data('_wc_telegram_pending');
+                $order->save_meta_data();
+                $n['dropped']++;
+                continue;
+            }
+            $flush_statuses = apply_filters('wc_telegram_flush_statuses', ['processing', 'completed', 'on-hold']);
+            if ($this->order_ready($order) || in_array($st, $flush_statuses, true)) {
+                $this->schedule_order_send($order->get_id());
+                $n['flushed']++;
+                continue;
+            }
+            $created = $order->get_date_created() ? $order->get_date_created()->getTimestamp() : time();
+            if ((time() - $created) > DAY_IN_SECONDS && in_array($st, ['pending', 'checkout-draft'], true)) {
+                $order->delete_meta_data('_wc_telegram_pending');
+                $order->update_meta_data('_wc_telegram_expired', 'yes');
+                $order->save_meta_data();
+                $n['expired']++;
+                continue;
+            }
+            $n['waiting']++;
+        }
+        if (array_sum($n) > 0) {
+            $this->log('info', 'order', 'pending_sweep', sprintf('جاروی معوق‌ها: %d ارسال، %d لغو، %d منقضی، %d هنوز منتظر.', $n['flushed'], $n['dropped'], $n['expired'], $n['waiting']), $n, 0);
         }
     }
 
@@ -1683,12 +1892,16 @@ class WC_Telegram_Orders {
         if (!wp_next_scheduled(self::MAINT_HOOK)) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', self::MAINT_HOOK);
         }
+        if (!wp_next_scheduled(self::SWEEP_HOOK)) {
+            wp_schedule_event(time() + 5 * MINUTE_IN_SECONDS, 'wc_telegram_15min', self::SWEEP_HOOK);
+        }
         $this->log('info', 'system', 'activated', 'افزونه فعال شد (نسخه ' . WC_TELEGRAM_ORDERS_VERSION . ').', [], 0);
     }
 
     public function on_deactivate() {
         $this->clear_daily_schedule();
         wp_clear_scheduled_hook(self::MAINT_HOOK);
+        wp_clear_scheduled_hook(self::SWEEP_HOOK);
         $this->log('info', 'system', 'deactivated', 'افزونه غیرفعال شد.', [], 0);
     }
 
@@ -1724,6 +1937,9 @@ class WC_Telegram_Orders {
         // نگهداری لاگ مستقل از گزارش روزانه است (حتی اگر گزارش غیرفعال باشد لاگ پاک‌سازی می‌شود)
         if (!wp_next_scheduled(self::MAINT_HOOK)) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', self::MAINT_HOOK);
+        }
+        if (!wp_next_scheduled(self::SWEEP_HOOK)) {
+            wp_schedule_event(time() + 5 * MINUTE_IN_SECONDS, 'wc_telegram_15min', self::SWEEP_HOOK);
         }
     }
 
@@ -2578,13 +2794,13 @@ class WC_Telegram_Orders {
         }
 
         if (!empty($skipped)) {
-            $this->log('warning', 'stock', 'duplicate_blocked',
+            $this->log('info', 'stock', 'duplicate_blocked',
                 sprintf('%d اعلان موجودی تکراری تشخیص داده شد و ارسال نشد.', count($skipped)),
                 ['blocked' => $skipped, 'blocked_count' => count($skipped)], 0);
         }
         if (empty($blocks)) {
             // همهٔ موارد تکراری/مسدود بودند → هیچ پیامی ارسال نمی‌شود
-            $this->log('info', 'stock', 'flush_nothing', 'هیچ اعلان موجودی جدیدی ارسال نشد (همه تکراری بودند).', ['queue_count' => count($queue)], 0);
+            $this->log('debug', 'stock', 'flush_nothing', 'هیچ اعلان موجودی جدیدی ارسال نشد (همه تکراری بودند).', ['queue_count' => count($queue)], 0);
             return;
         }
 
@@ -3103,7 +3319,7 @@ class WC_Telegram_Orders {
         if ($code === 429 && !$_retried) {
             $wait = isset($body['parameters']['retry_after']) ? (int) $body['parameters']['retry_after'] : 3;
             $this->log('warning', 'telegram', 'rate_limited', sprintf('محدودیت نرخ تلگرام (429) هنگام %s؛ %d ثانیه صبر و تلاش مجدد.', $method, $wait), ['method' => $method, 'retry_after' => $wait], 0);
-            sleep(max(1, min($wait, 10)));
+            sleep(max(1, min($wait, 30)));
             return $this->telegram_api($bot_token, $method, $params, true);
         }
         $desc = isset($body['description']) ? $body['description'] : ('HTTP ' . $code);
