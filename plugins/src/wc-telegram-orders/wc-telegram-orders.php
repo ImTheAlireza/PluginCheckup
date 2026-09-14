@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ارسال سفارش‌ها به تلگرام ووکامرس
  * Description:       ارسال خودکار سفارش‌های جدید ووکامرس به تلگرام با فرمت فارسی دلخواه + گزارش روزانه فروش (با سنجاق خودکار) + اعلان کمبود موجودی محصولات + سیستم لاگ رویدادها در پنل.
- * Version:           1.11.0
+ * Version:           1.11.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            علیرضا شعبان زاده
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_TELEGRAM_ORDERS_VERSION', '1.11.0');
+define('WC_TELEGRAM_ORDERS_VERSION', '1.11.1');
 define('WC_TELEGRAM_ORDERS_OPTION', 'wc_telegram_orders_settings');
 define('WC_TELEGRAM_ORDERS_FILE', __FILE__);
 
@@ -911,7 +911,7 @@ class WC_Telegram_Orders {
             '{old_status}'    => $this->status_emoji($old_status) . ' ' . wc_get_order_status_name($old_status),
             '{new_status}'    => $this->status_emoji($new_status) . ' ' . wc_get_order_status_name($new_status),
             '{customer_name}' => trim($order->get_formatted_billing_full_name()),
-            '{order_total}'   => $this->money($order->get_total(), $order),
+            '{order_total}'   => $this->money($this->order_amounts($order)['grand'], $order),
             '{order_url}'     => $order->get_edit_order_url(),
             '{site_name}'     => get_bloginfo('name'),
         ];
@@ -1219,15 +1219,16 @@ class WC_Telegram_Orders {
         }
 
         // پرداخت از کیف پول/اعتبار (اگر افزونهٔ کیف پول دارید)
-        $wallet = $this->order_wallet_amount($order);
-        $paid   = max(0, (float) $order->get_total() - $wallet);
+        $amounts = $this->order_amounts($order);
+        $wallet  = $amounts['wallet'];
+        $paid    = $amounts['paid'];
 
         $replacements = [
             '{order_number}'      => $order->get_order_number(),
             '{order_id}'          => $order->get_id(),
             '{order_date}'        => $order->get_date_created() ? $this->plugin_date(get_option('date_format') . ' ' . get_option('time_format'), $order->get_date_created()->getTimestamp()) : '',
             '{order_status}'      => wc_get_order_status_name($order->get_status()),
-            '{order_total}'       => $this->money($order->get_total(), $order),
+            '{order_total}'       => $this->money($amounts['grand'], $order),                          // مجموع سفارش = نقدی + کیف پول
             '{currency}'          => $order->get_currency(),
             '{subtotal}'          => $this->money($order->get_subtotal(), $order),
             '{shipping_total}'    => $this->money($order->get_shipping_total() + $order->get_shipping_tax(), $order),
@@ -1293,6 +1294,50 @@ class WC_Telegram_Orders {
         return $message;
     }
 
+
+    /**
+     * جمع واقعی سفارش پیش از کسر کیف پول:
+     * آیتم‌ها (بعد از تخفیف) + مالیات + حمل‌ونقل + هزینه‌های مثبت.
+     * بعضی افزونه‌های کیف پول سهم کیف پول را به‌صورت هزینهٔ منفی یا کاهش total ثبت می‌کنند؛
+     * این عدد از آن‌ها مستقل است.
+     */
+    private function order_gross_total($order) {
+        $gross = 0.0;
+        foreach ($order->get_items() as $item) {
+            $gross += (float) $item->get_total() + (float) $item->get_total_tax();
+        }
+        $gross += (float) $order->get_shipping_total() + (float) $order->get_shipping_tax();
+        foreach ($order->get_items('fee') as $fee) {
+            $ft = (float) $fee->get_total();
+            if ($ft > 0) {
+                $gross += $ft + (float) $fee->get_total_tax();
+            }
+        }
+        return round($gross, 2);
+    }
+
+    /**
+     * مبالغ سفارش با احتساب کیف پول:
+     *  - wallet : سهم کیف پول
+     *  - grand  : مجموع سفارش (نقدی + کیف پول)
+     *  - paid   : مبلغ نقدی/درگاه
+     * اگر افزونهٔ کیف پول total را از قبل کم کرده باشد (total + wallet ≤ gross)، grand = total + wallet؛
+     * وگرنه total خودش مجموع است و paid = total - wallet.
+     */
+    private function order_amounts($order) {
+        $total  = (float) $order->get_total();
+        $gross  = $this->order_gross_total($order);
+        $wallet = $this->order_wallet_amount($order);
+        if ($wallet > 0 && ($total + $wallet) <= ($gross + 1)) {
+            $grand = $total + $wallet;
+            $paid  = $total;
+        } else {
+            $grand = $total;
+            $paid  = max(0, $total - $wallet);
+        }
+        return ['total' => $total, 'gross' => $gross, 'wallet' => $wallet, 'grand' => round($grand, 2), 'paid' => round($paid, 2)];
+    }
+
     /**
      * مبلغی که از «کیف پول/اعتبار» مشتری برای این سفارش پرداخت شده (۰ اگر ندارد).
      *
@@ -1306,12 +1351,29 @@ class WC_Telegram_Orders {
         if (!$order instanceof WC_Order) {
             return 0.0;
         }
-        $total = (float) $order->get_total();
+        $paid_total = (float) $order->get_total();
+        $gross      = $this->order_gross_total($order);
+        // سقف منطقی سهم کیف پول: جمع واقعی سفارش (نه totalِ کاهش‌یافته)
+        $total = max($paid_total, $gross);
+        // اختلاف total با جمع واقعی — اگر افزونهٔ کیف پول total را کم کرده باشد، همین سهم کیف پول است
+        $gap   = round($gross - $paid_total, 2);
 
         // ۱) فیلتر — برای افزونه‌های خاص یا منطقِ سفارشی
         $filtered = apply_filters('wc_telegram_order_wallet_amount', null, $order);
         if ($filtered !== null && is_numeric($filtered)) {
             return $this->sanitize_wallet_amount((float) $filtered, $total);
+        }
+
+        // ۱.۵) هزینهٔ منفی با نام کیف پول/اعتبار — قابل‌اعتمادترین نشانه
+        $match = '/(wallet|purse|credit|fund|deposit|cashback|کیف[_ -]?پول|اعتبار)/iu';
+        foreach ($order->get_items('fee') as $fee) {
+            $name = (string) $fee->get_name();
+            if ($name !== '' && (float) $fee->get_total() < 0 && preg_match($match, $name)) {
+                $val = $this->sanitize_wallet_amount(abs((float) $fee->get_total()), $total);
+                if ($val > 0) {
+                    return $val;
+                }
+            }
         }
 
         // ۲) کلید متای تنظیم‌شده توسط مدیر
@@ -1327,10 +1389,25 @@ class WC_Telegram_Orders {
             }
         }
 
-        // ۳) جست‌وجوی خودکار در متاهای سفارش
+        // ۳) اختلاف total با جمع واقعی: ووکامرس total را بعد از کسر کیف پول ذخیره می‌کند.
+        //    هزینه‌های منفیِ غیرکیف‌پولی (مثلاً تخفیف دستی) از این اختلاف کم می‌شوند؛ باقی‌مانده = سهم کیف پول.
+        if ($gap > 0) {
+            $other_neg = 0.0;
+            foreach ($order->get_items('fee') as $fee) {
+                $ft = (float) $fee->get_total();
+                if ($ft < 0 && !preg_match($match, (string) $fee->get_name())) {
+                    $other_neg += abs($ft) + abs((float) $fee->get_total_tax());
+                }
+            }
+            $by_gap = $this->sanitize_wallet_amount($gap - $other_neg, $total);
+            if ($by_gap > 0) {
+                return $by_gap;
+            }
+        }
+
+        // ۴) جست‌وجوی خودکار در متاهای سفارش
         //    کلیدهایی که «موجودی/گزارش/شناسه» هستند کنار گذاشته می‌شوند تا اشتباه گرفته نشوند
         $skip  = '/(balance|log|note|status|user|customer|email|phone|date|time|restock|refund|transaction|_id$)/i';
-        $match = '/(wallet|purse|credit|fund|deposit|cashback|کیف[_ -]?پول|اعتبار)/iu';
         $strong= '/(amount|used|paid|deduct|partial|spent|consumed)/i';
         $candidates = [];
         foreach ($order->get_meta_data() as $m) {
@@ -1348,7 +1425,15 @@ class WC_Telegram_Orders {
             }
         }
         if (!empty($candidates)) {
-            // اولویت با کلیدهایی که صراحتاً «مبلغ» هستند
+            // اولویت اول: کاندیدایی که دقیقاً برابر اختلاف total و جمع واقعی است (سهم کسرشدهٔ کیف پول)
+            if ($gap > 0) {
+                foreach ($candidates as $c) {
+                    if (abs($c['value'] - $gap) <= 1) {
+                        return (float) $c['value'];
+                    }
+                }
+            }
+            // بعد: کلیدهایی که صراحتاً «مبلغ» هستند
             usort($candidates, function ($a, $b) {
                 if ($a['strong'] === $b['strong']) {
                     return ($a['value'] < $b['value']) ? 1 : -1;
@@ -1358,15 +1443,13 @@ class WC_Telegram_Orders {
             return (float) $candidates[0]['value'];
         }
 
-        // ۴) ردیف هزینه‌ای که نامش کیف پول/اعتبار است (بعضی افزونه‌ها این‌طوری ثبت می‌کنند)
-        if (function_exists('wc_get_order')) {
-            foreach ($order->get_items('fee') as $fee) {
-                $name = (string) $fee->get_name();
-                if ($name !== '' && preg_match($match, $name)) {
-                    $val = $this->sanitize_wallet_amount(abs((float) $fee->get_total()), $total);
-                    if ($val > 0) {
-                        return $val;
-                    }
+        // ۵) ردیف هزینهٔ مثبت با نام کیف پول (بعضی افزونه‌ها این‌طوری ثبت می‌کنند)
+        foreach ($order->get_items('fee') as $fee) {
+            $name = (string) $fee->get_name();
+            if ($name !== '' && preg_match($match, $name)) {
+                $val = $this->sanitize_wallet_amount(abs((float) $fee->get_total()), $total);
+                if ($val > 0) {
+                    return $val;
                 }
             }
         }
@@ -1823,13 +1906,16 @@ class WC_Telegram_Orders {
         echo '</tbody></table>';
 
         // مبلغ کیف پولِ تشخیص‌داده‌شده — برای اطمینان از اینکه خط کیف پول در پیام درست چاپ می‌شود
-        $wallet = $this->order_wallet_amount($order);
+        $amounts = $this->order_amounts($order);
+        $wallet  = $amounts['wallet'];
         echo '<h3 class="wcto-sub">کیف پول / اعتبار</h3>';
         echo '<table class="tisa-table wcto-kv"><tbody>';
+        echo '<tr><th>total ووکامرس (get_total)</th><td dir="auto">' . esc_html($this->money($amounts['total'], $order)) . '</td></tr>';
+        echo '<tr><th>جمع واقعی (آیتم‌ها + حمل + هزینه‌ها)</th><td dir="auto">' . esc_html($this->money($amounts['gross'], $order)) . '</td></tr>';
         echo '<tr><th>مبلغ کیف پولِ تشخیص‌داده‌شده</th><td dir="auto">'
            . ($wallet > 0 ? '<b>' . esc_html($this->money($wallet, $order)) . '</b>' : '<i class="wcto-empty-val">تشخیص داده نشد (۰)</i>') . '</td></tr>';
-        echo '<tr><th>مبلغی که در پیام چاپ می‌شود</th><td dir="auto">'
-           . esc_html('💵 <b>پرداختی: ' . $this->money(max(0, (float) $order->get_total() - $wallet), $order) . '</b>') . '</td></tr>';
+        echo '<tr><th>مجموع سفارش در پیام ({order_total})</th><td dir="auto"><b>' . esc_html($this->money($amounts['grand'], $order)) . '</b></td></tr>';
+        echo '<tr><th>پرداختی نقدی در پیام ({paid_amount})</th><td dir="auto"><b>' . esc_html($this->money($amounts['paid'], $order)) . '</b></td></tr>';
         echo '<tr><th>کلید متای تنظیم‌شده</th><td dir="auto">'
            . (isset($s['wallet_meta_key']) && $s['wallet_meta_key'] !== '' ? '<code dir="ltr">' . esc_html($s['wallet_meta_key']) . '</code>' : '<i class="wcto-empty-val">(خالی — تشخیص خودکار)</i>') . '</td></tr>';
         echo '</tbody></table>';
@@ -1903,7 +1989,7 @@ class WC_Telegram_Orders {
             $rows[] = [
                 'number'   => $o->get_order_number(),
                 'name'     => trim($o->get_formatted_billing_full_name()),
-                'total'    => (float) $o->get_total(),
+                'total'    => (float) $this->order_amounts($o)['grand'],
                 'refunded' => (float) $o->get_total_refunded(),
                 'status'   => $o->get_status(),
                 'items'    => $o->get_item_count(),
