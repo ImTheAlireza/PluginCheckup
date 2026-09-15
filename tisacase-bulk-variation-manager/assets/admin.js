@@ -23,47 +23,56 @@
 		initRollback();
 		initPresetSave();
 		initCacheFlush();
+		initQuickJump();
 	});
 
 	/* -------------------------------------------------------------
 	 * ۱. تب‌ها (Tabs Navigation)
 	 * ----------------------------------------------------------- */
 	function initTabs() {
-		$('.tc-tab-btn').on('click', function (e) {
+		$(document).on('click', '.tcbvm-tab', function (e) {
 			e.preventDefault();
 			var tabKey = $(this).data('tab');
 
-			$('.tc-tab-btn').removeClass('is-active');
-			$(this).addClass('is-active');
+			$('.tcbvm-tab').removeClass('active');
+			$(this).addClass('active');
 
-			$('.tc-tab-pane').removeClass('is-active');
-			$('#tab-' + tabKey).addClass('is-active');
+			$('.tcbvm-panel').removeClass('active');
+			$('.tcbvm-panel[data-panel="' + tabKey + '"]').addClass('active');
 
 			if (history.pushState) {
 				history.pushState(null, null, '#tab-' + tabKey);
 			}
 		});
 
-		// انتخاب بر اساس URL hash در بارگذاری اولیه
 		var hash = window.location.hash.replace('#tab-', '');
-		if (hash && $('#tab-' + hash).length) {
-			$('.tc-tab-btn[data-tab="' + hash + '"]').trigger('click');
+		if (hash && $('.tcbvm-panel[data-panel="' + hash + '"]').length) {
+			$('.tcbvm-tab[data-tab="' + hash + '"]').trigger('click');
 		}
 	}
 
+	function initQuickJump() {
+		$(document).on('click', '.tcbvm-goto-tab', function () {
+			var target = $(this).data('target');
+			if (target && $('.tcbvm-tab[data-tab="' + target + '"]').length) {
+				$('.tcbvm-tab[data-tab="' + target + '"]').trigger('click');
+				$('html, body').animate({ scrollTop: 0 }, 200);
+			}
+		});
+	}
+
 	/* -------------------------------------------------------------
-	 * ۲. کارت‌های انتخاب عملیات و تغییر پویای فرم
+	 * ۲. کارت‌های انتخاب عملیات
 	 * ----------------------------------------------------------- */
 	function initOpCards() {
-		$('.tc-op-card').on('click', function () {
-			$('.tc-op-card').removeClass('is-active');
+		$(document).on('click', '.tcbvm-op-card', function () {
+			$('.tcbvm-op-card').removeClass('is-active');
 			$(this).addClass('is-active');
 
 			var op = $(this).find('input[type="radio"]').val();
 			updateFormFieldsForOp(op);
 		});
 
-		// تغییر چک‌باکس کپی قیمت مرجع
 		$('#tcbvm-clone-price-check').on('change', function () {
 			if ($(this).is(':checked')) {
 				$('#tcbvm-clone-ref-wrap').slideDown(150);
@@ -121,7 +130,7 @@
 	 * ۳. چیپ‌های درج سریع الگوها
 	 * ----------------------------------------------------------- */
 	function initPresetChips() {
-		$(document).on('click', '.tc-chip-btn', function () {
+		$(document).on('click', '.tcbvm-chip-btn', function () {
 			var pId = $(this).data('preset-id');
 			var preset = tcbvmData.presets[pId];
 			if (!preset || !preset.models) {
@@ -139,9 +148,9 @@
 			}
 
 			$textarea.trigger('input');
-			$textarea.css('background', '#E8F0EE');
+			$textarea.css('background', '#e3f2ef');
 			setTimeout(function () {
-				$textarea.css('background', '#FFFFFF');
+				$textarea.css('background', '');
 			}, 300);
 		});
 	}
@@ -185,9 +194,9 @@
 					$btn.prop('disabled', false).html(originalHtml);
 					if (res.success) {
 						state.matchedIds = res.data.ids || [];
-						state.selectedIds = state.matchedIds.slice(); // به طور پیش‌فرض همه انتخاب شوند
+						state.selectedIds = state.matchedIds.slice();
 						renderProductsTable(res.data.items, res.data.total);
-						$('#tcbvm-search-counter').html('تعداد <strong>' + res.data.total + '</strong> محصول با فیلترهای شما مطابقت دارند.');
+						$('#tcbvm-search-counter').html('تعداد <strong>' + res.data.total + '</strong> محصول منطبق یافت شد.');
 					} else {
 						alert(res.data.message || 'خطا در جستجو');
 					}
@@ -206,7 +215,7 @@
 		$tbody.empty();
 
 		if (!items || items.length === 0) {
-			$tbody.html('<tr><td colspan="8" style="text-align:center; padding:20px; color:#77828A;">هیچ محصولی با فیلترهای انتخابی یافت نشد.</td></tr>');
+			$tbody.html('<tr><td colspan="8" style="text-align:center; padding:20px; color:#6f6a5e;">هیچ محصولی با فیلترهای انتخابی یافت نشد.</td></tr>');
 			$box.slideDown(200);
 			updateSelectionBadge();
 			return;
@@ -216,24 +225,24 @@
 			var modelsHtml = '';
 			if (item.models && item.models.length > 0) {
 				$.each(item.models.slice(0, 6), function (i, m) {
-					modelsHtml += '<span class="tc-model-tag">' + escapeHtml(m) + '</span>';
+					modelsHtml += '<span class="tcbvm-tag">' + escapeHtml(m) + '</span>';
 				});
 				if (item.models_total > 6) {
-					modelsHtml += '<span class="tc-model-tag tc-model-tag--more">+' + (item.models_total - 6) + ' مدل دیگر</span>';
+					modelsHtml += '<span class="tcbvm-tag" style="background:#e5e7eb; font-weight:700;">+' + (item.models_total - 6) + '</span>';
 				}
 			} else {
-				modelsHtml = '<span style="color:#A0AEC0; font-size:12px;">بدون متغیر فعلی</span>';
+				modelsHtml = '<span style="color:#a0aec0; font-size:11px;">بدون متغیر فعلی</span>';
 			}
 
 			var row = '<tr data-id="' + item.id + '">'
 				+ '<td><input type="checkbox" class="tc-prod-checkbox" value="' + item.id + '" checked></td>'
-				+ '<td><img src="' + item.image_url + '" class="tc-prod-thumb" alt=""></td>'
+				+ '<td><img src="' + item.image_url + '" class="tcbvm-thumb" alt=""></td>'
 				+ '<td><strong><a href="' + item.edit_url + '" target="_blank">' + escapeHtml(item.name) + '</a></strong></td>'
 				+ '<td><code>' + escapeHtml(item.sku) + '</code> <small>(#' + item.id + ')</small></td>'
-				+ '<td><span style="font-size:12px; color:#4A5568;">' + escapeHtml(item.cats) + '</span></td>'
-				+ '<td><span class="tc-badge tc-badge--primary">' + item.variation_count + ' متغیر</span></td>'
+				+ '<td><span style="font-size:12px; color:#4a5568;">' + escapeHtml(item.cats) + '</span></td>'
+				+ '<td><span class="tcbvm-badge">' + item.variation_count + ' متغیر</span></td>'
 				+ '<td>' + modelsHtml + '</td>'
-				+ '<td><a href="' + item.edit_url + '" class="tc-btn tc-btn--secondary" style="padding:3px 8px; font-size:11px;" target="_blank">ویرایش</a></td>'
+				+ '<td><a href="' + item.edit_url + '" class="tcbvm-btn tcbvm-btn--secondary" style="padding:4px 8px; font-size:11px;" target="_blank">ویرایش</a></td>'
 				+ '</tr>';
 
 			$tbody.append(row);
@@ -248,7 +257,6 @@
 	 * ۵. مدیریت چک‌باکس‌ها
 	 * ----------------------------------------------------------- */
 	function initSelection() {
-		// انتخاب همه
 		$('#tcbvm-select-all').on('change', function () {
 			var isChecked = $(this).is(':checked');
 			$('.tc-prod-checkbox').prop('checked', isChecked);
@@ -260,7 +268,6 @@
 			updateSelectionBadge();
 		});
 
-		// انتخاب سطر تکی
 		$(document).on('change', '.tc-prod-checkbox', function () {
 			var id = parseInt($(this).val(), 10);
 			if ($(this).is(':checked')) {
@@ -337,17 +344,17 @@
 			return;
 		}
 
-		var summaryHtml = '<p style="margin-bottom:12px; font-weight:600;">پیش‌نمایش تغییرات برای نمونه‌ای از ' + data.total_selected + ' محصول انتخابی:</p>';
+		var summaryHtml = '<p style="margin-bottom:12px; font-weight:700;">پیش‌نمایش روی نمونه‌ای از ' + data.total_selected + ' محصول انتخابی:</p>';
 		$content.append(summaryHtml);
 
 		$.each(data.samples, function (idx, item) {
-			var addsHtml = item.to_add.length ? '<p style="color:#0E7C6B;"><strong>+ مدل‌های اضافه شونده:</strong> ' + item.to_add.join('، ') + '</p>' : '';
-			var remsHtml = item.to_remove.length ? '<p style="color:#B5453A;"><strong>- مدل‌های حذف/ناموجود شونده:</strong> ' + item.to_remove.join('، ') + '</p>' : '';
-			var modsHtml = item.to_modify.length ? '<p style="color:#1D4ED8;"><strong>~ مدل‌های ویرایش شونده:</strong> ' + item.to_modify.join('، ') + '</p>' : '';
-			var notesHtml = item.notes.length ? '<p style="color:#77828A; font-size:12px;"><strong>نکات:</strong> ' + item.notes.join(' | ') + '</p>' : '';
+			var addsHtml = item.to_add.length ? '<p style="color:#0e7a6b; margin:3px 0;"><strong>+ مدل‌های اضافه شونده:</strong> ' + item.to_add.join('، ') + '</p>' : '';
+			var remsHtml = item.to_remove.length ? '<p style="color:#b3261e; margin:3px 0;"><strong>- مدل‌های حذف/ناموجود شونده:</strong> ' + item.to_remove.join('، ') + '</p>' : '';
+			var modsHtml = item.to_modify.length ? '<p style="color:#1d4ed8; margin:3px 0;"><strong>~ مدل‌های ویرایش شونده:</strong> ' + item.to_modify.join('، ') + '</p>' : '';
+			var notesHtml = item.notes.length ? '<p style="color:#6f6a5e; font-size:11.5px; margin:3px 0;"><strong>نکات:</strong> ' + item.notes.join(' | ') + '</p>' : '';
 
-			var itemHtml = '<div class="tc-preview-item">'
-				+ '<h4>' + escapeHtml(item.name) + ' <small>(#' + item.id + ' | SKU: ' + escapeHtml(item.sku) + ')</small></h4>'
+			var itemHtml = '<div style="background:#fff; border:1px solid #fae8a4; border-radius:10px; padding:12px 14px; margin-bottom:8px;">'
+				+ '<h5 style="margin:0 0 5px; font-size:13px; color:#221d15;">' + escapeHtml(item.name) + ' <small>(#' + item.id + ' | SKU: ' + escapeHtml(item.sku) + ')</small></h5>'
 				+ addsHtml + remsHtml + modsHtml + notesHtml
 				+ '</div>';
 
@@ -356,12 +363,12 @@
 
 		$box.slideDown(200);
 		$('html, body').animate({
-			scrollTop: $box.offset().top - 40
+			scrollTop: $box.offset().top - 50
 		}, 300);
 	}
 
 	/* -------------------------------------------------------------
-	 * ۷. پردازش دسته‌ای و اجرای زنده (Batch Processor)
+	 * ۷. پردازش پله‌ای تحت ایجکس (Batch Execution)
 	 * ----------------------------------------------------------- */
 	function initBulkRun() {
 		$('#tcbvm-btn-run').on('click', function () {
@@ -403,17 +410,16 @@
 		state.shouldStop = false;
 
 		var $btn = $('#tcbvm-btn-run');
-		$btn.prop('disabled', true).addClass('is-loading');
+		$btn.prop('disabled', true);
 
 		$('#tcbvm-progress-wrap').slideDown(200);
 		$('#tcbvm-progress-bar').css('width', '0%');
 		$('#tcbvm-progress-percent').text('0%');
-		$('#tcbvm-progress-text').text('در حال ثبت نشست و تهیه پشتیبان اولیه…');
+		$('#tcbvm-progress-text').text('در حال ثبت نشست و تهیه اسنپ‌شات اولیه…');
 		$('#tcbvm-log-console').empty();
 
 		logMessage('Starting run: ' + op + ' on ' + state.selectedIds.length + ' products...');
 
-		// ۱. آغاز نشست
 		$.ajax({
 			url: tcbvmData.ajaxUrl,
 			type: 'POST',
@@ -438,13 +444,13 @@
 					executeNextBatch(0, batches, op, params, 0, 0);
 				} else {
 					state.isRunning = false;
-					$btn.prop('disabled', false).removeClass('is-loading');
+					$btn.prop('disabled', false);
 					alert(res.data.message || 'خطا در شروع نشست');
 				}
 			},
 			error: function () {
 				state.isRunning = false;
-				$btn.prop('disabled', false).removeClass('is-loading');
+				$btn.prop('disabled', false);
 				alert('خطای ارتباط در ایجاد نشست.');
 			}
 		});
@@ -493,10 +499,9 @@
 						});
 					}
 
-					// ادامه دسته بعدی
 					setTimeout(function () {
 						executeNextBatch(batchIndex + 1, batches, op, params, totalSuccess, totalFailed);
-					}, 250);
+					}, 200);
 				} else {
 					logMessage('[FAIL] Batch ' + (batchIndex + 1) + ' failed: ' + (res.data.message || 'unknown error'));
 					executeNextBatch(batchIndex + 1, batches, op, params, totalSuccess, totalFailed + currentBatch.length);
@@ -511,7 +516,7 @@
 
 	function finishBatchProcess(totalSuccess, totalFailed) {
 		state.isRunning = false;
-		$('#tcbvm-btn-run').prop('disabled', false).removeClass('is-loading');
+		$('#tcbvm-btn-run').prop('disabled', false);
 
 		$('#tcbvm-progress-bar').css('width', '100%');
 		$('#tcbvm-progress-percent').text('100%');
@@ -681,7 +686,7 @@
 	}
 
 	/* -------------------------------------------------------------
-	 * ۱۰. نوسازی کش قیمت‌های ووکامرس
+	 * ۱۰. نوسازی کش قیمت‌ها
 	 * ----------------------------------------------------------- */
 	function initCacheFlush() {
 		$('#tcbvm-btn-flush-cache').on('click', function () {
