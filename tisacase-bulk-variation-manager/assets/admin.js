@@ -1,6 +1,6 @@
 /**
  * TisaCase Bulk Variation Manager — Admin JavaScript
- * Clean & Native WordPress styling (Matching TisaCase Bulk Price Manager)
+ * Clean & Native WordPress styling (Matching TisaCase Design System)
  */
 (function ($) {
 	'use strict';
@@ -14,6 +14,8 @@
 	};
 
 	$(document).ready(function () {
+		initSegmentBars();
+		initSelect2();
 		initTargetModeToggle();
 		initOpChange();
 		initPresetChips();
@@ -27,25 +29,52 @@
 	});
 
 	/* -------------------------------------------------------------
+	 * ۰. فعال‌سازی نوار سگمنت دکمه‌ای (Segmented Radio Bars)
+	 * ----------------------------------------------------------- */
+	function initSegmentBars() {
+		$(document).on('change', '.tcbvm-seg-item input[type="radio"]', function () {
+			var $radio = $(this);
+			var name = $radio.attr('name');
+			$('input[name="' + name + '"]').closest('.tcbvm-seg-item').removeClass('is-active');
+			$radio.closest('.tcbvm-seg-item').addClass('is-active');
+		});
+	}
+
+	/* -------------------------------------------------------------
+	 * ۰.۱ فعال‌سازی Select2 برای دراپ‌داون دسته‌بندی‌ها
+	 * ----------------------------------------------------------- */
+	function initSelect2() {
+		var $catSelect = $('#tcbvm-cat-select');
+		if ($catSelect.length && typeof $.fn.select2 !== 'undefined') {
+			$catSelect.select2({
+				placeholder: 'انتخاب یک یا چند دسته‌بندی…',
+				allowClear: true,
+				width: '100%',
+				dir: $('html').attr('dir') || 'rtl'
+			});
+		}
+	}
+
+	/* -------------------------------------------------------------
 	 * ۱. انتخاب حالت هدف (دسته‌بندی یا دستی)
 	 * ----------------------------------------------------------- */
 	function initTargetModeToggle() {
 		$('input[name="tcbvm_target_mode"]').on('change', function () {
 			var mode = $(this).val();
 			if (mode === 'manual') {
-				$('#tcbvm-cat-box').hide();
-				$('#tcbvm-manual-box').show();
+				$('#tcbvm-cat-box').slideUp(180);
+				$('#tcbvm-manual-box').slideDown(180);
 			} else {
-				$('#tcbvm-manual-box').hide();
-				$('#tcbvm-cat-box').show();
+				$('#tcbvm-manual-box').slideUp(180);
+				$('#tcbvm-cat-box').slideDown(180);
 			}
 		});
 
 		$('#tcbvm-clone-price-check').on('change', function () {
 			if ($(this).is(':checked')) {
-				$('#tcbvm-clone-ref-wrap').show();
+				$('#tcbvm-clone-ref-wrap').slideDown(160);
 			} else {
-				$('#tcbvm-clone-ref-wrap').hide();
+				$('#tcbvm-clone-ref-wrap').slideUp(160);
 			}
 		});
 	}
@@ -123,10 +152,10 @@
 			}
 
 			$textarea.trigger('input');
-			$textarea.css('background', '#fff3cd');
+			$textarea.css('border-color', '#0E7C6B');
 			setTimeout(function () {
-				$textarea.css('background', '#fff');
-			}, 300);
+				$textarea.css('border-color', '');
+			}, 400);
 		});
 	}
 
@@ -192,7 +221,7 @@
 		$tbody.empty();
 
 		if (!items || items.length === 0) {
-			$tbody.html('<tr><td colspan="8" style="text-align:center; padding:15px; color:#646970;">هیچ محصولی با فیلترهای انتخابی یافت نشد.</td></tr>');
+			$tbody.html('<tr><td colspan="8" style="text-align:center; padding:24px; color:#64748B;">هیچ محصولی با فیلترهای انتخابی یافت نشد.</td></tr>');
 			$box.show();
 			updateSelectionBadge();
 			return;
@@ -214,10 +243,10 @@
 			var row = '<tr data-id="' + item.id + '">'
 				+ '<td><input type="checkbox" class="tc-prod-checkbox" value="' + item.id + '" checked></td>'
 				+ '<td><img src="' + item.image_url + '" class="tcbvm-thumb-img" alt=""></td>'
-				+ '<td><strong><a href="' + item.edit_url + '" target="_blank">' + escapeHtml(item.name) + '</a></strong></td>'
-				+ '<td><code>' + escapeHtml(item.sku) + '</code> <small>(#' + item.id + ')</small></td>'
-				+ '<td><span style="font-size:12px; color:#50575e;">' + escapeHtml(item.cats) + '</span></td>'
-				+ '<td>' + item.variation_count + ' متغیر</td>'
+				+ '<td><strong><a href="' + item.edit_url + '" target="_blank" style="color:#0F172A; text-decoration:none;">' + escapeHtml(item.name) + '</a></strong></td>'
+				+ '<td><code>' + escapeHtml(item.sku) + '</code> <small class="tcbvm-muted">(#' + item.id + ')</small></td>'
+				+ '<td><span style="font-size:12px; color:#475569;">' + escapeHtml(item.cats) + '</span></td>'
+				+ '<td><strong>' + item.variation_count + '</strong> متغیر</td>'
 				+ '<td>' + modelsHtml + '</td>'
 				+ '<td><a href="' + item.edit_url + '" class="tisa-btn tisa-btn--outline tisa-btn--sm" target="_blank">ویرایش</a></td>'
 				+ '</tr>';
@@ -321,14 +350,14 @@
 			return;
 		}
 
-		var summaryHtml = '<p style="margin-bottom:10px; font-weight:700;">بررسی نمونه‌ای از ' + data.total_selected + ' محصول انتخابی:</p>';
+		var summaryHtml = '<p style="margin-bottom:12px; font-weight:700; color:#0F172A;">بررسی نمونه‌ای از ' + data.total_selected + ' محصول انتخابی:</p>';
 		$content.append(summaryHtml);
 
 		$.each(data.samples, function (idx, item) {
-			var addsHtml = item.to_add.length ? '<p style="color:#008a20; margin:2px 0;"><strong>+ مدل‌های جدید:</strong> ' + item.to_add.join('، ') + '</p>' : '';
-			var remsHtml = item.to_remove.length ? '<p style="color:#b32d2e; margin:2px 0;"><strong>- مدل‌های حذف/ناموجود:</strong> ' + item.to_remove.join('، ') + '</p>' : '';
-			var modsHtml = item.to_modify.length ? '<p style="color:#2271b1; margin:2px 0;"><strong>~ تغییرات:</strong> ' + item.to_modify.join('، ') + '</p>' : '';
-			var notesHtml = item.notes.length ? '<p class="tcbvm-muted" style="margin:2px 0;">' + item.notes.join(' | ') + '</p>' : '';
+			var addsHtml = item.to_add.length ? '<p style="color:#0E7C6B; margin:4px 0;"><strong>+ مدل‌های جدید:</strong> ' + item.to_add.join('، ') + '</p>' : '';
+			var remsHtml = item.to_remove.length ? '<p style="color:#EF4444; margin:4px 0;"><strong>- مدل‌های حذف/ناموجود:</strong> ' + item.to_remove.join('، ') + '</p>' : '';
+			var modsHtml = item.to_modify.length ? '<p style="color:#2563EB; margin:4px 0;"><strong>~ تغییرات:</strong> ' + item.to_modify.join('، ') + '</p>' : '';
+			var notesHtml = item.notes.length ? '<p class="tcbvm-muted" style="margin:4px 0;">' + item.notes.join(' | ') + '</p>' : '';
 
 			var itemHtml = '<div class="tcbvm-preview-item">'
 				+ '<h4>' + escapeHtml(item.name) + ' <small class="tcbvm-muted">(#' + item.id + ' | SKU: ' + escapeHtml(item.sku) + ')</small></h4>'

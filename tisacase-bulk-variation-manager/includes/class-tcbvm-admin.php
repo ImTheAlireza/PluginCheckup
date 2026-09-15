@@ -1,7 +1,8 @@
 <?php
 /**
- * رابط مدیریت (Admin UI) منطبق بر زبان طراحی TisaCase Design System:
- * هدر گرادیانی سبز، تب‌های قرصی در هیرو، کارت‌های تخت با شماره‌گذاری گام‌ها، سوییچ‌های tisa-switch و دکمه‌های tisa-btn.
+ * رابط مدیریت (Admin UI) حرفه‌ای منطبق بر زبان طراحی TisaCase Design System:
+ * هدر گرادیانی سبز تیساکیس، تب‌های قرصی، کارت‌های تخت با شماره‌گذاری استپ‌ها، چیپ‌های تعاملی،
+ * Select2 یکپارچه برای دسته‌ها، سوییچ‌های tisa-switch و دکمه‌های شکیل tisa-btn.
  *
  * @package TisaCase_Bulk_Variation_Manager
  */
@@ -74,20 +75,37 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 				return;
 			}
 
-			$deps = wp_style_is( 'tisacase-ui', 'registered' ) ? array( 'tisacase-ui' ) : array();
+			if ( class_exists( 'WooCommerce' ) ) {
+				wp_enqueue_style( 'woocommerce_admin_styles' );
+				wp_enqueue_script( 'wc-enhanced-select' );
+			}
+
+			$deps = array( 'jquery' );
+			if ( wp_script_is( 'wc-enhanced-select', 'registered' ) ) {
+				$deps[] = 'wc-enhanced-select';
+			}
+
+			$css_deps = wp_style_is( 'tisacase-ui', 'registered' ) ? array( 'tisacase-ui' ) : array();
+			if ( wp_style_is( 'woocommerce_admin_styles', 'registered' ) ) {
+				$css_deps[] = 'woocommerce_admin_styles';
+			}
+
+			// برای جلوگیری قطعی از کش شدن فایل CSS توسط مرورگر کاربر
+			$css_file = TCBVM_PATH . 'assets/admin.css';
+			$ver      = TCBVM_VERSION . '.' . ( file_exists( $css_file ) ? filemtime( $css_file ) : time() );
 
 			wp_enqueue_style(
 				'tcbvm-admin-css',
 				TCBVM_URL . 'assets/admin.css',
-				$deps,
-				TCBVM_VERSION
+				$css_deps,
+				$ver
 			);
 
 			wp_enqueue_script(
 				'tcbvm-admin-js',
 				TCBVM_URL . 'assets/admin.js',
-				array( 'jquery' ),
-				TCBVM_VERSION,
+				$deps,
+				$ver,
 				true
 			);
 
@@ -101,7 +119,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 					'presets'   => TCBVM_Core::get_presets(),
 					'batchSize' => method_exists( 'TCBVM_Core', 'get_batch_size' ) ? TCBVM_Core::get_batch_size() : 10,
 					'i18n'      => array(
-						'confirmStart'        => 'آیا از شروع عملیات روی {n} محصول انتخابی مطمئن هستید؟ از تغییرات پیش از اجرا به‌طور خودکار پشتیبان تهیه خواهد شد.',
+						'confirmStart'        => 'آیا از شروع عملیات روی {n} محصول انتخابی مطمئن هستید؟ از تمام متغیرها قبل از اجرا به‌طور خودکار پشتیبان کامل گرفته خواهد شد.',
 						'confirmRollback'     => 'آیا از بازگردانی وضعیت محصولات به قبل از این عملیات اطمینان دارید؟',
 						'selectProductsPrompt'=> 'لطفاً ابتدا حداقل یک محصول را از لیست انتخاب کنید.',
 						'enterModelsPrompt'   => 'لطفاً حداقل یک مدل برای افزودن/حذف وارد نمایید.',
@@ -142,30 +160,12 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 				self::enqueue_assets();
 			}
 			?>
-			<style id="tcbvm-critical-css">
-				.tcbvm-wrap { box-sizing: border-box; width: 100%; max-width: 1120px; margin: 24px auto 0; padding: 0 20px 64px; font-variant-numeric: tabular-nums; }
-				.tcbvm-hero { position: relative; overflow: hidden; margin: 0 0 28px; padding: 28px 28px 0; border-radius: 22px; background: linear-gradient(120deg, #0A5F52 0%, #0E7C6B 60%, #17A088 100%); color: #fff; box-shadow: 0 18px 40px -22px rgba(10, 95, 82, .55); }
-				.tcbvm-hero-row { display: flex; align-items: center; gap: 16px; }
-				.tcbvm-hero-mark { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; min-width: 48px; max-width: 48px; border-radius: 14px; background: rgba(255, 255, 255, .16); color: #fff; }
-				.tcbvm-hero-mark svg { width: 24px !important; height: 24px !important; max-width: 24px !important; max-height: 24px !important; display: block !important; }
-				.tcbvm-hero-title { margin: 0; padding: 0; font-size: 22px; font-weight: 800; color: #fff; }
-				.tcbvm-hero-sub { margin: 4px 0 0; font-size: 13px; opacity: .82; color: #fff; }
-				.tcbvm-hero-ver { padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, .16); font-family: monospace; font-size: 11px; }
-				.tcbvm-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0 0 20px; }
-				.tcbvm-tab { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 999px; background: rgba(255, 255, 255, .12); color: #fff !important; font-size: 13px; font-weight: 600; text-decoration: none; }
-				.tcbvm-tab.is-active { background: #fff !important; color: #0A5F52 !important; }
-				.tcbvm-card { margin: 0 0 20px; border: 1px solid #E3E1DA; border-radius: 18px; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .02); }
-				.tcbvm-card-head { display: flex; align-items: flex-start; gap: 14px; padding: 22px 24px 0; }
-				.tcbvm-card-head h2 { margin: 0 0 3px; font-size: 16px; font-weight: 700; color: #1F2A2E; }
-				.tcbvm-card-head p { margin: 0; font-size: 12.5px; color: #77828A; }
-				.tcbvm-step { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #E8F0EE; color: #0A5F52; font-weight: 800; font-size: 12.5px; }
-				.tcbvm-card-body { padding: 16px 24px 24px; }
-			</style>
 			<div class="wrap tisa-wrap tcbvm-wrap" dir="rtl">
+				<!-- هدر گرادیانی سبز تیساکیس با تب‌های قرصی -->
 				<header class="tcbvm-hero">
 					<div class="tcbvm-hero-row">
 						<div class="tcbvm-hero-mark" aria-hidden="true">
-							<svg viewBox="0 0 24 24" width="24" height="24" style="width:24px!important;height:24px!important;min-width:24px!important;max-width:24px!important;display:block;" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+							<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
 								<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 18l9 5 9-5"/>
 							</svg>
 						</div>
@@ -200,10 +200,10 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									<table class="tisa-table tcbvm-table">
 										<thead>
 											<tr>
-												<th style="width: 200px;">نام الگو</th>
+												<th style="width: 220px;">نام الگو</th>
 												<th>توضیحات</th>
 												<th>نمونه مدل‌ها</th>
-												<th style="width: 110px;">نوع / اقدام</th>
+												<th style="width: 110px; text-align: center;">نوع / اقدام</th>
 											</tr>
 										</thead>
 										<tbody>
@@ -221,7 +221,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 															<?php endif; ?>
 														</div>
 													</td>
-													<td>
+													<td style="text-align: center;">
 														<?php if ( ! empty( $preset['is_builtin'] ) ) : ?>
 															<span class="tcbvm-badge tcbvm-badge--success">سیستمی</span>
 														<?php else : ?>
@@ -235,7 +235,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 								</div>
 
 								<div class="tcbvm-subcard" style="margin-top: 24px;">
-									<h3 style="margin-top: 0; font-size: 15px;">افزودن الگوی سفارشی جدید</h3>
+									<h3 style="margin-top: 0; font-size: 15px; font-weight: 700; color: #0F172A;">افزودن الگوی سفارشی جدید</h3>
 									<div class="tcbvm-grid-2">
 										<div class="tcbvm-field">
 											<label class="tcbvm-label" for="tcbvm-new-preset-name">عنوان الگو</label>
@@ -251,7 +251,9 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 										<textarea id="tcbvm-new-preset-models" class="tcbvm-textarea" rows="4" placeholder="مثلاً:&#10;iPhone 16&#10;iPhone 16 Plus&#10;iPhone 16 Pro&#10;iPhone 16 Pro Max"></textarea>
 									</div>
 									<div style="margin-top: 14px;">
-										<button type="button" class="tisa-btn tisa-btn--primary" id="tcbvm-btn-save-preset">ذخیره الگو در سیستم</button>
+										<button type="button" class="tisa-btn tisa-btn--primary" id="tcbvm-btn-save-preset">
+											ذخیره الگو در سیستم
+										</button>
 									</div>
 								</div>
 							</div>
@@ -283,7 +285,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 													<th>عملیات</th>
 													<th>تعداد محصولات</th>
 													<th>وضعیت</th>
-													<th style="width: 140px;">اقدام</th>
+													<th style="width: 140px; text-align: center;">اقدام</th>
 												</tr>
 											</thead>
 											<tbody>
@@ -305,7 +307,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 																<span class="tcbvm-badge"><?php echo esc_html( $r->status ); ?></span>
 															<?php endif; ?>
 														</td>
-														<td>
+														<td style="text-align: center;">
 															<?php if ( 'rolled_back' === $r->status ) : ?>
 																<span class="tcbvm-muted">—</span>
 															<?php else : ?>
@@ -340,7 +342,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 										<div class="tcbvm-field">
 											<label class="tcbvm-label" for="tcbvm_opt_batch_size">اندازه هر بسته پردازش (Batch Size)</label>
 											<input type="number" id="tcbvm_opt_batch_size" name="tcbvm_settings[batch_size]" class="tcbvm-input" value="<?php echo esc_attr( $settings['batch_size'] ); ?>" min="1" max="100">
-											<p class="tcbvm-muted">پیش‌فرض: ۱۰. در صورت استفاده از هاست اشتراکی، اعداد کمتر از ۱۵ مانع تایم‌اوت می‌شوند.</p>
+											<p class="tcbvm-muted">پیش‌فرض: ۱۰. در صورت استفاده از هاست اشتراکی، اعداد کمتر مانع تایم‌اوت می‌شوند.</p>
 										</div>
 
 										<div class="tcbvm-field">
@@ -359,7 +361,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									</div>
 
 									<div style="margin-top: 24px;">
-										<?php submit_button( 'ذخیره تنظیمات', 'tisa-btn tisa-btn--primary', 'submit', false ); ?>
+										<button type="submit" class="tisa-btn tisa-btn--primary">ذخیره تنظیمات</button>
 									</div>
 								</div>
 							</section>
@@ -373,7 +375,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									</div>
 								</div>
 								<div class="tcbvm-card-body">
-									<p>اگر قیمت‌های متغیر در فرانت‌اند یا کاتالوگ بلافاصله به‌روز نشدند، با زدن دکمه زیر ترنزینت‌های کش ووکامرس را پاک کنید:</p>
+									<p class="tcbvm-muted" style="margin-bottom: 14px;">اگر قیمت‌های متغیر در فرانت‌اند یا کاتالوگ بلافاصله به‌روز نشدند، با زدن دکمه زیر ترنزینت‌های کش ووکامرس را پاک کنید:</p>
 									<button type="button" class="tisa-btn tisa-btn--soft" id="tcbvm-btn-flush-cache">نوسازی کش قیمت‌های ووکامرس</button>
 								</div>
 							</section>
@@ -391,82 +393,89 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 								<span class="tcbvm-step">۱</span>
 								<div>
 									<h2>محصولات هدف</h2>
-									<p>انتخاب دسته‌بندی یا فیلترهای مستقیم روی محصولات متغیر.</p>
+									<p>انتخاب دسته‌بندی یا شناسه‌های مستقیم محصولات جهت ویرایش و اعمال متغیرها</p>
 								</div>
 							</div>
 							<div class="tcbvm-card-body">
-								<div class="tcbvm-seg">
-									<label class="tcbvm-radio">
+								<!-- نوار سگمنت دکمه‌ای مدرن -->
+								<div class="tcbvm-seg-bar">
+									<label class="tcbvm-seg-item is-active">
 										<input type="radio" name="tcbvm_target_mode" value="category" checked>
 										<span>انتخاب بر اساس دسته‌بندی</span>
 									</label>
-									<label class="tcbvm-radio">
+									<label class="tcbvm-seg-item">
 										<input type="radio" name="tcbvm_target_mode" value="manual">
 										<span>انتخاب دستی با شناسه محصول (ID)</span>
 									</label>
 								</div>
 
-								<div id="tcbvm-cat-box" class="tcbvm-field" style="margin-top: 18px;">
-									<label class="tcbvm-label" for="tcbvm-cat-select">یک یا چند دسته‌بندی محصول (مثلاً قاب گوشی، قاب مگ‌سیف، قاب طرح‌دار)</label>
-									<select id="tcbvm-cat-select" multiple="multiple" class="tcbvm-select" style="min-height: 110px;">
+								<!-- باکس دسته‌بندی با سلکت۲ -->
+								<div id="tcbvm-cat-box" class="tcbvm-field" style="margin-top: 20px;">
+									<label class="tcbvm-label" for="tcbvm-cat-select">انتخاب دسته‌بندی‌ها (قاب گوشی، قاب اسپیس، قاب چاپی و...)</label>
+									<select id="tcbvm-cat-select" multiple="multiple" class="tcbvm-select wc-enhanced-select" data-placeholder="دسته‌بندی‌ها را انتخاب یا جستجو کنید…" style="width: 100%;">
 										<?php foreach ( $categories as $cat ) : ?>
 											<option value="<?php echo esc_attr( $cat->term_id ); ?>">
-												<?php echo esc_html( $cat->name . ' (' . $cat->count . ' محصول)' ); ?>
+												<?php echo esc_html( $cat->name . ' (' . number_format_i18n( $cat->count ) . ' محصول)' ); ?>
 											</option>
 										<?php endforeach; ?>
 									</select>
-									<label class="tisa-switch tcbvm-toggle">
-										<input type="checkbox" id="tcbvm-cat-children" checked>
-										<span class="tisa-switch__track" aria-hidden="true"></span>
-										<span>زیردسته‌ها هم شامل شوند <span class="tcbvm-muted">— تمام زیرشاخه‌های دسته‌های منتخب نیز پردازش می‌شوند</span></span>
-									</label>
+									<div style="margin-top: 10px;">
+										<label class="tisa-switch tcbvm-toggle">
+											<input type="checkbox" id="tcbvm-cat-children" checked>
+											<span class="tisa-switch__track" aria-hidden="true"></span>
+											<span>زیردسته‌ها هم شامل شوند <span class="tcbvm-muted">— تمامی زیرشاخه‌های دسته‌های منتخب نیز پردازش خواهند شد</span></span>
+										</label>
+									</div>
 								</div>
 
-								<div id="tcbvm-manual-box" class="tcbvm-field" style="display:none; margin-top: 18px;">
-									<label class="tcbvm-label" for="tcbvm-manual-ids">شناسه‌های محصول (IDs) — با کاما یا خط جدید جدا کنید</label>
-									<textarea id="tcbvm-manual-ids" class="tcbvm-textarea" rows="3" placeholder="مثال: 1205, 1206, 1432"></textarea>
+								<!-- باکس شناسه دستی -->
+								<div id="tcbvm-manual-box" class="tcbvm-field" style="display:none; margin-top: 20px;">
+									<label class="tcbvm-label" for="tcbvm-manual-ids">شناسه‌های محصول (IDs)</label>
+									<textarea id="tcbvm-manual-ids" class="tcbvm-textarea" rows="3" placeholder="شناسه‌ها را با کاما یا در خطوط جداگانه وارد کنید (مثال: 1205, 1206, 1432)"></textarea>
 								</div>
 
-								<div class="tcbvm-grid-3" style="margin-top: 16px;">
+								<!-- فیلترهای تکمیلی ۳ ستونه -->
+								<div class="tcbvm-grid-3" style="margin-top: 20px;">
 									<div class="tcbvm-field">
-										<label class="tcbvm-label" for="tcbvm-keywords">شامل بودن کلمه کلیدی در عنوان (اختیاری)</label>
-										<input type="text" id="tcbvm-keywords" class="tcbvm-input" placeholder="مثال: اسپیس، چاپی، سیلیکونی">
+										<label class="tcbvm-label" for="tcbvm-keywords">کلمه کلیدی در عنوان (اختیاری)</label>
+										<input type="text" id="tcbvm-keywords" class="tcbvm-input" placeholder="مثال: اسپیس، چاپی، شفاف">
 									</div>
 									<div class="tcbvm-field">
 										<label class="tcbvm-label" for="tcbvm-exclude-keywords">استثنا کردن عنوان (Exclude)</label>
 										<input type="text" id="tcbvm-exclude-keywords" class="tcbvm-input" placeholder="مثال: محافظ لنز، شیشه‌ای">
 									</div>
 									<div class="tcbvm-field">
-										<label class="tcbvm-label" for="tcbvm-model-filter">فقط محصولات دارای این مدل فعلی</label>
+										<label class="tcbvm-label" for="tcbvm-model-filter">فیلتر فقط محصولات دارای این مدل</label>
 										<input type="text" id="tcbvm-model-filter" class="tcbvm-input" placeholder="مثال: iPhone 13">
 									</div>
 								</div>
 
-								<div style="margin-top: 18px;">
+								<div class="tcbvm-actions" style="margin-top: 22px;">
 									<button type="button" class="tisa-btn tisa-btn--soft" id="tcbvm-btn-search">
-										جستجو و استخراج محصولات
+										<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+										<span>جستجو و استخراج محصولات</span>
 									</button>
-									<span id="tcbvm-search-counter" class="tcbvm-muted" style="margin-inline-start: 12px;"></span>
+									<span id="tcbvm-search-counter" class="tcbvm-counter-text"></span>
 								</div>
 
-								<!-- جدول انتخاب محصولات استخراج شده -->
-								<div id="tcbvm-products-box" style="display:none; margin-top: 20px;">
-									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-										<h4 style="margin: 0; font-size: 14px; font-weight: 700;">محصولات واجد شرایط جهت عملیات:</h4>
+								<!-- جدول نتایج جستجو -->
+								<div id="tcbvm-products-box" style="display:none; margin-top: 24px;">
+									<div class="tcbvm-products-header">
+										<h4 class="tcbvm-products-title">محصولات انتخاب‌شده جهت اعمال عملیات:</h4>
 										<span id="tcbvm-selected-badge" class="tcbvm-badge tcbvm-badge--success">۰ محصول انتخاب‌شده</span>
 									</div>
-									<div class="tcbvm-table-scroll" style="max-height: 280px;">
+									<div class="tcbvm-table-scroll" style="max-height: 320px;">
 										<table class="tisa-table tcbvm-table">
 											<thead>
 												<tr>
-													<th style="width:36px;"><input type="checkbox" id="tcbvm-select-all" checked></th>
+													<th style="width:38px; text-align:center;"><input type="checkbox" id="tcbvm-select-all" checked></th>
 													<th style="width:48px;">تصویر</th>
 													<th>نام محصول</th>
 													<th>SKU / شناسه</th>
 													<th>دسته‌بندی</th>
 													<th>تعداد متغیر</th>
 													<th>نمونه مدل‌ها</th>
-													<th style="width:60px;">لینک</th>
+													<th style="width:70px; text-align:center;">اقدام</th>
 												</tr>
 											</thead>
 											<tbody id="tcbvm-products-tbody"></tbody>
@@ -482,43 +491,47 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 								<span class="tcbvm-step">۲</span>
 								<div>
 									<h2>نوع عملیات روی متغیرها و مدل‌ها</h2>
-									<p>انتخاب نوع تغییر روی ویژگی مدل گوشی (افزودن مدل‌های جدید، حذف مدل، تغییر نام، یا کپی قیمت از مدل مرجع).</p>
+									<p>تعیین عملیات تغییر متغیرها، مقادیر مدل‌ها، قیمت‌گذاری و وضعیت موجودی</p>
 								</div>
 							</div>
 							<div class="tcbvm-card-body">
-								<div class="tcbvm-field">
-									<label class="tcbvm-label" for="tcbvm-op">عملیات اجرایی</label>
-									<select id="tcbvm-op" class="tcbvm-select tcbvm-select--lg">
-										<option value="add_models">افزودن مدل‌های جدید به محصولات (Add Variations)</option>
-										<option value="sync_preset">همگام‌سازی کامل یک الگو (افزودن ناموجودها)</option>
-										<option value="replace_model">تغییر نام یا جایگزینی یک مدل با مدل دیگر (Replace/Rename)</option>
-										<option value="remove_models">حذف یک یا چند مدل از محصولات (Remove Variations)</option>
-										<option value="bulk_price_stock">تنظیم دسته‌جمعی قیمت و موجودی مدل‌ها</option>
-									</select>
+								<div class="tcbvm-grid-2">
+									<div class="tcbvm-field">
+										<label class="tcbvm-label" for="tcbvm-op">نوع عملیات اجرایی</label>
+										<select id="tcbvm-op" class="tcbvm-select tcbvm-select--lg">
+											<option value="add_models">افزودن مدل‌های جدید به محصولات (Add Variations)</option>
+											<option value="sync_preset">همگام‌سازی کامل یک الگو (افزودن مدل‌های ناموجود)</option>
+											<option value="replace_model">تغییر نام یا جایگزینی یک مدل با مدل دیگر (Replace/Rename)</option>
+											<option value="remove_models">حذف یک یا چند مدل از محصولات (Remove Variations)</option>
+											<option value="bulk_price_stock">تنظیم دسته‌جمعی قیمت و موجودی مدل‌ها</option>
+										</select>
+									</div>
+									<div class="tcbvm-field">
+										<label class="tcbvm-label" for="tcbvm-attr-name">نام صفت/ویژگی متغیر در ووکامرس</label>
+										<input type="text" id="tcbvm-attr-name" class="tcbvm-input" value="مدل گوشی" placeholder="مثال: مدل گوشی یا Model">
+										<p class="tcbvm-muted">نام صفتی که مدل‌ها روی آن تعریف شده‌اند (معمولاً «مدل گوشی»).</p>
+									</div>
 								</div>
 
-								<div class="tcbvm-field" style="margin-top: 14px;">
-									<label class="tcbvm-label" for="tcbvm-attr-name">نام صفت/ویژگی ووکامرس (Attribute Name)</label>
-									<input type="text" id="tcbvm-attr-name" class="tcbvm-input" value="مدل گوشی" placeholder="مثال: مدل گوشی یا Model">
-									<p class="tcbvm-muted">نام ویژگی که مدل‌های گوشی روی آن سوار شده‌اند (معمولاً «مدل گوشی»).</p>
-								</div>
-
-								<!-- باکس درج مدل‌ها یا کلیک از روی الگوها -->
-								<div id="tcbvm-models-input-wrap" class="tcbvm-field" style="margin-top: 18px;">
-									<label class="tcbvm-label" for="tcbvm-models-input">لیست مدل‌های مورد نظر (در هر خط یک مدل بنویسید یا روی الگوهای زیر کلیک کنید)</label>
+								<!-- باکس مدل‌ها و الگوها -->
+								<div id="tcbvm-models-input-wrap" class="tcbvm-field" style="margin-top: 20px;">
+									<div class="tcbvm-field-header">
+										<label class="tcbvm-label" for="tcbvm-models-input" style="margin-bottom: 0;">لیست مدل‌های مورد نظر (در هر خط یک مدل بنویسید یا روی الگوهای زیر کلیک کنید)</label>
+									</div>
 									<div class="tcbvm-chips-row">
-										<span class="tcbvm-label-inline">درج سریع الگو:</span>
+										<span class="tcbvm-chips-title">الگوهای آماده تیساکیس:</span>
 										<?php foreach ( $presets as $p_id => $preset ) : ?>
 											<button type="button" class="tcbvm-chip-btn" data-preset-id="<?php echo esc_attr( $p_id ); ?>">
-												+ <?php echo esc_html( $preset['name'] ); ?>
+												<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+												<span><?php echo esc_html( $preset['name'] ); ?></span>
 											</button>
 										<?php endforeach; ?>
 									</div>
 									<textarea id="tcbvm-models-input" class="tcbvm-textarea" rows="5" placeholder="iPhone 16 Pro&#10;iPhone 16 Pro Max&#10;Samsung S24 Ultra"></textarea>
 								</div>
 
-								<!-- باکس جایگزینی مدل قدیمی با جدید -->
-								<div id="tcbvm-replace-input-wrap" class="tcbvm-grid-2" style="display:none; margin-top: 18px;">
+								<!-- باکس جایگزینی مدل -->
+								<div id="tcbvm-replace-input-wrap" class="tcbvm-grid-2" style="display:none; margin-top: 20px;">
 									<div class="tcbvm-field">
 										<label class="tcbvm-label" for="tcbvm-old-model">نام مدل قدیمی (جهت جایگزینی)</label>
 										<input type="text" id="tcbvm-old-model" class="tcbvm-input" placeholder="مثلاً: iPhone 11 Pro">
@@ -529,31 +542,39 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									</div>
 								</div>
 
-								<!-- تنظیمات قیمت و موجودی مدل‌های جدید -->
-								<div id="tcbvm-pricing-options-wrap" class="tcbvm-subcard" style="margin-top: 20px;">
-									<h4 style="margin-top: 0; font-size: 14.5px; font-weight: 700;">قیمت‌گذاری و موجودی متغیرهای جدید</h4>
+								<!-- باکس قیمت‌گذاری و موجودی -->
+								<div id="tcbvm-pricing-options-wrap" class="tcbvm-subcard" style="margin-top: 22px;">
+									<div class="tcbvm-subcard-head">
+										<div class="tcbvm-subcard-icon">
+											<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+										</div>
+										<div>
+											<h4 style="margin: 0; font-size: 15px; font-weight: 700; color: #0F172A;">قیمت‌گذاری و موجودی متغیرهای جدید</h4>
+											<p style="margin: 2px 0 0; font-size: 12px; color: #64748B;">تعیین قیمت بر اساس کپی خودکار از مدل‌های موجود یا تنظیم قیمت ثابت</p>
+										</div>
+									</div>
 
-									<div style="margin-bottom: 14px;">
+									<div style="margin-top: 16px;">
 										<label class="tisa-switch tcbvm-toggle">
 											<input type="checkbox" id="tcbvm-clone-price-check" checked>
 											<span class="tisa-switch__track" aria-hidden="true"></span>
-											<span>کپی هوشمند قیمت از مدل مرجع محصول <span class="tcbvm-muted">(توصیه تیساکیس برای قاب‌ها)</span></span>
+											<span>کپی هوشمند قیمت از مدل مرجع محصول <span class="tcbvm-badge tcbvm-badge--success" style="margin-inline-start: 6px;">پیشنهاد تیساکیس</span></span>
 										</label>
 									</div>
 
-									<div id="tcbvm-clone-ref-wrap" class="tcbvm-field" style="margin-bottom: 14px;">
-										<label class="tcbvm-label" for="tcbvm-clone-ref-model">نام مدل مرجع برای استخراج قیمت (اختیاری — خالی بماند از اولین واریشن فعال کپی می‌شود)</label>
+									<div id="tcbvm-clone-ref-wrap" class="tcbvm-field" style="margin-top: 14px;">
+										<label class="tcbvm-label" for="tcbvm-clone-ref-model">نام مدل مرجع برای کپی قیمت (اختیاری — در صورت خالی بودن، اولین واریشن فعال کپی می‌شود)</label>
 										<input type="text" id="tcbvm-clone-ref-model" class="tcbvm-input" placeholder="مثال: iPhone 13 Pro Max یا iPhone 15">
-										<p class="tcbvm-muted">سیستم به‌طور خودکار قیمت عادی و فروش ویژهٔ این مدل را برمی‌دارد و روی مدل‌های جدید اضافه می‌کند.</p>
+										<p class="tcbvm-muted">قیمت عادی و فروش ویژهٔ این مدل برداشته شده و دقیقاً روی مدل‌های جدید اضافه می‌شود.</p>
 									</div>
 
-									<div class="tcbvm-grid-3">
+									<div class="tcbvm-grid-3" style="margin-top: 16px;">
 										<div class="tcbvm-field">
-											<label class="tcbvm-label" for="tcbvm-regular-price">قیمت عادی ثابت (در صورت عدم کپی)</label>
+											<label class="tcbvm-label" for="tcbvm-regular-price">قیمت عادی ثابت (تومان)</label>
 											<input type="text" id="tcbvm-regular-price" class="tcbvm-input" placeholder="مثال: 380000">
 										</div>
 										<div class="tcbvm-field">
-											<label class="tcbvm-label" for="tcbvm-sale-price">قیمت فروش ویژه ثابت (اختیاری)</label>
+											<label class="tcbvm-label" for="tcbvm-sale-price">قیمت فروش ویژه (اختیاری)</label>
 											<input type="text" id="tcbvm-sale-price" class="tcbvm-input" placeholder="مثال: 328000">
 										</div>
 										<div class="tcbvm-field">
@@ -566,15 +587,15 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									</div>
 								</div>
 
-								<!-- نحوه حذف مدل -->
-								<div id="tcbvm-delete-mode-wrap" class="tcbvm-field" style="display:none; margin-top: 18px;">
+								<!-- حالت حذف مدل -->
+								<div id="tcbvm-delete-mode-wrap" class="tcbvm-field" style="display:none; margin-top: 20px;">
 									<label class="tcbvm-label">نحوه برخورد با مدل‌های حذفی:</label>
-									<div class="tcbvm-seg">
-										<label class="tcbvm-radio">
+									<div class="tcbvm-seg-bar">
+										<label class="tcbvm-seg-item is-active">
 											<input type="radio" name="tcbvm_delete_mode" value="soft" checked>
-											<span>تغییر وضعیت به «ناموجود» (ایمن‌تر برای سئو و تاریخچه سفارش‌ها)</span>
+											<span>ناموجود کردن (حفظ سئو و تاریخچه سفارشات)</span>
 										</label>
-										<label class="tcbvm-radio">
+										<label class="tcbvm-seg-item">
 											<input type="radio" name="tcbvm_delete_mode" value="hard">
 											<span>حذف کامل متغیر از دیتابیس (Permanent Delete)</span>
 										</label>
@@ -595,18 +616,23 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 							<div class="tcbvm-card-body">
 								<div class="tcbvm-actions">
 									<button type="button" class="tisa-btn tisa-btn--soft tisa-btn--lg" id="tcbvm-btn-preview">
-										بررسی قبل از اجرا (Preview)
+										<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+										<span>بررسی قبل از اجرا (Preview)</span>
 									</button>
 									<button type="button" class="tisa-btn tisa-btn--primary tisa-btn--lg" id="tcbvm-btn-run">
-										اجرای قطعی عملیات روی محصولات انتخابی
+										<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+										<span>اجرای قطعی عملیات روی محصولات انتخابی</span>
 									</button>
 								</div>
 
 								<!-- خروجی پیش‌نمایش -->
-								<div id="tcbvm-preview-output" style="display:none; margin-top: 20px;">
-									<div class="tcbvm-alert tcbvm-alert--success">
-										<strong>پیش‌نمایش آزمایشی آماده است:</strong>
-										<div id="tcbvm-preview-content" style="margin-top: 8px;"></div>
+								<div id="tcbvm-preview-output" style="display:none; margin-top: 22px;">
+									<div class="tcbvm-preview-card">
+										<div class="tcbvm-preview-head">
+											<span class="tcbvm-preview-badge">نتیجه بررسی آزمایشی</span>
+											<p style="margin: 4px 0 0; font-size: 13px; color: #475569;">پیش‌نمایش تغییراتی که روی محصولات منتخب اعمال خواهد شد:</p>
+										</div>
+										<div id="tcbvm-preview-content" class="tcbvm-preview-body"></div>
 									</div>
 								</div>
 
@@ -635,13 +661,17 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 										</div>
 										<div class="tcbvm-kpi tcbvm-kpi--danger">
 											<span class="tcbvm-kpi-val" id="tcbvm-stat-failed">0</span>
-											<span class="tcbvm-kpi-label">ناموفق / خطا</span>
+											<span class="tcbvm-kpi-label">خطا / ناموفق</span>
 										</div>
 									</div>
 
 									<div class="tcbvm-log-box">
 										<div class="tcbvm-log-head">
-											<span>گزارش زنده رویدادها (Realtime Execution Log)</span>
+											<div style="display:flex; align-items:center; gap:8px;">
+												<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#10B981;"></span>
+												<span>گزارش زنده رویدادها (Realtime Execution Log)</span>
+											</div>
+											<span style="font-size:11px; opacity:.7;">اتصال فعال</span>
 										</div>
 										<pre id="tcbvm-log-console" class="tcbvm-log-console"></pre>
 									</div>
