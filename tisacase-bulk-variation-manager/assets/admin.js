@@ -219,7 +219,7 @@
 				+ '<td><span style="font-size:12px; color:#50575e;">' + escapeHtml(item.cats) + '</span></td>'
 				+ '<td>' + item.variation_count + ' متغیر</td>'
 				+ '<td>' + modelsHtml + '</td>'
-				+ '<td><a href="' + item.edit_url + '" class="button button-small" target="_blank">ویرایش</a></td>'
+				+ '<td><a href="' + item.edit_url + '" class="tisa-btn tisa-btn--outline tisa-btn--sm" target="_blank">ویرایش</a></td>'
 				+ '</tr>';
 
 			$tbody.append(row);
