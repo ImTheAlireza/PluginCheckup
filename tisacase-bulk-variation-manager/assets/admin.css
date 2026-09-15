@@ -40,7 +40,9 @@
 
 /* ---------- بدنه صفحه و والد اصلی ---------- */
 body.product_page_tisacase-bulk-variation-manager #wpcontent,
+body.woocommerce_page_tisacase-bulk-variation-manager #wpcontent,
 body.toplevel_page_tisacase-bulk-variation-manager #wpcontent,
+body.admin_page_tisacase-bulk-variation-manager #wpcontent,
 body.tisacase-hub_page_tisacase-bulk-variation-manager #wpcontent {
 	background: var(--tisa-bg, #F4F2EC);
 	padding-inline-start: 0;
@@ -112,8 +114,12 @@ body.tisacase-hub_page_tisacase-bulk-variation-manager #wpcontent {
 }
 
 .tcbvm-hero-mark svg {
-	width: 24px;
-	height: 24px;
+	width: 24px !important;
+	height: 24px !important;
+	min-width: 24px !important;
+	max-width: 24px !important;
+	max-height: 24px !important;
+	display: block !important;
 }
 
 .tcbvm-hero-text {

@@ -147,20 +147,20 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				'pages' => array(
 					array(
 						'label'  => __( 'عملیات گروهی', 'tisacase-hub' ),
-						'path'   => 'edit.php?post_type=product&page=tisacase-bulk-variation-manager',
-						'screen' => 'product_page_tisacase-bulk-variation-manager',
-						'parent' => 'edit.php?post_type=product',
+						'path'   => 'admin.php?page=tisacase-bulk-variation-manager',
+						'screen' => 'woocommerce_page_tisacase-bulk-variation-manager',
+						'parent' => 'woocommerce',
 						'slug'   => 'tisacase-bulk-variation-manager',
 					),
 					array(
 						'label'  => __( 'الگوهای مدل', 'tisacase-hub' ),
-						'path'   => 'edit.php?post_type=product&page=tisacase-bulk-variation-manager&tab=presets',
-						'screen' => 'product_page_tisacase-bulk-variation-manager',
+						'path'   => 'admin.php?page=tisacase-bulk-variation-manager&tab=presets',
+						'screen' => 'woocommerce_page_tisacase-bulk-variation-manager',
 					),
 					array(
 						'label'  => __( 'تاریخچه و بازگردانی', 'tisacase-hub' ),
-						'path'   => 'edit.php?post_type=product&page=tisacase-bulk-variation-manager&tab=runs',
-						'screen' => 'product_page_tisacase-bulk-variation-manager',
+						'path'   => 'admin.php?page=tisacase-bulk-variation-manager&tab=runs',
+						'screen' => 'woocommerce_page_tisacase-bulk-variation-manager',
 					),
 				),
 			);

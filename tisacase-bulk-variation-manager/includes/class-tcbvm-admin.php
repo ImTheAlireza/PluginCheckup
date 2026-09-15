@@ -19,6 +19,22 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 		}
 
 		/**
+		 * آیا در صفحهٔ این افزونه هستیم؟
+		 */
+		public static function is_our_screen() {
+			if ( isset( $_GET['page'] ) && TCBVM_Core::PAGE_SLUG === sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
+				return true;
+			}
+			if ( function_exists( 'get_current_screen' ) ) {
+				$screen = get_current_screen();
+				if ( $screen && ! empty( $screen->id ) && false !== strpos( $screen->id, TCBVM_Core::PAGE_SLUG ) ) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		/**
 		 * ثبت منو در هاب تیساکیس و منوی محصولات ووکامرس.
 		 */
 		public static function register_menus() {
@@ -26,42 +42,17 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 				return;
 			}
 
-			global $menu;
-			$hub_slug = 'tisacase-hub';
+			// ورودی استاندارد زیرمجموعه ووکامرس (مطابق tisacase-pricing و case-special-package)
+			add_submenu_page(
+				'woocommerce',
+				'مدیریت گروهی متغیرها و مدل‌ها',
+				'مدیریت متغیرها TisaCase',
+				'manage_woocommerce',
+				TCBVM_Core::PAGE_SLUG,
+				array( __CLASS__, 'render_page' )
+			);
 
-			$has_tisa_hub = false;
-			if ( is_array( $menu ) ) {
-				foreach ( $menu as $item ) {
-					if ( isset( $item[2] ) && ( $item[2] === $hub_slug || $item[2] === 'tisacase-desc' ) ) {
-						$has_tisa_hub = true;
-						$hub_slug = $item[2];
-						break;
-					}
-				}
-			}
-
-			if ( $has_tisa_hub ) {
-				add_submenu_page(
-					$hub_slug,
-					'مدیریت متغیرها و مدل‌ها',
-					'مدیریت متغیرها و مدل‌ها',
-					'manage_woocommerce',
-					TCBVM_Core::PAGE_SLUG,
-					array( __CLASS__, 'render_page' )
-				);
-			} else {
-				add_menu_page(
-					'مدیریت متغیرها TisaCase',
-					'متغیرهای TisaCase',
-					'manage_woocommerce',
-					TCBVM_Core::PAGE_SLUG,
-					array( __CLASS__, 'render_page' ),
-					'dashicons-screenoptions',
-					57
-				);
-			}
-
-			// دسترسی در منوی محصولات
+			// میان‌بُر اختیاری در منوی محصولات
 			add_submenu_page(
 				'edit.php?post_type=product',
 				'مدیریت گروهی متغیرها و مدل‌ها',
@@ -78,8 +69,8 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 			}
 		}
 
-		public static function enqueue_assets( $hook ) {
-			if ( strpos( $hook, TCBVM_Core::PAGE_SLUG ) === false ) {
+		public static function enqueue_assets( $hook = '' ) {
+			if ( ! self::is_our_screen() && false === strpos( (string) $hook, TCBVM_Core::PAGE_SLUG ) ) {
 				return;
 			}
 
@@ -146,12 +137,35 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 			$presets    = TCBVM_Core::get_presets();
 			$runs       = TCBVM_Backup::get_all_runs();
 			$settings   = TCBVM_Core::get_settings();
+
+			if ( ! wp_style_is( 'tcbvm-admin-css', 'enqueued' ) ) {
+				self::enqueue_assets();
+			}
 			?>
+			<style id="tcbvm-critical-css">
+				.tcbvm-wrap { box-sizing: border-box; width: 100%; max-width: 1120px; margin: 24px auto 0; padding: 0 20px 64px; font-variant-numeric: tabular-nums; }
+				.tcbvm-hero { position: relative; overflow: hidden; margin: 0 0 28px; padding: 28px 28px 0; border-radius: 22px; background: linear-gradient(120deg, #0A5F52 0%, #0E7C6B 60%, #17A088 100%); color: #fff; box-shadow: 0 18px 40px -22px rgba(10, 95, 82, .55); }
+				.tcbvm-hero-row { display: flex; align-items: center; gap: 16px; }
+				.tcbvm-hero-mark { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; min-width: 48px; max-width: 48px; border-radius: 14px; background: rgba(255, 255, 255, .16); color: #fff; }
+				.tcbvm-hero-mark svg { width: 24px !important; height: 24px !important; max-width: 24px !important; max-height: 24px !important; display: block !important; }
+				.tcbvm-hero-title { margin: 0; padding: 0; font-size: 22px; font-weight: 800; color: #fff; }
+				.tcbvm-hero-sub { margin: 4px 0 0; font-size: 13px; opacity: .82; color: #fff; }
+				.tcbvm-hero-ver { padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, .16); font-family: monospace; font-size: 11px; }
+				.tcbvm-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; padding: 0 0 20px; }
+				.tcbvm-tab { display: inline-flex; align-items: center; height: 36px; padding: 0 16px; border-radius: 999px; background: rgba(255, 255, 255, .12); color: #fff !important; font-size: 13px; font-weight: 600; text-decoration: none; }
+				.tcbvm-tab.is-active { background: #fff !important; color: #0A5F52 !important; }
+				.tcbvm-card { margin: 0 0 20px; border: 1px solid #E3E1DA; border-radius: 18px; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .02); }
+				.tcbvm-card-head { display: flex; align-items: flex-start; gap: 14px; padding: 22px 24px 0; }
+				.tcbvm-card-head h2 { margin: 0 0 3px; font-size: 16px; font-weight: 700; color: #1F2A2E; }
+				.tcbvm-card-head p { margin: 0; font-size: 12.5px; color: #77828A; }
+				.tcbvm-step { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #E8F0EE; color: #0A5F52; font-weight: 800; font-size: 12.5px; }
+				.tcbvm-card-body { padding: 16px 24px 24px; }
+			</style>
 			<div class="wrap tisa-wrap tcbvm-wrap" dir="rtl">
 				<header class="tcbvm-hero">
 					<div class="tcbvm-hero-row">
 						<div class="tcbvm-hero-mark" aria-hidden="true">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+							<svg viewBox="0 0 24 24" width="24" height="24" style="width:24px!important;height:24px!important;min-width:24px!important;max-width:24px!important;display:block;" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
 								<path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5M3 18l9 5 9-5"/>
 							</svg>
 						</div>
