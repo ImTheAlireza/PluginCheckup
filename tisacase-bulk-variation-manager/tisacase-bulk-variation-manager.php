@@ -13,6 +13,7 @@
  * Domain Path:       /languages
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * TisaCase Hub:      title="مدیریت متغیرها و مدل‌ها"; icon=layers; group=products; page=edit.php?post_type=product&page=tisacase-bulk-variation-manager; screen=product_page_tisacase-bulk-variation-manager; parent=edit.php?post_type=product; slug=tisacase-bulk-variation-manager; desc="مدیریت، افزودن، تغییر نام، حذف و همگام‌سازی گروهی ویژگی‌ها و متغیرهای قاب و محصولات."
  *
  * @package TisaCase_Bulk_Variation_Manager
  */
@@ -31,6 +32,42 @@ add_action( 'before_woocommerce_init', function() {
 	if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
 		\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility( 'custom_order_tables', __FILE__, true );
 	}
+} );
+
+/**
+ * Register in TisaCase Hub filter.
+ */
+add_filter( 'tisacase_hub_items', function( $items ) {
+	if ( is_array( $items ) && ! isset( $items['bvm'] ) ) {
+		$items['bvm'] = array(
+			'title' => __( 'مدیریت متغیرها و مدل‌ها', 'tisacase-bvm' ),
+			'desc'  => __( 'مدیریت، افزودن، تغییر نام، حذف و همگام‌سازی گروهی ویژگی‌ها و متغیرهای قاب و محصولات.', 'tisacase-bvm' ),
+			'group' => 'products',
+			'icon'  => 'layers',
+			'dir'   => 'tisacase-bulk-variation-manager',
+			'cap'   => 'manage_woocommerce',
+			'pages' => array(
+				array(
+					'label'  => __( 'عملیات گروهی', 'tisacase-bvm' ),
+					'path'   => 'edit.php?post_type=product&page=tisacase-bulk-variation-manager',
+					'screen' => 'product_page_tisacase-bulk-variation-manager',
+					'parent' => 'edit.php?post_type=product',
+					'slug'   => 'tisacase-bulk-variation-manager',
+				),
+				array(
+					'label'  => __( 'الگوهای مدل', 'tisacase-bvm' ),
+					'path'   => 'edit.php?post_type=product&page=tisacase-bulk-variation-manager&tab=presets',
+					'screen' => 'product_page_tisacase-bulk-variation-manager',
+				),
+				array(
+					'label'  => __( 'تاریخچه و بازگردانی', 'tisacase-bvm' ),
+					'path'   => 'edit.php?post_type=product&page=tisacase-bulk-variation-manager&tab=runs',
+					'screen' => 'product_page_tisacase-bulk-variation-manager',
+				),
+			),
+		);
+	}
+	return $items;
 } );
 
 require_once TCBVM_PATH . 'includes/class-tcbvm-core.php';

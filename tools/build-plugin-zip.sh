@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# plugins/src/<dir> را بررسی ایستا می‌کند و به plugins/dist/<dir>.zip بسته‌بندی می‌کند.
+# زیپ‌های ریشهٔ مخزن منبع‌اند و دست نمی‌خورند.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+src="plugins/src/${1:-}"; [ -d "$src" ] || { echo "پوشه نیست: $src" >&2; exit 2; }
+top=$(basename "$src")
+
+python3 tools/php-check.py "$src" >/dev/null
+js=$(find "$src" -name "*.js" -not -name "*.min.js" | head -20 || true)
+for f in $js; do node --check "$f" >/dev/null || { echo "JS خطا دارد: $f" >&2; exit 1; }; done
+
+mkdir -p plugins/dist
+out="plugins/dist/$top.zip"
+rm -f "$out"
+( cd plugins/src && zip -qrD "../dist/$top.zip" "$top" -x "*/.DS_Store" "*/__MACOSX/*" )
+
+files=$(unzip -l "$out" | tail -1 | awk '{print $2}')
+echo "✓ $out ($(du -h "$out" | cut -f1 | tr -d ' ') · $files فایل) — نصب: پیشخوان › افزونه‌ها › بارگذاری (یا حذف و جایگزینی)"
