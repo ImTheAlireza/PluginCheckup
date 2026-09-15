@@ -108,7 +108,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 					'nonce'     => wp_create_nonce( TCBVM_Core::NONCE_ACTION ),
 					'currency'  => function_exists( 'get_woocommerce_currency_symbol' ) ? get_woocommerce_currency_symbol() : 'تومان',
 					'presets'   => TCBVM_Core::get_presets(),
-					'batchSize' => TCBVM_Core::get_batch_size(),
+					'batchSize' => method_exists( 'TCBVM_Core', 'get_batch_size' ) ? TCBVM_Core::get_batch_size() : 10,
 					'i18n'      => array(
 						'confirmStart'        => 'آیا از شروع عملیات روی {n} محصول انتخابی مطمئن هستید؟ از تغییرات پیش از اجرا به‌طور خودکار پشتیبان تهیه خواهد شد.',
 						'confirmRollback'     => 'آیا از بازگردانی وضعیت محصولات به قبل از این عملیات اطمینان دارید؟',

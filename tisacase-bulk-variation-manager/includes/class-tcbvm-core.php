@@ -72,6 +72,11 @@ if ( ! class_exists( 'TCBVM_Core' ) ) {
 			return wp_parse_args( is_array( $saved ) ? $saved : array(), self::default_settings() );
 		}
 
+		public static function get_batch_size() {
+			$settings = self::get_settings();
+			return isset( $settings['batch_size'] ) ? max( 1, absint( $settings['batch_size'] ) ) : 10;
+		}
+
 		public static function update_settings( $new_settings ) {
 			return update_option( self::OPTION_SETTINGS, $new_settings );
 		}
