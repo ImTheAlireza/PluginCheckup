@@ -1,5 +1,6 @@
 /**
  * TisaCase Bulk Variation Manager — Admin JavaScript
+ * Clean & Native WordPress styling (Matching TisaCase Bulk Price Manager)
  */
 (function ($) {
 	'use strict';
@@ -13,8 +14,8 @@
 	};
 
 	$(document).ready(function () {
-		initTabs();
-		initOpCards();
+		initTargetModeToggle();
+		initOpChange();
 		initPresetChips();
 		initSearch();
 		initSelection();
@@ -23,114 +24,88 @@
 		initRollback();
 		initPresetSave();
 		initCacheFlush();
-		initQuickJump();
 	});
 
 	/* -------------------------------------------------------------
-	 * ۱. تب‌ها (Tabs Navigation)
+	 * ۱. انتخاب حالت هدف (دسته‌بندی یا دستی)
 	 * ----------------------------------------------------------- */
-	function initTabs() {
-		$(document).on('click', '.tcbvm-tab', function (e) {
-			e.preventDefault();
-			var tabKey = $(this).data('tab');
-
-			$('.tcbvm-tab').removeClass('active');
-			$(this).addClass('active');
-
-			$('.tcbvm-panel').removeClass('active');
-			$('.tcbvm-panel[data-panel="' + tabKey + '"]').addClass('active');
-
-			if (history.pushState) {
-				history.pushState(null, null, '#tab-' + tabKey);
+	function initTargetModeToggle() {
+		$('input[name="tcbvm_target_mode"]').on('change', function () {
+			var mode = $(this).val();
+			if (mode === 'manual') {
+				$('#tcbvm-cat-box').hide();
+				$('#tcbvm-manual-box').show();
+			} else {
+				$('#tcbvm-manual-box').hide();
+				$('#tcbvm-cat-box').show();
 			}
-		});
-
-		var hash = window.location.hash.replace('#tab-', '');
-		if (hash && $('.tcbvm-panel[data-panel="' + hash + '"]').length) {
-			$('.tcbvm-tab[data-tab="' + hash + '"]').trigger('click');
-		}
-	}
-
-	function initQuickJump() {
-		$(document).on('click', '.tcbvm-goto-tab', function () {
-			var target = $(this).data('target');
-			if (target && $('.tcbvm-tab[data-tab="' + target + '"]').length) {
-				$('.tcbvm-tab[data-tab="' + target + '"]').trigger('click');
-				$('html, body').animate({ scrollTop: 0 }, 200);
-			}
-		});
-	}
-
-	/* -------------------------------------------------------------
-	 * ۲. کارت‌های انتخاب عملیات
-	 * ----------------------------------------------------------- */
-	function initOpCards() {
-		$(document).on('click', '.tcbvm-op-card', function () {
-			$('.tcbvm-op-card').removeClass('is-active');
-			$(this).addClass('is-active');
-
-			var op = $(this).find('input[type="radio"]').val();
-			updateFormFieldsForOp(op);
 		});
 
 		$('#tcbvm-clone-price-check').on('change', function () {
 			if ($(this).is(':checked')) {
-				$('#tcbvm-clone-ref-wrap').slideDown(150);
+				$('#tcbvm-clone-ref-wrap').show();
 			} else {
-				$('#tcbvm-clone-ref-wrap').slideUp(150);
+				$('#tcbvm-clone-ref-wrap').hide();
 			}
 		});
 	}
 
-	function updateFormFieldsForOp(op) {
-		var $modelsWrap = $('#tcbvm-models-input-wrap');
-		var $replaceWrap = $('#tcbvm-replace-input-wrap');
-		var $pricingWrap = $('#tcbvm-pricing-options-wrap');
-		var $deleteModeWrap = $('#tcbvm-delete-mode-wrap');
+	/* -------------------------------------------------------------
+	 * ۲. تغییر نوع عملیات در دراپ‌داون
+	 * ----------------------------------------------------------- */
+	function initOpChange() {
+		$('#tcbvm-op').on('change', function () {
+			var op = $(this).val();
+			var $modelsWrap = $('#tcbvm-models-input-wrap');
+			var $replaceWrap = $('#tcbvm-replace-input-wrap');
+			var $pricingWrap = $('#tcbvm-pricing-options-wrap');
+			var $deleteModeWrap = $('#tcbvm-delete-mode-wrap');
 
-		switch (op) {
-			case 'add_models':
-				$modelsWrap.slideDown(150);
-				$replaceWrap.slideUp(150);
-				$pricingWrap.slideDown(150);
-				$deleteModeWrap.slideUp(150);
-				break;
+			switch (op) {
+				case 'add_models':
+					$modelsWrap.show();
+					$replaceWrap.hide();
+					$pricingWrap.show();
+					$deleteModeWrap.hide();
+					break;
 
-			case 'remove_models':
-				$modelsWrap.slideDown(150);
-				$replaceWrap.slideUp(150);
-				$pricingWrap.slideUp(150);
-				$deleteModeWrap.slideDown(150);
-				break;
+				case 'remove_models':
+					$modelsWrap.show();
+					$replaceWrap.hide();
+					$pricingWrap.hide();
+					$deleteModeWrap.show();
+					break;
 
-			case 'replace_model':
-				$modelsWrap.slideUp(150);
-				$replaceWrap.slideDown(150);
-				$pricingWrap.slideUp(150);
-				$deleteModeWrap.slideUp(150);
-				break;
+				case 'replace_model':
+					$modelsWrap.hide();
+					$replaceWrap.show();
+					$pricingWrap.hide();
+					$deleteModeWrap.hide();
+					break;
 
-			case 'sync_preset':
-				$modelsWrap.slideDown(150);
-				$replaceWrap.slideUp(150);
-				$pricingWrap.slideDown(150);
-				$deleteModeWrap.slideDown(150);
-				break;
+				case 'sync_preset':
+					$modelsWrap.show();
+					$replaceWrap.hide();
+					$pricingWrap.show();
+					$deleteModeWrap.show();
+					break;
 
-			case 'bulk_price_stock':
-				$modelsWrap.slideDown(150);
-				$replaceWrap.slideUp(150);
-				$pricingWrap.slideDown(150);
-				$deleteModeWrap.slideUp(150);
-				break;
-		}
+				case 'bulk_price_stock':
+					$modelsWrap.show();
+					$replaceWrap.hide();
+					$pricingWrap.show();
+					$deleteModeWrap.hide();
+					break;
+			}
+		});
 	}
 
 	/* -------------------------------------------------------------
 	 * ۳. چیپ‌های درج سریع الگوها
 	 * ----------------------------------------------------------- */
 	function initPresetChips() {
-		$(document).on('click', '.tcbvm-chip-btn', function () {
+		$(document).on('click', '.tcbvm-chip-btn', function (e) {
+			e.preventDefault();
 			var pId = $(this).data('preset-id');
 			var preset = tcbvmData.presets[pId];
 			if (!preset || !preset.models) {
@@ -148,9 +123,9 @@
 			}
 
 			$textarea.trigger('input');
-			$textarea.css('background', '#e3f2ef');
+			$textarea.css('background', '#fff3cd');
 			setTimeout(function () {
-				$textarea.css('background', '');
+				$textarea.css('background', '#fff');
 			}, 300);
 		});
 	}
@@ -163,6 +138,7 @@
 			var $btn = $(this);
 			var originalHtml = $btn.html();
 
+			var mode = $('input[name="tcbvm_target_mode"]:checked').val() || 'category';
 			var selectedCats = $('#tcbvm-cat-select').val() || [];
 			var includeChildren = $('#tcbvm-cat-children').is(':checked') ? 1 : 0;
 			var keywords = $('#tcbvm-keywords').val();
@@ -170,8 +146,8 @@
 			var manualIds = $('#tcbvm-manual-ids').val();
 			var modelFilter = $('#tcbvm-model-filter').val();
 
-			$btn.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> در حال جستجو…');
-			$('#tcbvm-search-counter').text('در حال اسکن پایگاه داده…');
+			$btn.prop('disabled', true).text('در حال جستجو…');
+			$('#tcbvm-search-counter').text('در حال اسکن محصولات…');
 
 			$.ajax({
 				url: tcbvmData.ajaxUrl,
@@ -181,6 +157,7 @@
 					action: 'tcbvm_search_products',
 					nonce: tcbvmData.nonce,
 					filters: {
+						mode: mode,
 						category_ids: selectedCats,
 						include_children: includeChildren,
 						keywords: keywords,
@@ -215,8 +192,8 @@
 		$tbody.empty();
 
 		if (!items || items.length === 0) {
-			$tbody.html('<tr><td colspan="8" style="text-align:center; padding:20px; color:#6f6a5e;">هیچ محصولی با فیلترهای انتخابی یافت نشد.</td></tr>');
-			$box.slideDown(200);
+			$tbody.html('<tr><td colspan="8" style="text-align:center; padding:15px; color:#646970;">هیچ محصولی با فیلترهای انتخابی یافت نشد.</td></tr>');
+			$box.show();
 			updateSelectionBadge();
 			return;
 		}
@@ -225,30 +202,30 @@
 			var modelsHtml = '';
 			if (item.models && item.models.length > 0) {
 				$.each(item.models.slice(0, 6), function (i, m) {
-					modelsHtml += '<span class="tcbvm-tag">' + escapeHtml(m) + '</span>';
+					modelsHtml += '<span class="tcbvm-tag-model">' + escapeHtml(m) + '</span>';
 				});
 				if (item.models_total > 6) {
-					modelsHtml += '<span class="tcbvm-tag" style="background:#e5e7eb; font-weight:700;">+' + (item.models_total - 6) + '</span>';
+					modelsHtml += '<span class="tcbvm-muted">+' + (item.models_total - 6) + '</span>';
 				}
 			} else {
-				modelsHtml = '<span style="color:#a0aec0; font-size:11px;">بدون متغیر فعلی</span>';
+				modelsHtml = '<span class="tcbvm-muted">بدون متغیر فعلی</span>';
 			}
 
 			var row = '<tr data-id="' + item.id + '">'
 				+ '<td><input type="checkbox" class="tc-prod-checkbox" value="' + item.id + '" checked></td>'
-				+ '<td><img src="' + item.image_url + '" class="tcbvm-thumb" alt=""></td>'
+				+ '<td><img src="' + item.image_url + '" class="tcbvm-thumb-img" alt=""></td>'
 				+ '<td><strong><a href="' + item.edit_url + '" target="_blank">' + escapeHtml(item.name) + '</a></strong></td>'
 				+ '<td><code>' + escapeHtml(item.sku) + '</code> <small>(#' + item.id + ')</small></td>'
-				+ '<td><span style="font-size:12px; color:#4a5568;">' + escapeHtml(item.cats) + '</span></td>'
-				+ '<td><span class="tcbvm-badge">' + item.variation_count + ' متغیر</span></td>'
+				+ '<td><span style="font-size:12px; color:#50575e;">' + escapeHtml(item.cats) + '</span></td>'
+				+ '<td>' + item.variation_count + ' متغیر</td>'
 				+ '<td>' + modelsHtml + '</td>'
-				+ '<td><a href="' + item.edit_url + '" class="tcbvm-btn tcbvm-btn--secondary" style="padding:4px 8px; font-size:11px;" target="_blank">ویرایش</a></td>'
+				+ '<td><a href="' + item.edit_url + '" class="button button-small" target="_blank">ویرایش</a></td>'
 				+ '</tr>';
 
 			$tbody.append(row);
 		});
 
-		$box.slideDown(200);
+		$box.show();
 		$('#tcbvm-select-all').prop('checked', true);
 		updateSelectionBadge();
 	}
@@ -299,12 +276,12 @@
 				return;
 			}
 
-			var op = $('input[name="tcbvm_op"]:checked').val();
+			var op = $('#tcbvm-op').val();
 			var params = collectParams(op);
 
 			var $btn = $(this);
 			var orig = $btn.html();
-			$btn.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> در حال محاسبه…');
+			$btn.prop('disabled', true).text('در حال بررسی…');
 
 			$.ajax({
 				url: tcbvmData.ajaxUrl,
@@ -339,36 +316,36 @@
 		$content.empty();
 
 		if (!data.samples || data.samples.length === 0) {
-			$content.html('<p>هیچ تغییری برای این محصولات ثبت نشد.</p>');
-			$box.slideDown(200);
+			$content.html('<p>تغییری برای محصولات نمونه لازم نیست یا مدلی یافت نشد.</p>');
+			$box.show();
 			return;
 		}
 
-		var summaryHtml = '<p style="margin-bottom:12px; font-weight:700;">پیش‌نمایش روی نمونه‌ای از ' + data.total_selected + ' محصول انتخابی:</p>';
+		var summaryHtml = '<p style="margin-bottom:10px; font-weight:700;">بررسی نمونه‌ای از ' + data.total_selected + ' محصول انتخابی:</p>';
 		$content.append(summaryHtml);
 
 		$.each(data.samples, function (idx, item) {
-			var addsHtml = item.to_add.length ? '<p style="color:#0e7a6b; margin:3px 0;"><strong>+ مدل‌های اضافه شونده:</strong> ' + item.to_add.join('، ') + '</p>' : '';
-			var remsHtml = item.to_remove.length ? '<p style="color:#b3261e; margin:3px 0;"><strong>- مدل‌های حذف/ناموجود شونده:</strong> ' + item.to_remove.join('، ') + '</p>' : '';
-			var modsHtml = item.to_modify.length ? '<p style="color:#1d4ed8; margin:3px 0;"><strong>~ مدل‌های ویرایش شونده:</strong> ' + item.to_modify.join('، ') + '</p>' : '';
-			var notesHtml = item.notes.length ? '<p style="color:#6f6a5e; font-size:11.5px; margin:3px 0;"><strong>نکات:</strong> ' + item.notes.join(' | ') + '</p>' : '';
+			var addsHtml = item.to_add.length ? '<p style="color:#008a20; margin:2px 0;"><strong>+ مدل‌های جدید:</strong> ' + item.to_add.join('، ') + '</p>' : '';
+			var remsHtml = item.to_remove.length ? '<p style="color:#b32d2e; margin:2px 0;"><strong>- مدل‌های حذف/ناموجود:</strong> ' + item.to_remove.join('، ') + '</p>' : '';
+			var modsHtml = item.to_modify.length ? '<p style="color:#2271b1; margin:2px 0;"><strong>~ تغییرات:</strong> ' + item.to_modify.join('، ') + '</p>' : '';
+			var notesHtml = item.notes.length ? '<p class="tcbvm-muted" style="margin:2px 0;">' + item.notes.join(' | ') + '</p>' : '';
 
-			var itemHtml = '<div style="background:#fff; border:1px solid #fae8a4; border-radius:10px; padding:12px 14px; margin-bottom:8px;">'
-				+ '<h5 style="margin:0 0 5px; font-size:13px; color:#221d15;">' + escapeHtml(item.name) + ' <small>(#' + item.id + ' | SKU: ' + escapeHtml(item.sku) + ')</small></h5>'
+			var itemHtml = '<div class="tcbvm-preview-item">'
+				+ '<h4>' + escapeHtml(item.name) + ' <small class="tcbvm-muted">(#' + item.id + ' | SKU: ' + escapeHtml(item.sku) + ')</small></h4>'
 				+ addsHtml + remsHtml + modsHtml + notesHtml
 				+ '</div>';
 
 			$content.append(itemHtml);
 		});
 
-		$box.slideDown(200);
+		$box.show();
 		$('html, body').animate({
-			scrollTop: $box.offset().top - 50
+			scrollTop: $box.offset().top - 30
 		}, 300);
 	}
 
 	/* -------------------------------------------------------------
-	 * ۷. پردازش پله‌ای تحت ایجکس (Batch Execution)
+	 * ۷. پردازش دسته‌ای پله‌ای تحت ایجکس (Batch Execution)
 	 * ----------------------------------------------------------- */
 	function initBulkRun() {
 		$('#tcbvm-btn-run').on('click', function () {
@@ -381,7 +358,7 @@
 				return;
 			}
 
-			var op = $('input[name="tcbvm_op"]:checked').val();
+			var op = $('#tcbvm-op').val();
 			var params = collectParams(op);
 
 			if (op === 'replace_model') {
@@ -412,10 +389,10 @@
 		var $btn = $('#tcbvm-btn-run');
 		$btn.prop('disabled', true);
 
-		$('#tcbvm-progress-wrap').slideDown(200);
-		$('#tcbvm-progress-bar').css('width', '0%');
+		$('#tcbvm-progress-wrap').show();
+		$('#tcbvm-bar-fill').css('width', '0%');
 		$('#tcbvm-progress-percent').text('0%');
-		$('#tcbvm-progress-text').text('در حال ثبت نشست و تهیه اسنپ‌شات اولیه…');
+		$('#tcbvm-progress-text').text('در حال ثبت نشست و تهیه پشتیبان خودکار…');
 		$('#tcbvm-log-console').empty();
 
 		logMessage('Starting run: ' + op + ' on ' + state.selectedIds.length + ' products...');
@@ -468,9 +445,9 @@
 		if (currentProcessed > totalItems) currentProcessed = totalItems;
 
 		var percent = Math.round((currentProcessed / totalItems) * 100);
-		$('#tcbvm-progress-bar').css('width', percent + '%');
+		$('#tcbvm-bar-fill').css('width', percent + '%');
 		$('#tcbvm-progress-percent').text(percent + '%');
-		$('#tcbvm-progress-text').text('در حال ویرایش بسته ' + (batchIndex + 1) + ' از ' + batches.length + ' (' + currentProcessed + '/' + totalItems + ')…');
+		$('#tcbvm-progress-text').text('در حال پردازش بسته ' + (batchIndex + 1) + ' از ' + batches.length + ' (' + currentProcessed + '/' + totalItems + ')…');
 
 		$.ajax({
 			url: tcbvmData.ajaxUrl,
@@ -503,7 +480,7 @@
 						executeNextBatch(batchIndex + 1, batches, op, params, totalSuccess, totalFailed);
 					}, 200);
 				} else {
-					logMessage('[FAIL] Batch ' + (batchIndex + 1) + ' failed: ' + (res.data.message || 'unknown error'));
+					logMessage('[FAIL] Batch ' + (batchIndex + 1) + ' failed');
 					executeNextBatch(batchIndex + 1, batches, op, params, totalSuccess, totalFailed + currentBatch.length);
 				}
 			},
@@ -518,9 +495,9 @@
 		state.isRunning = false;
 		$('#tcbvm-btn-run').prop('disabled', false);
 
-		$('#tcbvm-progress-bar').css('width', '100%');
+		$('#tcbvm-bar-fill').css('width', '100%');
 		$('#tcbvm-progress-percent').text('100%');
-		$('#tcbvm-progress-text').text('عملیات به پایان رسید.');
+		$('#tcbvm-progress-text').text('عملیات کامل شد.');
 
 		logMessage('--- All batches finished! Success: ' + totalSuccess + ' | Failed: ' + totalFailed + ' ---');
 
@@ -585,8 +562,7 @@
 				return;
 			}
 
-			var orig = $btn.html();
-			$btn.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> در حال بازگردانی…');
+			$btn.prop('disabled', true).text('در حال بازگردانی…');
 
 			$.ajax({
 				url: tcbvmData.ajaxUrl,
@@ -602,12 +578,12 @@
 						alert(res.data.message);
 						location.reload();
 					} else {
-						$btn.prop('disabled', false).html(orig);
+						$btn.prop('disabled', false).text('بازگردانی');
 						alert(res.data.message || 'خطا در بازگردانی');
 					}
 				},
 				error: function () {
-					$btn.prop('disabled', false).html(orig);
+					$btn.prop('disabled', false).text('بازگردانی');
 					alert('خطا در برقراری ارتباط با سرور.');
 				}
 			});
@@ -615,7 +591,7 @@
 	}
 
 	/* -------------------------------------------------------------
-	 * ۹. مدیریت الگوهای آماده
+	 * ۹. ذخیره و حذف الگوها
 	 * ----------------------------------------------------------- */
 	function initPresetSave() {
 		$('#tcbvm-btn-save-preset').on('click', function () {
@@ -691,8 +667,7 @@
 	function initCacheFlush() {
 		$('#tcbvm-btn-flush-cache').on('click', function () {
 			var $btn = $(this);
-			var orig = $btn.html();
-			$btn.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> در حال نوسازی…');
+			$btn.prop('disabled', true).text('در حال نوسازی…');
 
 			$.ajax({
 				url: tcbvmData.ajaxUrl,
@@ -703,11 +678,11 @@
 					nonce: tcbvmData.nonce
 				},
 				success: function (res) {
-					$btn.prop('disabled', false).html(orig);
+					$btn.prop('disabled', false).text('نوسازی کش قیمت‌های ووکامرس');
 					alert(res.data.message);
 				},
 				error: function () {
-					$btn.prop('disabled', false).html(orig);
+					$btn.prop('disabled', false).text('نوسازی کش قیمت‌های ووکامرس');
 					alert('خطا در پاکسازی کش.');
 				}
 			});
