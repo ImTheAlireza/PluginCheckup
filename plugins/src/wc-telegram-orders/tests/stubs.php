@@ -183,7 +183,25 @@ function admin_url($path = '') { return 'http://example.test/wp-admin/' . ltrim(
 function plugin_dir_url($file) { return 'http://example.test/wp-content/plugins/wc-telegram-orders/'; }
 function wp_nonce_url($url, $action = -1) { return $url; }
 function wp_nonce_field($action = -1, $name = '_wpnonce', $referer = true, $echo = true) { return ''; }
-function add_query_arg(...$args) { return isset($args[0]) ? (string) $args[0] : ''; }
+function add_query_arg(...$args) {
+    // add_query_arg($k, $v, $url) یا add_query_arg(['k'=>'v'], $url)
+    if (count($args) >= 3) {
+        $k = $args[0]; $v = $args[1]; $url = (string) $args[2];
+    } elseif (count($args) === 2 && is_array($args[0])) {
+        $k = $args[0]; $v = null; $url = (string) $args[1];
+    } else {
+        return isset($args[0]) ? (string) $args[0] : '';
+    }
+    $sep = (strpos($url, '?') === false) ? '?' : '&';
+    if (is_array($k)) {
+        foreach ($k as $kk => $vv) {
+            $url .= $sep . rawurlencode((string) $kk) . '=' . rawurlencode((string) $vv);
+            $sep = '&';
+        }
+        return $url;
+    }
+    return $url . $sep . rawurlencode((string) $k) . '=' . rawurlencode((string) $v);
+}
 function wp_json_encode($data, $options = 0) { return json_encode($data, $options); }
 function checked($checked, $current = true, $echo = true) { return ((string) $checked === (string) $current) ? 'checked' : ''; }
 function selected($selected, $current = true, $echo = true) { return ((string) $selected === (string) $current) ? 'selected' : ''; }
@@ -253,9 +271,14 @@ function current_user_can($cap) { return true; }
 function check_admin_referer($action = -1, $query_arg = '_wpnonce') { return true; }
 function nocache_headers() { return null; }
 function wp_die($message = '', $title = '', $args = []) { throw new RuntimeException(is_string($message) ? $message : 'wp_die'); }
+function site_url($path = '') { return 'http://example.test' . $path; }
+function dbDelta($sql = '', $execute = true) { return []; }
 function wp_remote_post($url, $args = []) {
     $GLOBALS['wcto_http'][] = ['url' => $url, 'args' => $args];
-    return ['response' => ['code' => 200], 'body' => '{"ok":true}'];
+    if (!empty($GLOBALS['wcto_http_fail'])) {
+        return ['response' => ['code' => 401], 'body' => '{"ok":false,"description":"Unauthorized"}'];
+    }
+    return ['response' => ['code' => 200], 'body' => '{"ok":true,"result":{"message_id":' . (count($GLOBALS['wcto_http']) + 100) . '}}'];
 }
 function wp_remote_retrieve_body($response) { return is_array($response) && isset($response['body']) ? $response['body'] : ''; }
 function wp_remote_retrieve_response_code($response) { return is_array($response) && isset($response['response']['code']) ? $response['response']['code'] : 0; }
@@ -267,15 +290,58 @@ class WCTO_Fake_WPDB {
     public $prefix = 'wp_';
     public $queries = [];
     public function get_charset_collate() { return ''; }
+    public function esc_like($text) { return addcslashes((string) $text, '_%\\'); }
     public function query($sql) { $this->queries[] = $sql; return 1; }
-    public function prepare($sql, ...$args) { return $sql; }
+    public function prepare($sql, ...$args) {
+        if (empty($args)) {
+            return $sql;
+        }
+        $i = 0;
+        return preg_replace_callback('/%[sd]/', function ($m) use ($args, &$i) {
+            $v = isset($args[$i]) ? $args[$i] : '';
+            $i++;
+            return is_int($v) ? (string) $v : "'" . addslashes((string) $v) . "'";
+        }, (string) $sql);
+    }
     public function insert($table, $data, $format = null) { $this->queries[] = ['insert', $table, $data]; return 1; }
-    public function get_var($sql = null) { return 0; }
+    public function get_var($sql = null) {
+        $sql = (string) $sql;
+        if (strpos($sql, 'SHOW TABLES LIKE') !== false) {
+            // جدول لاگ «موجود» فرض می‌شود تا log_table_ready() درست کار کند
+            return preg_match("/LIKE '([^']+)'/", $sql, $m) ? $m[1] : '';
+        }
+        if (strpos($sql, 'COUNT(*)') !== false) {
+            return isset($GLOBALS['wcto_log_count']) ? (int) $GLOBALS['wcto_log_count'] : 0;
+        }
+        return 0;
+    }
     public function get_col($sql = null) { return []; }
     public function get_results($sql = null, $output = 'OBJECT') { return []; }
     public function get_orders_table_name() { return 'wp_wc_orders'; }
 }
 $GLOBALS['wpdb'] = new WCTO_Fake_WPDB();
+
+/* ---------- آیتم سفارش تقلبی ---------- */
+
+class WC_Order_Item {
+    private $name;
+    private $qty;
+    private $total;
+    private $product_id;
+    public function __construct($name, $qty = 1, $total = 0, $product_id = 0) {
+        $this->name = $name;
+        $this->qty = (int) $qty;
+        $this->total = (float) $total;
+        $this->product_id = (int) $product_id;
+    }
+    public function get_name() { return $this->name; }
+    public function get_quantity() { return $this->qty; }
+    public function get_total() { return $this->total; }
+    public function get_total_tax() { return 0; }
+    public function get_product_id() { return $this->product_id; }
+    public function get_variation_id() { return 0; }
+    public function get_type() { return 'line_item'; }
+}
 
 /* ---------- سفارش تقلبی ---------- */
 
@@ -292,6 +358,10 @@ class WC_Order {
     private $address = true;
     private $total = 100000;
     private $created;
+    private $line_items = [];
+    private $phone = '09120000000';
+    private $paid_at = null;
+    private $pay_title = 'درگاه تست';
 
     public function __construct($id, $status = 'pending', $opts = []) {
         $this->id      = (int) $id;
@@ -300,6 +370,14 @@ class WC_Order {
         $this->address = !isset($opts['address']) ? true : (bool) $opts['address'];
         $this->total   = isset($opts['total']) ? $opts['total'] : 100000;
         $this->created = isset($opts['created']) ? (int) $opts['created'] : time() - 60;
+        $this->line_items = !empty($opts['line_items']) ? $opts['line_items'] : [];
+        $this->phone = isset($opts['phone']) ? (string) $opts['phone'] : $this->phone;
+        $this->pay_title = isset($opts['payment']) ? (string) $opts['payment'] : $this->pay_title;
+        if (array_key_exists('paid_at', $opts)) {
+            $this->paid_at = $opts['paid_at'] ? new DateTime('@' . (int) $opts['paid_at']) : null;
+        } else {
+            $this->paid_at = new DateTime('@' . ($this->created + 120));
+        }
         if (!empty($opts['meta'])) {
             $this->meta = $opts['meta'];
         }
@@ -318,12 +396,23 @@ class WC_Order {
     public function get_currency() { return 'IRT'; }
     public function get_total() { return $this->total; }
     public function get_formatted_billing_full_name() { return 'تست خریدار'; }
-    public function get_billing_phone() { return '09120000000'; }
+    public function get_billing_phone() { return $this->phone; }
     public function get_billing_email() { return 'buyer@example.test'; }
-    public function get_payment_method_title() { return 'درگاه تست'; }
+    public function get_payment_method_title() { return $this->pay_title; }
     public function get_customer_note() { return ''; }
-    public function get_item_count() { return $this->items; }
-    public function get_items() { return []; }
+    public function get_item_count() {
+        if (!empty($this->line_items)) {
+            $n = 0;
+            foreach ($this->line_items as $it) { $n += $it->get_quantity(); }
+            return $n;
+        }
+        return $this->items;
+    }
+    public function get_date_paid() { return $this->paid_at; }
+    public function get_items($type = '') {
+        // فقط «line_item» (یا بدون آرگومان) آیتم‌ها را برمی‌گرداند؛ fee خالی است
+        return ($type === '' || $type === 'line_item') ? $this->line_items : [];
+    }
     public function get_shipping_methods() { return []; }
     public function get_used_coupons() { return []; }
     public function get_coupon_codes() { return []; }

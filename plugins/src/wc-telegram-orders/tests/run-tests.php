@@ -18,8 +18,14 @@ class WCTO_Testable extends WC_Telegram_Orders {
     public $sent_messages = [];
     public $logs          = [];
 
+    public $passthrough = false;
+
     public function send_to_all_chats($message, $chat_ids_raw = null) {
         $this->sent_messages[] = $message;
+        if ($this->passthrough) {
+            // مسیر واقعی ارسال (تلگرام تقلبی در stubs) — برای تست هشدار سلامت
+            return parent::send_to_all_chats($message, $chat_ids_raw);
+        }
         return ['ok' => true, 'sent' => ['-100123' => 1], 'message' => ''];
     }
 
@@ -300,6 +306,193 @@ foreach ($used_keys as $key) {
     }
 }
 t('همهٔ کلیدهای متای افزونه در uninstall.php پاک می‌شوند (' . count($used_keys) . ' کلید)', $missing_keys === [], 'جامانده: ' . implode(', ', $missing_keys));
+
+echo "--- 10) تاریخ شمسی داخلی ---\n";
+
+$p = setup();
+t('۱۴۰۵/۰۶/۲۶ برای 2026-09-17', $p->call('gregorian_to_jalali', [2026, 9, 17]) === [1405, 6, 26], var_export($p->call('gregorian_to_jalali', [2026, 9, 17]), true));
+t('نوروز ۱۴۰۳ = 2024-03-20', $p->call('gregorian_to_jalali', [2024, 3, 20]) === [1403, 1, 1], var_export($p->call('gregorian_to_jalali', [2024, 3, 20]), true));
+t('نوروز ۱۴۰۴ = 2025-03-21', $p->call('gregorian_to_jalali', [2025, 3, 21]) === [1404, 1, 1]);
+t('آخرین روز سال کبیسهٔ ۱۳۹۹ = 2021-03-20', $p->call('gregorian_to_jalali', [2021, 3, 20]) === [1399, 12, 30], var_export($p->call('gregorian_to_jalali', [2021, 3, 20]), true));
+
+$ts  = gmmktime(12, 0, 0, 9, 17, 2026);
+$out = $p->format_date('Y/m/d', $ts);
+t('فرمت شمسی با رقم فارسی', $out === '۱۴۰۵/۰۶/۲۶', $out);
+
+$p2 = setup(['jalali_digits' => 'no']);
+t('فرمت شمسی با رقم لاتین', $p2->format_date('Y/m/d', $ts) === '1405/06/26', $p2->format_date('Y/m/d', $ts));
+
+$p3 = setup(['jalali_date' => 'no']);
+t('خاموش بودن شمسی → مسیر میلادی قبلی', strpos($p3->format_date('Y-m-d', $ts), '2026') !== false, $p3->format_date('Y-m-d', $ts));
+
+t('نام ماه شمسی (F)', $p->format_date('d F Y', $ts) === '۲۶ شهریور ۱۴۰۵', $p->format_date('d F Y', $ts));
+// نکته: منطقهٔ زمانی از tzdata همان سرور می‌آید؛ پس انتظار را از همان منبعِ زمانِ پلاگین می‌سازیم
+$t_hm  = gmmktime(10, 5, 0, 9, 17, 2026);
+$greg_hm = $p->call('plugin_date', ['H:i', $t_hm]);
+t('ساعت/دقیقه از همان منبع زمان میلادی می‌آید و فارسی می‌شود', $p->format_date('H:i', $t_hm) === $p->call('to_persian_digits', [$greg_hm]), $p->format_date('H:i', $t_hm) . ' vs ' . $greg_hm);
+t('human_duration', $p->call('human_duration', [3725]) === '1 ساعت و 2 دقیقه', $p->call('human_duration', [3725]));
+t('to_persian_digits', $p->call('to_persian_digits', ['12345']) === '۱۲۳۴۵');
+
+echo "--- 11) اکشن گروهی در لیست سفارش‌ها ---\n";
+
+$actions = setup()->add_bulk_actions([]);
+t('دو اکشن گروهی ثبت می‌شود', isset($actions['wc_telegram_bulk_send'], $actions['wc_telegram_bulk_force']));
+
+// سه سفارش: یکی مجاز، دو تا غیرمجاز
+$o1 = new WC_Order(701, 'processing', ['meta' => ['_wc_telegram_sent' => 'yes']]);
+$o2 = new WC_Order(702, 'pending');
+$o3 = new WC_Order(703, 'cancelled');
+$p  = setup([], [$o1, $o2, $o3]);
+$url = $p->handle_bulk_send('http://example.test/list', 'wc_telegram_bulk_send', [701, 702, 703]);
+t('فقط سفارش مجاز در صف می‌رود', count(send_events()) === 1, 'رویداد=' . count(send_events()));
+t('پرچم ارسال قبلی پاک می‌شود تا دوباره برود', $o1->get_meta('_wc_telegram_sent') === '');
+t('پیوند بازگشت با کد نتیجه', strpos($url, 'wc_telegram_bulk=ok') !== false, $url);
+$res = get_transient('wc_telegram_bulk_result');
+t('آمار نتیجه: ۱ در صف، ۲ رد', is_array($res) && $res['queued'] === 1 && $res['status'] === 2, var_export($res, true));
+
+// محافظ ضد سیل: اجرای دوم در بازهٔ قفل قبول نمی‌شود
+$url2 = $p->handle_bulk_send('http://example.test/list', 'wc_telegram_bulk_send', [701]);
+t('اجرای دوم پشت‌سرهم رد می‌شود (قفل ضد سیل)', strpos($url2, 'wc_telegram_bulk=locked') !== false, $url2);
+t('قفل، رویداد تازه نمی‌سازد', count(send_events()) === 1, 'رویداد=' . count(send_events()));
+delete_transient('wc_telegram_bulk_lock');
+
+// حالت اجباری: شرط پرداخت نادیده گرفته می‌شود و پرچم یک‌بارمصرف می‌خورد
+$o4 = new WC_Order(704, 'pending', ['meta' => ['_wc_telegram_pending' => 'yes']]);
+$p  = setup([], [$o4]);
+$p->handle_bulk_send('http://example.test/list', 'wc_telegram_bulk_force', [704]);
+t('حالت اجباری: سفارش پرداخت‌نشده هم در صف می‌رود', count(send_events()) === 1, 'رویداد=' . count(send_events()));
+t('پرچم ارسال اجباری ثبت می‌شود', $o4->get_meta('_wc_telegram_force') === 'yes');
+t('پرچم انتظار پاک می‌شود', $o4->get_meta('_wc_telegram_pending') === '');
+$p->process_order_send(704);
+t('پردازشگر کرون با پرچم اجباری، سفارش را می‌فرستد', count($p->sent_messages) === 1, var_export($p->sent_messages, true));
+t('پرچم اجباری یک‌بارمصرف است', $o4->get_meta('_wc_telegram_force') === '');
+
+// سقف تعداد + فاصلهٔ پلکانی
+$ids = [];
+$many = [];
+for ($i = 1; $i <= 5; $i++) {
+    $oid = 710 + $i;
+    $ids[] = $oid;
+    $many[$oid] = new WC_Order($oid, 'processing');
+}
+$p = setup(['bulk_max' => 3, 'bulk_gap' => 5], $many);
+$p->handle_bulk_send('http://example.test/list', 'wc_telegram_bulk_send', $ids);
+$res = get_transient('wc_telegram_bulk_result');
+t('سقف تعداد اعمال می‌شود (۳ از ۵)', is_array($res) && $res['queued'] === 3 && $res['cut'] === 2, var_export($res, true));
+$ev = send_events();
+t('رویدادها پلکانی زمان‌بندی می‌شوند (فاصلهٔ ۵ ثانیه)', count($ev) === 3 && ($ev[2]['ts'] - $ev[0]['ts']) === 10, 'ts=' . implode(',', array_column($ev, 'ts')));
+
+// اکشن نامرتبط دست‌نخورده برمی‌گردد
+t('اکشن بی‌ربط نادیده گرفته می‌شود', $p->handle_bulk_send('http://x', 'delete', [711]) === 'http://x');
+
+echo "--- 12) هشدار سلامت ربات ---\n";
+
+$o = new WC_Order(801, 'processing');
+$p = setup(['health_threshold' => 3, 'health_cooldown' => 6], [$o]);
+$p->passthrough = true;
+$GLOBALS['wcto_http_fail'] = true;
+for ($i = 1; $i <= 3; $i++) {
+    $p->send_to_all_chats('پیام تست ' . $i);
+}
+t('شمارش شکست‌های پشت‌سرهم', $p->health_streak() === 3, 'streak=' . $p->health_streak());
+t('هشدار سلامت ثبت شد', get_option('wc_telegram_health_alert') > 0);
+t('رویداد لاگ health_alert', $p->has_event('health_alert'));
+t('هشدار در بازهٔ توقف تکرار نمی‌شود', (function () use ($p) {
+    $before = $p->logs;
+    $p->send_to_all_chats('پیام بعدی');
+    foreach (array_slice($p->logs, count($before)) as $row) {
+        if ($row['event'] === 'health_alert') {
+            return false;
+        }
+    }
+    return true;
+})());
+$GLOBALS['wcto_http_fail'] = false;
+delete_transient('wc_telegram_429_until');
+$p->send_to_all_chats('پیام موفق');
+t('با ارسال موفق، شمارنده صفر می‌شود', $p->health_streak() === 0, 'streak=' . $p->health_streak());
+
+echo "--- 13) داشبورد آمار ---\n";
+
+$now = time();
+$orders = [
+    901 => new WC_Order(901, 'processing', ['total' => 500000, 'phone' => '09121111111', 'payment' => 'زرین‌پال', 'created' => $now - 86400, 'paid_at' => $now - 86000, 'line_items' => [new WC_Order_Item('کیس A', 2, 300000, 11), new WC_Order_Item('قاب B', 1, 50000, 12)]]),
+    902 => new WC_Order(902, 'completed', ['total' => 250000, 'phone' => '09122222222', 'payment' => 'کارت به کارت', 'created' => $now - 43200, 'paid_at' => $now - 43000, 'line_items' => [new WC_Order_Item('کیس A', 1, 150000, 11)]]),
+    903 => new WC_Order(903, 'pending', ['total' => 999000, 'phone' => '09123333333', 'created' => $now - 100, 'paid_at' => null, 'line_items' => [new WC_Order_Item('کیس C', 9, 999000, 13)]]),
+];
+$p = setup([], $orders);
+$d = $p->collect_stats(30, true);
+t('فقط سفارش‌های پرداخت‌شده شمرده می‌شوند', $d['count'] === 2, 'count=' . $d['count']);
+t('جمع فروش درست است', abs($d['revenue'] - 750000) < 1, 'revenue=' . $d['revenue']);
+t('پرفروش‌ترین محصول: کیس A', (function () use ($d) {
+    $top = array_keys($d['products']);
+    return !empty($top) && $top[0] === 'کیس A';
+})(), implode(',', array_keys($d['products'])));
+t('تعداد آیتم پرفروش‌ترین محصول = ۳', $d['products']['کیس A']['qty'] === 3, var_export(isset($d['products']['کیس A']) ? $d['products']['کیس A'] : null, true));
+t('محصولِ سفارش پرداخت‌نشده شمرده نمی‌شود', !isset($d['products']['کیس C']));
+t('بزرگ‌ترین مشتری = ۰۹۱۲۱۱۱۱۱۱۱', (function () use ($d) {
+    $keys = array_keys($d['customers']);
+    return !empty($keys) && $keys[0] === '09121111111';
+})(), implode(',', array_keys($d['customers'])));
+t('مجموع بزرگ‌ترین مشتری = ۵۰۰٬۰۰۰', abs($d['customers']['09121111111']['sum'] - 500000) < 1);
+t('میانگین فاصلهٔ بین سفارش‌های پرداخت‌شده محاسبه شد', $d['avg_gap'] > 30000 && $d['avg_gap'] < 60000, 'avg=' . $d['avg_gap']);
+t('روش‌های پرداخت تفکیک شده‌اند', isset($d['payments']['زرین‌پال'], $d['payments']['کارت به کارت']));
+t('ساعت‌های سفارش ثبت شده', count($d['hours']) >= 1);
+$cached = $p->collect_stats(30, false);
+t('نتیجه کش می‌شود (generated یکسان)', $cached['generated'] === $d['generated']);
+$top = $p->call('stats_top', [['a' => ['sum' => 1], 'b' => ['sum' => 9], 'c' => ['sum' => 5]], 'sum', 2]);
+t('stats_top نزولی و محدود می‌کند', array_keys($top) === ['b', 'c'], implode(',', array_keys($top)));
+$top_h = $p->call('stats_top', [[10 => 2, 14 => 7, 22 => 4], 0, 2]);
+t('stats_top روی فهرست ساده (ساعت => تعداد)', array_keys($top_h) === [14, 22], implode(',', array_keys($top_h)));
+
+// رندر تب آمار بدون خطا
+$_GET['tab'] = 'stats';
+$GLOBALS['wcto_log_count'] = 4;
+ob_start();
+$p->call('render_stats_tab', [$p->get_settings(), 'wc_telegram_orders_settings']);
+$html = ob_get_clean();
+unset($_GET['tab']);
+t('تب آمار رندر می‌شود', strpos($html, 'پرفروش‌ترین محصولات') !== false && strpos($html, 'بزرگ‌ترین مشتریان') !== false);
+t('KPI میانگین فاصله در خروجی هست', strpos($html, 'میانگین فاصلهٔ بین دو سفارش پرداخت‌شده') !== false);
+t('KPI سلامت ربات در خروجی هست', strpos($html, 'شکست‌های پشت‌سرهم ربات') !== false);
+t('نام محصول در جدول چاپ می‌شود', strpos($html, 'کیس A') !== false);
+
+echo "--- 14) فالبک کرون (DISABLE_WP_CRON) ---\n";
+
+if (!defined('DISABLE_WP_CRON')) {
+    define('DISABLE_WP_CRON', true);
+}
+$p = setup([], [new WC_Order(1001, 'processing')]);
+delete_transient('wc_telegram_cron_spawned');
+$GLOBALS['wcto_http'] = [];
+$p->process_order_send(1001);   // اول ارسال انجام شود
+delete_transient('wc_telegram_cron_spawned');
+$GLOBALS['wcto_http'] = [];
+$o = new WC_Order(1002, 'processing');
+$p = setup([], [$o]);
+$p->on_new_order(1002, null);
+$pinged = false;
+foreach ($GLOBALS['wcto_http'] as $call) {
+    if (strpos($call['url'], 'wp-cron.php') !== false) {
+        $pinged = true;
+        t('پینگ کرون غیرهمزمان است (blocking=false)', isset($call['args']['blocking']) && $call['args']['blocking'] === false);
+        t('زمان انتظار پینگ کوتاه است (timeout≤0.01)', isset($call['args']['timeout']) && $call['args']['timeout'] <= 0.01);
+    }
+}
+t('وقتی کرون وردپرس خاموش است، wp-cron.php پینگ می‌شود', $pinged, var_export(array_column($GLOBALS['wcto_http'], 'url'), true));
+t('رویداد کرون هم زمان‌بندی شده', count(send_events()) === 1);
+
+echo "--- 15) رندر کامل صفحهٔ تنظیمات ---\n";
+
+$p = setup();
+foreach (['orders', 'products', 'stats'] as $tb) {
+    $_GET['tab'] = $tb;
+    ob_start();
+    $p->render_settings_page();
+    $page = ob_get_clean();
+    t('تب «' . $tb . '» بدون خطا رندر می‌شود و در ناوبری فعال است', strpos($page, 'wcto-tab is-active') !== false && strlen($page) > 500, 'len=' . strlen($page));
+}
+unset($_GET['tab']);
 
 /* ---------- نتیجه ---------- */
 
