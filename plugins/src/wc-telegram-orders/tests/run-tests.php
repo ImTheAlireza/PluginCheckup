@@ -288,6 +288,19 @@ $p->process_order_send(601);
 t('سفارش منقضیِ پرداخت‌شده ارسال می‌شود', count($p->sent_messages) === 1, var_export($p->sent_messages, true));
 t('پرچم انقضا بعد از ارسال پاک می‌شود', $old->get_meta('_wc_telegram_expired') === '' && $old->get_meta('_wc_telegram_sent') === 'yes');
 
+echo "--- 9) پاک‌سازی هنگام حذف افزونه ---\n";
+
+preg_match_all("/'(_wc_telegram_[a-z_]+)'/", file_get_contents(dirname(__DIR__) . '/wc-telegram-orders.php'), $mm);
+$used_keys = array_values(array_unique($mm[1]));
+$uninstall = file_get_contents(dirname(__DIR__) . '/uninstall.php');
+$missing_keys = [];
+foreach ($used_keys as $key) {
+    if (strpos($uninstall, $key) === false) {
+        $missing_keys[] = $key;
+    }
+}
+t('همهٔ کلیدهای متای افزونه در uninstall.php پاک می‌شوند (' . count($used_keys) . ' کلید)', $missing_keys === [], 'جامانده: ' . implode(', ', $missing_keys));
+
 /* ---------- نتیجه ---------- */
 
 echo "\nنتیجه: {$pass} موفق، {$fail} ناموفق\n";
