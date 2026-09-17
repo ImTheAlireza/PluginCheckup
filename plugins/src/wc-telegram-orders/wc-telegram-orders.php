@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ارسال سفارش‌ها به تلگرام ووکامرس
  * Description:       ارسال خودکار سفارش‌های جدید ووکامرس به تلگرام با فرمت فارسی دلخواه + گزارش روزانه فروش (با سنجاق خودکار) + اعلان کمبود موجودی محصولات + سیستم لاگ رویدادها در پنل.
- * Version:           1.12.4
+ * Version:           1.13.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            علیرضا شعبان زاده
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_TELEGRAM_ORDERS_VERSION', '1.12.4');
+define('WC_TELEGRAM_ORDERS_VERSION', '1.13.0');
 define('WC_TELEGRAM_ORDERS_OPTION', 'wc_telegram_orders_settings');
 define('WC_TELEGRAM_ORDERS_FILE', __FILE__);
 
@@ -118,6 +118,10 @@ class WC_Telegram_Orders {
     public function defaults() {
         return [
             'enabled'       => 'yes',
+            // شرط پرداخت: سفارش تا رسیدن به وضعیت مجاز (پیش‌فرض «در حال انجام» = پرداخت‌شده) معرفی نمی‌شود؛
+            // سفارش در انتظار پرداخت/لغوشده هیچ پیامی نمی‌گیرد
+            'paid_gate'     => 'yes',
+            'send_statuses' => 'processing',
             'bot_token'     => '',
             'chat_ids'      => '',
             'template'      => $this->default_template(),
@@ -368,6 +372,16 @@ class WC_Telegram_Orders {
         /* ---- تب «ارسال سفارشات جدید» ---- */
         if ($tab === '' || $tab === 'orders') {
             $out['enabled'] = (!empty($input['enabled']) && $input['enabled'] === 'yes') ? 'yes' : 'no';
+            // شرط پرداخت: فقط سفارش‌های پرداخت‌شده (وضعیت مجاز) به تلگرام بروند
+            $out['paid_gate'] = (!empty($input['paid_gate']) && $input['paid_gate'] === 'yes') ? 'yes' : 'no';
+            if (isset($input['send_statuses'])) {
+                $send_statuses = array_values(array_unique(array_filter(array_map(function ($x) {
+                    // اول کوچک‌سازی، بعد حذف پیشوند wc- (ورودی می‌تواند WC-ON-HOLD باشد)
+                    return sanitize_key(str_replace('wc-', '', strtolower(trim($x))));
+                }, explode(',', (string) $input['send_statuses'])))));
+                // خالی/نامعتبر → پیش‌فرض امن: فقط «در حال انجام»
+                $out['send_statuses'] = $send_statuses ? implode(',', $send_statuses) : 'processing';
+            }
             // توکن: اگر خالی ارسال شد، توکن قبلی حفظ می‌شود؛ تیک «حذف توکن» پاکش می‌کند
             $in_token = isset($input['bot_token']) ? sanitize_text_field(trim($input['bot_token'])) : '';
             if ($in_token !== '') {
@@ -560,6 +574,10 @@ class WC_Telegram_Orders {
     /* ---------- تب ۱: ارسال سفارشات جدید ---------- */
     private function render_orders_tab($s, $opt) {
         $has_token = !empty($s['bot_token']);
+        // اسلاگ وضعیت‌های ثبت‌شده در همین سایت — برای راهنمای «وضعیت‌های مجاز ارسال»
+        $status_slugs = function_exists('wc_get_order_statuses')
+            ? array_map(function ($x) { return str_replace('wc-', '', $x); }, array_keys(wc_get_order_statuses()))
+            : ['processing', 'completed', 'on-hold', 'pending', 'cancelled', 'refunded', 'failed'];
         ?>
         <?php $this->maybe_render_debug(); ?>
 
@@ -598,6 +616,19 @@ class WC_Telegram_Orders {
                             <input type="text" id="wc-tg-wallet-key" name="<?php echo esc_attr($opt); ?>[wallet_meta_key]" value="<?php echo esc_attr(isset($s['wallet_meta_key']) ? $s['wallet_meta_key'] : ''); ?>" class="tisa-input tisa-input--code" dir="ltr" placeholder="خالی = تشخیص خودکار" />
                             <p class="wcto-hint">فقط اگر سهم کیف پول اشتباه تشخیص داده شد؛ کلید را از «عیب‌یابی سفارش» بردارید.</p>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>شرط ارسال سفارش</h2><p>سفارش در انتظار پرداخت یا لغوشده به تلگرام نمی‌رود؛ با پرداخت شدن (تغییر وضعیت) معرفی می‌شود.</p></div></div>
+                <div class="wcto-card-body">
+                    <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[paid_gate]" value="yes" <?php checked(isset($s['paid_gate']) ? $s['paid_gate'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>فقط سفارش‌های پرداخت‌شده ارسال شوند</span></label>
+                    <div class="wcto-field">
+                        <label class="wcto-label" for="wc-tg-send-statuses">وضعیت‌های مجاز ارسال</label>
+                        <input type="text" id="wc-tg-send-statuses" name="<?php echo esc_attr($opt); ?>[send_statuses]" value="<?php echo esc_attr(isset($s['send_statuses']) ? $s['send_statuses'] : 'processing'); ?>" class="tisa-input tisa-input--code" dir="ltr" placeholder="processing" />
+                        <p class="wcto-hint">اسلاگ وضعیت‌ها با ویرگول؛ پیش‌فرض <code dir="ltr">processing</code> (در حال انجام = پرداخت‌شده). تا رسیدن به این وضعیت، پیام سفارش در انتظار می‌ماند و پیام «لغو» یا «در انتظار پرداخت» نمی‌رود.</p>
+                        <p class="wcto-hint">وضعیت‌های این سایت: <code dir="ltr"><?php echo esc_html(implode(', ', $status_slugs)); ?></code></p>
                     </div>
                 </div>
             </section>
@@ -812,8 +843,9 @@ class WC_Telegram_Orders {
             return;
         }
 
-        // اگر آدرس یا اقلام هنوز ثبت نشده (درگاه‌هایی مثل ملت/دیجیکالا سفارش را زود می‌سازند)،
-        // فعلاً هیچ پیامی نفرست؛ با کامل شدن، فقط «یک» پیام کامل ارسال می‌شود — نه دو پیام
+        // اگر آدرس یا اقلام هنوز ثبت نشده (درگاه‌هایی مثل ملت/دیجیکالا سفارش را زود می‌سازند)
+        // یا سفارش هنوز پرداخت نشده، فعلاً هیچ پیامی نفرست؛
+        // با پرداخت/تکمیل، فقط «یک» پیام کامل ارسال می‌شود — نه دو پیام
         $missing = [];
         if (!$this->has_address($order)) {
             $missing[] = 'آدرس';
@@ -826,6 +858,25 @@ class WC_Telegram_Orders {
             $order->add_order_note('⏳ ' . implode(' و ', $missing) . ' هنوز ثبت نشده؛ پیام تلگرام پس از تکمیل اطلاعات ارسال می‌شود.');
             $order->save_meta_data();
             $this->log('info', 'order', 'order_pending', sprintf('سفارش #%s معوق شد: %s هنوز ثبت نشده.', $order->get_order_number(), implode(' و ', $missing)), ['missing' => $missing], $order->get_id());
+            return;
+        }
+
+        // شرط پرداخت: سفارش در انتظار پرداخت (pending) یا لغوشده معرفی نمی‌شود؛
+        // پیام با تغییر وضعیت به وضعیت مجاز (پیش‌فرض «در حال انجام» = پرداخت‌شده) می‌رود
+        if (!$this->order_send_is_allowed($order, $s)) {
+            if ($this->order_status_is_dead($order->get_status())) {
+                // سفارش از دست رفته — پرچمی نمی‌سازیم که جارو دنبالش بگردد
+                $this->log('info', 'order', 'order_skipped_dead', sprintf('سفارش #%s با وضعیت «%s» به تلگرام ارسال نشد (سفارش مرده).', $order->get_order_number(), wc_get_order_status_name($order->get_status())), ['status' => $order->get_status()], $order->get_id());
+                return;
+            }
+            $order->update_meta_data('_wc_telegram_pending', 'yes');
+            $order->add_order_note(sprintf(
+                '⏳ سفارش هنوز پرداخت نشده (وضعیت «%s»)؛ پیام تلگرام پس از تغییر وضعیت به «%s» ارسال می‌شود.',
+                wc_get_order_status_name($order->get_status()),
+                $this->allowed_statuses_label($s)
+            ));
+            $order->save_meta_data();
+            $this->log('info', 'order', 'order_pending_payment', sprintf('سفارش #%s معرفی نشد: منتظر پرداخت است (وضعیت «%s»؛ مجاز: %s).', $order->get_order_number(), wc_get_order_status_name($order->get_status()), implode(',', $this->send_allowed_statuses($s))), ['status' => $order->get_status(), 'allowed' => $this->send_allowed_statuses($s)], $order->get_id());
             return;
         }
 
@@ -874,14 +925,17 @@ class WC_Telegram_Orders {
     // پیام کوتاه تغییر وضعیت — روی ایجاد سفارش اجرا نمی‌شود، فقط روی تغییر واقعی وضعیت
     public function on_status_changed($order_id, $old_status, $new_status, $order = null) {
         $s = $this->get_settings();
-        if ($s['enabled'] !== 'yes' || $s['status_enabled'] !== 'yes') {
+        if ($s['enabled'] !== 'yes') {
             return;
         }
         if ($old_status === $new_status) {
             return;
         }
-        // اول پیام معوق (اگر هست)؛ اگر همین حالا پیام کامل رفت، پیام کوتاه لازم نیست
-        if ($this->flush_pending_message($order_id, $order)) {
+        // اول پیام معوق (اگر هست)؛ اگر همین حالا پیام کامل رفت، پیام کوتاه لازم نیست.
+        // این بررسی مستقل از کلید «ارسال پیام تغییر وضعیت» است: سفارش پرداخت‌شده باید
+        // با تغییر وضعیت به «در حال انجام» معرفی شود حتی وقتی پیام‌های کوتاه خاموش‌اند.
+        $flushed = $this->flush_pending_message($order_id, $order);
+        if ($s['status_enabled'] !== 'yes' || $flushed) {
             return;
         }
         $fresh_status = wc_get_order($order_id);
@@ -1121,14 +1175,14 @@ class WC_Telegram_Orders {
                 continue;
             }
             $st = $order->get_status();
-            if (in_array($st, ['cancelled', 'refunded', 'failed', 'trash'], true)) {
+            if ($this->order_status_is_dead($st)) {
                 $order->delete_meta_data('_wc_telegram_pending');
                 $order->save_meta_data();
                 $n['dropped']++;
                 continue;
             }
-            $flush_statuses = apply_filters('wc_telegram_flush_statuses', ['processing', 'completed', 'on-hold']);
-            if ($this->order_ready($order) || in_array($st, $flush_statuses, true)) {
+            // فقط سفارشی که از نظر وضعیت مجاز است (پیش‌فرض: پرداخت‌شده = «در حال انجام») معرفی می‌شود
+            if ($this->order_send_is_allowed($order, $s)) {
                 $this->schedule_order_send($order->get_id());
                 $n['flushed']++;
                 continue;
@@ -1163,6 +1217,59 @@ class WC_Telegram_Orders {
         return $this->has_address($order) && $this->has_items($order);
     }
 
+    /* ---------------- شرط ارسال: فقط سفارش‌های پرداخت‌شده ---------------- */
+
+    // وضعیت‌هایی که ارسال پیام سفارش را آزاد می‌کنند (پیش‌فرض: processing = در حال انجام = پرداخت‌شده)
+    private function send_allowed_statuses($s = null) {
+        $s = $s ?: $this->get_settings();
+        $raw = isset($s['send_statuses']) ? (string) $s['send_statuses'] : '';
+        $list = array_values(array_unique(array_filter(array_map(function ($x) {
+            // اول کوچک‌سازی، بعد حذف پیشوند wc- (ورودی می‌تواند WC-ON-HOLD باشد)
+            return sanitize_key(str_replace('wc-', '', strtolower(trim($x))));
+        }, explode(',', $raw)))));
+        return $list ? $list : ['processing'];
+    }
+
+    // شرط پرداخت فعال است؟ (غیرفعال = رفتار نسخه‌های قبل)
+    private function paid_gate_enabled($s = null) {
+        $s = $s ?: $this->get_settings();
+        return !isset($s['paid_gate']) || $s['paid_gate'] === 'yes';
+    }
+
+    // فهرست قدیمی «وضعیت‌های پولی» — فقط وقتی شرط پرداخت خاموش است استفاده می‌شود
+    private function legacy_flush_statuses() {
+        return apply_filters('wc_telegram_flush_statuses', ['processing', 'completed', 'on-hold']);
+    }
+
+    /**
+     * آیا پیام این سفارش از نظر وضعیت مجاز به ارسال است؟
+     * شرط پرداخت روشن (پیش‌فرض): فقط وضعیت‌های فهرست «وضعیت‌های مجاز ارسال» —
+     * یعنی سفارش در انتظار پرداخت یا لغوشده هیچ پیامی نمی‌گیرد و با رسیدن به
+     * «در حال انجام» (پرداخت‌شده) معرفی می‌شود.
+     * شرط پرداخت خاموش: رفتار قبلی — آماده بودن سفارش یا رسیدن به وضعیت پولی.
+     */
+    private function order_send_is_allowed($order, $s = null) {
+        $s = $s ?: $this->get_settings();
+        $status = str_replace('wc-', '', (string) $order->get_status());
+        if ($this->paid_gate_enabled($s)) {
+            return in_array($status, $this->send_allowed_statuses($s), true);
+        }
+        return $this->order_ready($order) || in_array($status, $this->legacy_flush_statuses(), true);
+    }
+
+    // وضعیت‌های مرده: این سفارش دیگر هیچ پیامی نمی‌گیرد و پرچم‌هایش پاک می‌شود
+    private function order_status_is_dead($status) {
+        return in_array(str_replace('wc-', '', (string) $status), ['cancelled', 'auto-cancelled', 'refunded', 'failed', 'trash'], true);
+    }
+
+    // نام خوانای وضعیت‌های مجاز (برای یادداشت سفارش و لاگ)
+    private function allowed_statuses_label($s = null) {
+        $names = array_filter(array_map(function ($slug) {
+            return function_exists('wc_get_order_status_name') ? wc_get_order_status_name($slug) : $slug;
+        }, $this->send_allowed_statuses($s)));
+        return $names ? implode(' یا ', $names) : 'پرداخت‌شده';
+    }
+
     // بررسی پیام معوق — خروجی true یعنی پیام کامل جاری است و پیام کوتاه تغییر وضعیت لازم نیست.
     // (سفارش‌های دیجیکالا که موقع ثبت آدرس نداشتند، + سازگاری با پرچم نسخه 1.5.0)
     // خودِ ارسال به کرون موکول می‌شود تا پرداخت/تسویه‌حساب منتظر پاسخ تلگرام نماند.
@@ -1179,24 +1286,32 @@ class WC_Telegram_Orders {
             return false;
         }
         $pending = ($order->get_meta('_wc_telegram_pending') === 'yes');
+        $expired = ($order->get_meta('_wc_telegram_expired') === 'yes');
         $legacy  = ($order->get_meta('_wc_telegram_sent') === 'yes'
                  && $order->get_meta('_wc_telegram_needs_address') === 'yes');
-        if (!$pending && !$legacy) {
+        if (!$pending && !$legacy && !$expired) {
             return false;
         }
         $st = $order->get_status();
         // مرگ خاموش: لغو/استرداد/ناموفق قبل از اولین معرفی — بدون هیچ پیامی
-        if (in_array($st, ['cancelled', 'refunded', 'failed', 'trash'], true)) {
+        if ($this->order_status_is_dead($st)) {
             $order->delete_meta_data('_wc_telegram_pending');
             $order->delete_meta_data('_wc_telegram_needs_address');
+            $order->delete_meta_data('_wc_telegram_expired');
             $order->save_meta_data();
             return false;
         }
-        // آماده ارسال وقتی آدرس و اقلام هر دو آمده‌اند،
-        // یا به وضعیت پولی رسیده (حتی اگر چیزی هنوز ناقص است)
-        $flush_statuses = apply_filters('wc_telegram_flush_statuses', ['processing', 'completed', 'on-hold']);
-        if (!$this->order_ready($order) && !in_array($st, $flush_statuses, true)) {
+        // شرط پرداخت: تا رسیدن به وضعیت مجاز (پیش‌فرض «در حال انجام» = پرداخت‌شده) صبر می‌کنیم؛
+        // رسیدن به آن وضعیت حتی با آدرس/اقلام ناقص هم پیام را آزاد می‌کند
+        if (!$this->order_send_is_allowed($order, $s)) {
             return false; // هنوز زود است — صبر کن
+        }
+        // سفارش منقضی (بیش از ۲۴ ساعت معوق) حالا پرداخت شده — دوباره وارد چرخهٔ ارسال
+        // می‌شود تا پرداخت دیرهنگام بی‌پاسخ نماند (و از فهرست جارو هم خارج شده بود)
+        if ($expired && !$pending) {
+            $order->delete_meta_data('_wc_telegram_expired');
+            $order->update_meta_data('_wc_telegram_pending', 'yes');
+            $order->save_meta_data();
         }
         $this->schedule_order_send($order->get_id());
         $this->log('debug', 'order', 'flush_queued', sprintf('پیام معوق سفارش #%s زمان‌بندی شد.', $order->get_order_number()), ['status' => $st], $order->get_id());
@@ -1277,6 +1392,21 @@ class WC_Telegram_Orders {
         if ($s['enabled'] !== 'yes') {
             return;
         }
+        // محافظ نهایی: اگر بین زمان‌بندی و اجرا وضعیت عوض شده (لغو شده یا هنوز پرداخت نشده)،
+        // پیام نمی‌رود؛ پرچم معوق می‌ماند تا با رسیدن به وضعیت مجاز معرفی شود
+        if (!$this->order_send_is_allowed($order, $s)) {
+            if ($this->order_status_is_dead($order->get_status())) {
+                $order->delete_meta_data('_wc_telegram_attempts');
+                $order->save_meta_data();
+                $this->log('info', 'order', 'order_skipped_dead', sprintf('سفارش #%s ارسال نشد: وضعیت «%s».', $order->get_order_number(), wc_get_order_status_name($order->get_status())), ['status' => $order->get_status()], $order_id);
+                return;
+            }
+            $order->update_meta_data('_wc_telegram_pending', 'yes');
+            $order->delete_meta_data('_wc_telegram_attempts');
+            $order->save_meta_data();
+            $this->log('debug', 'order', 'order_send_blocked', sprintf('سفارش #%s هنوز ارسال نمی‌شود: وضعیت «%s» (مجاز: %s).', $order->get_order_number(), wc_get_order_status_name($order->get_status()), implode(',', $this->send_allowed_statuses($s))), ['status' => $order->get_status()], $order_id);
+            return;
+        }
         if (!$this->acquire_send_lock($order_id)) {
             return; // پردازش دیگری در حال ارسال است
         }
@@ -1301,6 +1431,10 @@ class WC_Telegram_Orders {
         if (!$order instanceof WC_Order) {
             return;
         }
+        $s = $this->get_settings();
+        if ($s['enabled'] !== 'yes') {
+            return;
+        }
         $pending = ($order->get_meta('_wc_telegram_pending') === 'yes');
         $legacy  = ($order->get_meta('_wc_telegram_sent') === 'yes'
                  && $order->get_meta('_wc_telegram_needs_address') === 'yes');
@@ -1308,15 +1442,15 @@ class WC_Telegram_Orders {
             return;
         }
         $st = $order->get_status();
-        if (in_array($st, ['cancelled', 'refunded', 'failed', 'trash'], true)) {
+        if ($this->order_status_is_dead($st)) {
             $order->delete_meta_data('_wc_telegram_pending');
             $order->delete_meta_data('_wc_telegram_needs_address');
             $order->save_meta_data();
             return;
         }
-        $flush_statuses = apply_filters('wc_telegram_flush_statuses', ['processing', 'completed', 'on-hold']);
-        if (!$this->order_ready($order) && !in_array($st, $flush_statuses, true)) {
-            return; // هنوز آماده نیست — پرچم می‌ماند
+        // شرط پرداخت: اگر وضعیت عوض شده و دیگر مجاز نیست (مثلاً لغو شده)، پیام نمی‌رود
+        if (!$this->order_send_is_allowed($order, $s)) {
+            return; // پرچم معوق می‌ماند تا با تغییر وضعیت به حالت مجاز برود
         }
         if (!$this->acquire_send_lock($order_id)) {
             return;
@@ -1327,6 +1461,7 @@ class WC_Telegram_Orders {
                 $order->update_meta_data('_wc_telegram_sent', 'yes');
                 $order->delete_meta_data('_wc_telegram_pending');
                 $order->delete_meta_data('_wc_telegram_needs_address');
+                $order->delete_meta_data('_wc_telegram_expired');
                 $order->delete_meta_data('_wc_telegram_attempts');
                 $order->add_order_note('📍 پیام کامل سفارش به تلگرام ارسال شد.');
                 $order->save_meta_data();
