@@ -288,7 +288,7 @@ if ( ! class_exists( 'TCP_Coupons' ) ) {
 			fwrite( $out, "\xEF\xBB\xBF" );
 			fputcsv( $out, array( 'code', 'type', 'amount', 'status', 'usage', 'limit', 'expires', 'batch' ) );
 			foreach ( $rows as $r ) {
-				fputcsv( $out, array( $r['code'], $r['type'], $r['amount'], $r['status'], $r['usage'], $r['limit'], $r['expires'], $r['batch'] ) );
+				fputcsv( $out, array( TCP_Settings::csv_cell( $r['code'] ), $r['type'], $r['amount'], $r['status'], $r['usage'], $r['limit'], $r['expires'], TCP_Settings::csv_cell( $r['batch'] ) ) );
 			}
 			fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 			exit;
