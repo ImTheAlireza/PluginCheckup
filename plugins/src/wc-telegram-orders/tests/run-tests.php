@@ -445,6 +445,17 @@ t('stats_top نزولی و محدود می‌کند', array_keys($top) === ['b',
 $top_h = $p->call('stats_top', [[10 => 2, 14 => 7, 22 => 4], 0, 2]);
 t('stats_top روی فهرست ساده (ساعت => تعداد)', array_keys($top_h) === [14, 22], implode(',', array_keys($top_h)));
 
+// صحت محاسبات: جمع هر تفکیک باید با KPI اصلی بخواند
+t('جمع روش‌های پرداخت == کل درآمد', abs(array_sum(array_column($d['payments'], 'sum')) - $d['revenue']) < 1,
+    'pay=' . array_sum(array_column($d['payments'], 'sum')) . ' rev=' . $d['revenue']);
+t('تعداد روش‌های پرداخت == تعداد سفارش‌ها', array_sum(array_column($d['payments'], 'count')) === $d['count']);
+t('جمع مشتریان == کل درآمد', abs(array_sum(array_column($d['customers'], 'sum')) - $d['revenue']) < 1,
+    'cust=' . array_sum(array_column($d['customers'], 'sum')));
+t('جمع محصول‌ها == جمع آیتم‌های پرداخت‌شده', abs(array_sum(array_column($d['products'], 'sum')) - 500000) < 1,
+    'prod=' . array_sum(array_column($d['products'], 'sum')));
+t('جمع ساعات == تعداد سفارش‌ها', array_sum($d['hours']) === $d['count'], 'hours=' . array_sum($d['hours']));
+t('جمع آیتم‌ها از کل درآمد بیشتر نیست (مابه‌التفاوت = ارسال/مالیات)', array_sum(array_column($d['products'], 'sum')) <= $d['revenue']);
+
 // رندر تب آمار بدون خطا
 $_GET['tab'] = 'stats';
 $GLOBALS['wcto_log_count'] = 4;
@@ -456,6 +467,11 @@ t('تب آمار رندر می‌شود', strpos($html, 'پرفروش‌ترین
 t('KPI میانگین فاصله در خروجی هست', strpos($html, 'میانگین فاصلهٔ بین دو سفارش پرداخت‌شده') !== false);
 t('KPI سلامت ربات در خروجی هست', strpos($html, 'شکست‌های پشت‌سرهم ربات') !== false);
 t('نام محصول در جدول چاپ می‌شود', strpos($html, 'کیس A') !== false);
+t('فقط دکمهٔ دورهٔ فعال کلاس primary می‌گیرد', substr_count($html, 'tisa-btn tisa-btn--primary') === 1 && strpos($html, '>۳۰ روز</a>') !== false);
+t('KPI میانگین سبد و جمع فروش درست حساب شده (750,000 / 2 = 375,000)', strpos($html, '375,000') !== false && strpos($html, '750,000') !== false);
+t('سهم درصدی و نشان رتبه در جدول‌ها هست', strpos($html, '٪') !== false && strpos($html, 'rank rank--1') !== false);
+t('نمودار ساعات با نوار درصدی رندر می‌شود', strpos($html, 'class="wcto-bar"') !== false && strpos($html, '▇') === false);
+t('سهم فروش روش پرداخت نمایش داده می‌شود (۶۷٪)', strpos($html, '۶۷٪') !== false);
 
 echo "--- 14) فالبک کرون (DISABLE_WP_CRON) ---\n";
 

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ارسال سفارش‌ها به تلگرام ووکامرس
  * Description:       ارسال خودکار سفارش‌های جدید ووکامرس به تلگرام با فرمت فارسی دلخواه + گزارش روزانه فروش (با سنجاق خودکار) + اعلان کمبود موجودی محصولات + سیستم لاگ رویدادها در پنل.
- * Version:           1.14.0
+ * Version:           1.14.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            علیرضا شعبان زاده
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_TELEGRAM_ORDERS_VERSION', '1.14.0');
+define('WC_TELEGRAM_ORDERS_VERSION', '1.14.1');
 define('WC_TELEGRAM_ORDERS_OPTION', 'wc_telegram_orders_settings');
 define('WC_TELEGRAM_ORDERS_FILE', __FILE__);
 
@@ -964,6 +964,10 @@ class WC_Telegram_Orders {
         $refresh = !empty($_GET['stats_refresh']);
         $d       = $this->collect_stats($days, $refresh);
         $avg_bag = ($d['count'] > 0) ? ($d['revenue'] / $d['count']) : 0;
+        $rev     = max(0.0, (float) $d['revenue']);
+        $pct     = function ($v) use ($rev) {
+            return $rev > 0 ? (int) round((((float) $v) / $rev) * 100) : 0;
+        };
 
         // آمار امروزِ ارسال‌ها از جدول لاگ
         try {
@@ -979,15 +983,14 @@ class WC_Telegram_Orders {
         $threshold   = max(2, (int) (isset($s['health_threshold']) ? $s['health_threshold'] : 5));
 
         $period_url = function ($n) {
-            $base = $this->tab_url('stats');
-            return add_query_arg('stats_days', (string) $n, $base);
+            return add_query_arg('stats_days', (string) $n, $this->tab_url('stats'));
         };
         ?>
         <div class="wcto-filters">
             <?php foreach ([7 => '۷ روز', 30 => '۳۰ روز', 90 => '۹۰ روز'] as $n => $label): ?>
-                <a class="tisa-btn <?php echo $n === $days ? 'tisa-btn--primary' : 'tisa-btn--ghost'; ?> tisa-btn--sm" href="<?php echo esc_url($period_url($n)); ?>"><?php echo esc_html($label); ?></a>
+                <a class="tisa-btn <?php echo $n === $days ? 'tisa-btn--primary' : 'tisa-btn--ghost'; ?>" href="<?php echo esc_url($period_url($n)); ?>"><?php echo esc_html($label); ?></a>
             <?php endforeach; ?>
-            <a class="tisa-btn tisa-btn--secondary tisa-btn--sm" href="<?php echo esc_url(add_query_arg('stats_refresh', '1', $period_url($days))); ?>">بازمحاسبهٔ آمار</a>
+            <a class="tisa-btn tisa-btn--ghost" href="<?php echo esc_url(add_query_arg('stats_refresh', '1', $period_url($days))); ?>">بازمحاسبهٔ آمار</a>
             <span class="wcto-hint">محاسبهٔ آخر: <?php echo esc_html($this->format_date(get_option('date_format') . ' H:i', $d['generated'])); ?> — تا ۳۰ دقیقه کش می‌شود</span>
         </div>
 
@@ -1018,15 +1021,17 @@ class WC_Telegram_Orders {
                     <?php if (empty($products)): ?>
                         <p class="wcto-empty">داده‌ای نیست.</p>
                     <?php else: ?>
-                        <table class="wcto-table">
-                            <thead><tr><th>محصول</th><th>تعداد</th><th>سفارش</th><th>مبلغ</th></tr></thead>
+                        <table class="wcto-stats-table">
+                            <thead><tr><th></th><th>محصول</th><th>تعداد</th><th>سفارش</th><th>سهم</th><th>مبلغ</th></tr></thead>
                             <tbody>
-                            <?php foreach ($products as $name => $r): ?>
+                            <?php $r = 0; foreach ($products as $name => $row): $r++; ?>
                                 <tr>
+                                    <td><span class="rank <?php echo $r === 1 ? 'rank--1' : ''; ?>"><?php echo esc_html($this->to_persian_digits((string) $r)); ?></span></td>
                                     <td><?php echo esc_html($name); ?></td>
-                                    <td><?php echo esc_html($this->to_persian_digits((string) $r['qty'])); ?></td>
-                                    <td><?php echo esc_html($this->to_persian_digits((string) $r['orders'])); ?></td>
-                                    <td><?php echo esc_html($this->money($r['sum'])); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $row['qty'])); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $row['orders'])); ?></td>
+                                    <td class="num muted"><?php echo esc_html($this->to_persian_digits((string) $pct($row['sum']))); ?>٪</td>
+                                    <td class="num"><?php echo esc_html($this->money($row['sum'])); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
@@ -1042,15 +1047,16 @@ class WC_Telegram_Orders {
                     <?php if (empty($customers)): ?>
                         <p class="wcto-empty">مشتری با تلفن/ایمیل ثبت‌شده پیدا نشد.</p>
                     <?php else: ?>
-                        <table class="wcto-table">
-                            <thead><tr><th>مشتری</th><th>تماس</th><th>سفارش</th><th>مجموع</th></tr></thead>
+                        <table class="wcto-stats-table">
+                            <thead><tr><th></th><th>مشتری</th><th>تماس</th><th>سفارش</th><th>مجموع</th></tr></thead>
                             <tbody>
-                            <?php foreach ($customers as $key => $r): ?>
+                            <?php $r = 0; foreach ($customers as $key => $row): $r++; ?>
                                 <tr>
-                                    <td><?php echo esc_html($r['name'] !== '' ? $r['name'] : 'بدون نام'); ?></td>
-                                    <td dir="ltr"><?php echo esc_html($key); ?></td>
-                                    <td><?php echo esc_html($this->to_persian_digits((string) $r['count'])); ?></td>
-                                    <td><?php echo esc_html($this->money($r['sum'])); ?></td>
+                                    <td><span class="rank <?php echo $r === 1 ? 'rank--1' : ''; ?>"><?php echo esc_html($this->to_persian_digits((string) $r)); ?></span></td>
+                                    <td><?php echo esc_html($row['name'] !== '' ? $row['name'] : 'بدون نام'); ?></td>
+                                    <td class="num muted"><?php echo esc_html($key); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $row['count'])); ?></td>
+                                    <td class="num"><?php echo esc_html($this->money($row['sum'])); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
@@ -1066,15 +1072,16 @@ class WC_Telegram_Orders {
                     <?php if (empty($hours)): ?>
                         <p class="wcto-empty">داده‌ای نیست.</p>
                     <?php else: ?>
-                        <table class="wcto-table">
-                            <thead><tr><th>ساعت</th><th>سفارش</th><th></th></tr></thead>
+                        <?php $max_h = max(1, (int) max($hours)); ?>
+                        <table class="wcto-stats-table">
+                            <thead><tr><th>ساعت</th><th>سفارش</th><th>سهم از سفارش‌ها</th></tr></thead>
                             <tbody>
-                            <?php $max_h = max(1, (int) max($hours)); ?>
                             <?php foreach ($hours as $h => $c): ?>
+                                <?php $w = (int) round((((int) $c) / $max_h) * 100); ?>
                                 <tr>
-                                    <td dir="ltr"><?php echo esc_html($this->to_persian_digits(str_pad((string) $h, 2, '0', STR_PAD_LEFT) . ':00')); ?></td>
-                                    <td><?php echo esc_html($this->to_persian_digits((string) $c)); ?></td>
-                                    <td style="width:60%"><?php echo esc_html(str_repeat('▇', max(1, (int) round((10 * (int) $c) / $max_h)))); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits(str_pad((string) $h, 2, '0', STR_PAD_LEFT) . ':00')); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $c)); ?></td>
+                                    <td><span class="wcto-bar"><i style="width: <?php echo esc_attr((string) $w); ?>%"></i></span></td>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
@@ -1090,14 +1097,15 @@ class WC_Telegram_Orders {
                     <?php if (empty($payments)): ?>
                         <p class="wcto-empty">داده‌ای نیست.</p>
                     <?php else: ?>
-                        <table class="wcto-table">
-                            <thead><tr><th>روش</th><th>سفارش</th><th>مبلغ</th></tr></thead>
+                        <table class="wcto-stats-table">
+                            <thead><tr><th>روش</th><th>سفارش</th><th>سهم</th><th>مبلغ</th></tr></thead>
                             <tbody>
-                            <?php foreach ($payments as $pm => $r): ?>
+                            <?php foreach ($payments as $pm => $row): ?>
                                 <tr>
                                     <td><?php echo esc_html($pm); ?></td>
-                                    <td><?php echo esc_html($this->to_persian_digits((string) $r['count'])); ?></td>
-                                    <td><?php echo esc_html($this->money($r['sum'])); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $row['count'])); ?></td>
+                                    <td class="num muted"><?php echo esc_html($this->to_persian_digits((string) $pct($row['sum']))); ?>٪</td>
+                                    <td class="num"><?php echo esc_html($this->money($row['sum'])); ?></td>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
