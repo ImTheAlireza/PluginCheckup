@@ -1,0 +1,283 @@
+/* ==========================================================================
+   WC SKU Prefix Bar — کارتِ SKU روی لیست محصولات + مولد SKU در ویرایش محصول
+   --------------------------------------------------------------------------
+   مهندسی رنگ روی این کارت: یک سطح پررنگ دارد، همان چیپ‌ها.
+   برچسب، تازه‌سازی و امضا همه روی همان یک تنِ سفیدِ کم‌رنگ‌اند (نه بولد، نه
+   حاشیه‌دار) — تا چشم اول سری‌ها را ببیند، بعد بقیه را.
+   همه‌چیز با var(--tisa-*) + fallback؛ اگر هاب خاموش بود باز درست است.
+   ========================================================================== */
+
+/* --- کارت --- */
+.wcspb-bar {
+	box-sizing: border-box;
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tisa-sp-2, 8px) var(--tisa-sp-3, 12px);
+	clear: both;
+	width: 100%;
+	margin: var(--tisa-sp-3, 12px) 0;
+	padding: var(--tisa-sp-4, 16px) var(--tisa-sp-5, 24px);
+	border: 0;
+	border-radius: var(--tisa-r-lg, 16px);
+	background: linear-gradient(110deg, var(--tisa-primary-deep, #064E46), var(--tisa-primary, #0E7C6B) 55%, var(--tisa-primary-bright, #129786));
+	color: #fff;
+	direction: rtl;
+	transition: opacity var(--tisa-t, 150ms) ease;
+}
+
+/* ووکامرس گاهی ردیف بالا را داخل ناحیهٔ نوتیس‌ها می‌اندازد و display:none می‌کند */
+.woocommerce-layout__notice-list-hide .wcspb-bar,
+#wp__notice-list .wcspb-bar {
+	display: flex !important;
+	visibility: visible !important;
+	opacity: 1 !important;
+	height: auto !important;
+	overflow: visible !important;
+}
+
+.tablenav .wcspb-bar {
+	float: none;
+	display: flex;
+	margin: var(--tisa-sp-2, 8px) 0;
+}
+
+.wcspb-bar.loading {
+	opacity: .6;
+}
+
+/* --- برچسب: آرام‌ترین عنصر ردیف --- */
+.wcspb-sort-label {
+	margin: 0;
+	font-size: var(--tisa-fs-meta, 12px);
+	font-weight: 400;
+	letter-spacing: 0;
+	line-height: 1.6;
+	color: rgba(255, 255, 255, .78);
+	white-space: nowrap;
+}
+
+.wcspb-list {
+	display: flex;
+	flex: 1 1 auto;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tisa-sp-1, 4px);
+	min-width: 0;
+}
+
+.wcspb-empty {
+	font-size: var(--tisa-fs-meta, 12px);
+	font-style: normal;
+	color: rgba(255, 255, 255, .7);
+}
+
+/* --- چیپ: تنها سطح پررنگ کارت (SKU کد است → مونو) --- */
+.wcspb-chip {
+	display: inline-flex;
+	align-items: center;
+	padding: 4px 10px;
+	border: 0;
+	border-radius: var(--tisa-r-xs, 6px);
+	background: var(--tisa-surface, #fff);
+	color: var(--tisa-primary-ink, #0A5F52);
+	font-family: var(--tisa-mono, ui-monospace, Consolas, Monaco, monospace);
+	font-size: var(--tisa-fs-meta, 12px);
+	font-weight: 700;
+	line-height: 1.5;
+	cursor: pointer;
+	transition: background var(--tisa-t, 150ms) ease, color var(--tisa-t, 150ms) ease, transform var(--tisa-t, 150ms) ease;
+}
+
+.wcspb-chip:hover {
+	background: var(--tisa-primary-soft, #E8F0EE);
+	transform: translateY(-1px);
+}
+
+.wcspb-chip:active {
+	transform: none;
+}
+
+.wcspb-chip:focus-visible {
+	outline: 2px solid rgba(255, 255, 255, .85);
+	outline-offset: 2px;
+}
+
+.wcspb-chip.copied {
+	background: var(--tisa-success, #1A7F37);
+	color: #fff;
+}
+
+/* --- ابزارهای کارت: هم‌تنِ برچسب، بدون حاشیه و بدون بولد --- */
+.wcspb-tools {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--tisa-sp-3, 12px);
+	margin-inline-start: auto;
+}
+
+.wcspb-refresh {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 8px;
+	border: 0;
+	border-radius: var(--tisa-r-xs, 6px);
+	background: transparent;
+	color: rgba(255, 255, 255, .78);
+	font-family: var(--tisa-font, inherit);
+	font-size: var(--tisa-fs-meta, 12px);
+	font-weight: 400;
+	cursor: pointer;
+	transition: background var(--tisa-t, 150ms) ease, color var(--tisa-t, 150ms) ease;
+}
+
+.wcspb-refresh:hover {
+	background: rgba(255, 255, 255, .14);
+	color: #fff;
+}
+
+.wcspb-refresh:focus-visible {
+	outline: 2px solid rgba(255, 255, 255, .85);
+	outline-offset: 2px;
+}
+
+.wcspb-credit {
+	font-size: var(--tisa-fs-tiny, 11px);
+	font-weight: 400;
+	line-height: 1;
+	color: rgba(255, 255, 255, .55);
+	white-space: nowrap;
+}
+
+/* --- ردیفِ مولد SKU در پنل دادهٔ محصول (روی زمینهٔ سفیدِ وردپرس) --- */
+.wcspb-gen-field {
+	padding-bottom: var(--tisa-sp-2, 8px) !important;
+}
+
+.wcspb-gen-wrap {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tisa-sp-2, 8px);
+}
+
+.wcspb-gen-select {
+	min-width: 210px;
+	max-width: 300px;
+	min-height: var(--tisa-ctl-h, 38px);
+	padding: 0 var(--tisa-sp-3, 12px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r-sm, 10px);
+	background: var(--tisa-surface, #fff);
+	color: var(--tisa-ink, #1F2A2E);
+	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
+	font-size: var(--tisa-fs-control, 13px);
+	direction: ltr;
+	text-align: start;
+}
+
+.wcspb-gen-select:focus-visible {
+	outline: 0;
+	border-color: var(--tisa-primary, #0E7C6B);
+	box-shadow: var(--tisa-ring, 0 0 0 3px rgba(14, 124, 107, .22));
+}
+
+.wcspb-gen-btn {
+	min-height: var(--tisa-ctl-h, 38px);
+	padding: 0 var(--tisa-sp-4, 16px);
+	border-radius: var(--tisa-r-sm, 10px);
+}
+
+/* وضعیت: یک خط، ارتفاع ثابت تا صفحه نپرد؛ رنگ + نماد، نه فقط رنگ */
+.wcspb-gen-status {
+	display: block;
+	min-height: 20px;
+	margin: var(--tisa-sp-1, 4px) 0 0;
+	font-size: var(--tisa-fs-meta, 12px);
+	line-height: var(--tisa-lh, 1.7);
+	color: var(--tisa-muted, #77828A);
+	direction: rtl;
+}
+
+.wcspb-gen-status.is-busy {
+	font-style: italic;
+}
+
+.wcspb-gen-status.is-ok {
+	color: var(--tisa-success, #1A7F37);
+}
+
+.wcspb-gen-status.is-dupe {
+	color: var(--tisa-danger, #B5453A);
+	font-weight: 600;
+}
+
+.wcspb-gen-status a {
+	color: inherit;
+	text-decoration: underline;
+}
+
+.wcspb-gen-status strong {
+	unicode-bidi: isolate;
+	font-family: var(--tisa-mono, ui-monospace, Consolas, monospace);
+	font-weight: 700;
+}
+
+#_sku.wcspb-dupe {
+	border-color: var(--tisa-danger, #B5453A);
+	box-shadow: 0 0 0 1px var(--tisa-danger, #B5453A);
+}
+
+/* --- کم‌فضا (body.tisa-compact را هاب می‌گذارد) --- */
+body.tisa-compact .wcspb-bar {
+	gap: var(--tisa-sp-1, 4px) var(--tisa-sp-2, 8px);
+	padding: var(--tisa-sp-2, 8px) var(--tisa-sp-4, 16px);
+	border-radius: var(--tisa-r, 14px);
+}
+
+body.tisa-compact .wcspb-chip {
+	padding: 2px 7px;
+}
+
+/* --- پوسته‌های تیره/سistema: کنترل بومی سیاه‌روی‌سیاه نشود --- */
+@media (prefers-color-scheme: dark) {
+
+	.wcspb-bar,
+	.wcspb-gen-select {
+		color-scheme: light;
+	}
+}
+
+/* --- عرض کم: چیپ‌ها زیر هم، ابزارها هم‌خطِ خودشان --- */
+@media screen and (max-width: 782px) {
+	.wcspb-bar {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.wcspb-tools {
+		margin-inline-start: 0;
+		align-self: flex-end;
+	}
+
+	.wcspb-gen-select {
+		width: 100%;
+		max-width: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+	.wcspb-bar,
+	.wcspb-chip,
+	.wcspb-refresh {
+		transition-duration: .01ms !important;
+	}
+
+	.wcspb-chip:hover {
+		transform: none;
+	}
+}

@@ -1,0 +1,129 @@
+/* TisaCase Bulk Price Manager — استایل ادمین (v2.2 · زبان طراحی TisaCase)
+   دکمه/جدول/نوتیس/تب بومی وردپرس را هاب با tisa-scope بازنویسی می‌کند؛ اینجا فقط
+   چیزهای مخصوص این صفحه، همه با var(--tisa-*) + fallback.
+   قرارداد §۸: مبلغ و شمارنده = قلم رابط + tabular-nums؛ شناسه/کد = مونو. */
+
+.tcbpm-card {
+	max-width: 1000px;
+	margin-top: var(--tisa-sp-4, 16px);
+	padding: var(--tisa-sp-5, 24px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r, 14px);
+	background: var(--tisa-surface, #fff);
+	font-variant-numeric: tabular-nums;
+}
+.tcbpm-card--narrow { max-width: 760px; }
+.tcbpm-card h2 { margin-top: 0; font-size: var(--tisa-fs-h3, 16px); font-weight: 700; color: var(--tisa-ink, #1F2A2E); }
+
+.tcbpm-radio { margin-left: var(--tisa-sp-5, 24px); font-weight: 600; }
+.tcbpm-muted { color: var(--tisa-muted, #77828A); font-size: var(--tisa-fs-meta, 12px); }
+
+/* سه نوع پیام: هر کدام یک خط رنگی، زمینهٔ نرم — نه سه رنگ پر */
+.tcbpm-warn,
+.tcbpm-safe-box,
+.tcbpm-hint {
+	max-width: 880px;
+	padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px);
+	border: 1px solid transparent;
+	border-inline-start-width: 3px;
+	border-radius: var(--tisa-r-sm, 10px);
+	font-size: var(--tisa-fs-control, 13px);
+	line-height: 1.9;
+	color: var(--tisa-ink, #1F2A2E);
+}
+.tcbpm-warn     { margin-top: var(--tisa-sp-2, 8px);  background: var(--tisa-danger-soft, #FBECEA);  border-inline-start-color: var(--tisa-danger, #B5453A); }
+.tcbpm-safe-box { margin-bottom: var(--tisa-sp-3, 12px); background: var(--tisa-warning-soft, #FCF3D7); border-inline-start-color: var(--tisa-warning, #C79A2E); }
+.tcbpm-hint     { margin-top: var(--tisa-sp-4, 16px);  background: var(--tisa-surface-2, #FAFAF8);    border-inline-start-color: var(--tisa-primary, #0E7C6B); }
+
+.tcbpm-field { margin-top: var(--tisa-sp-4, 16px); }
+.tcbpm-row { display: flex; align-items: center; gap: var(--tisa-sp-2, 8px); }
+.tcbpm-unit { font-weight: 600; color: var(--tisa-muted, #77828A); }
+
+.tcbpm-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--tisa-sp-3, 12px); max-width: 880px; }
+@media (max-width: 900px) { .tcbpm-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.tcbpm-price-input { width: 100%; max-width: 180px; font-variant-numeric: tabular-nums; }
+.tcbpm-value { width: 240px; max-width: 100%; font-variant-numeric: tabular-nums; }
+.tcbpm-select-op { min-width: 460px; max-width: 100%; }
+
+/* عرض select2 (قبلاً inline بود) */
+[data-tcbpm-w="wide"],
+[data-tcbpm-w="wide"] + .select2-container { width: 100% !important; max-width: 860px; }
+[data-tcbpm-w="full"],
+[data-tcbpm-w="full"] + .select2-container { width: 100% !important; }
+
+.tcbpm-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--tisa-sp-2, 8px); margin: var(--tisa-sp-4, 16px) 0 var(--tisa-sp-1, 4px); }
+.tcbpm-actions .button { margin: 0; }
+
+/* پیش‌نمایش */
+#tcbpm-preview-box {
+	max-width: 900px;
+	margin-top: var(--tisa-sp-4, 16px);
+	padding: var(--tisa-sp-4, 16px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r-sm, 10px);
+	background: var(--tisa-surface-2, #FAFAF8);
+}
+#tcbpm-sample-box { margin-top: var(--tisa-sp-1, 4px); }
+.tcbpm-sample-table td, .tcbpm-sample-table th { font-size: var(--tisa-fs-control, 13px); }
+.sample-now   { color: var(--tisa-muted, #77828A); text-decoration: line-through; }
+.sample-new   { color: var(--tisa-success, #1A7F37); font-weight: 700; }
+.sample-skip  { color: var(--tisa-muted, #77828A); }
+.sample-error { color: var(--tisa-danger, #B5453A); }
+.sample-note  { font-size: var(--tisa-fs-meta, 12px); color: var(--tisa-muted, #77828A); }
+
+/* پیشرفت */
+.tcbpm-bar { height: 8px; max-width: 880px; margin: var(--tisa-sp-1, 4px) 0; overflow: hidden; border-radius: var(--tisa-r-pill, 999px); background: var(--tisa-surface-3, #EFEBE1); }
+#tcbpm-bar, .tcbpm-run-progress .tcbpm-bar div { height: 100%; width: 0; background: var(--tisa-primary, #0E7C6B); transition: width .3s; }
+.tcbpm-status { font-weight: 700; }
+.tcbpm-counters { margin: var(--tisa-sp-2, 8px) 0; font-size: var(--tisa-fs-control, 13px); }
+.tcbpm-errors {
+	max-width: 880px; max-height: 240px; overflow: auto;
+	padding: var(--tisa-sp-3, 12px);
+	border: 1px solid var(--tisa-danger-soft, #FBECEA); border-inline-start: 3px solid var(--tisa-danger, #B5453A);
+	border-radius: var(--tisa-r-sm, 10px);
+	background: var(--tisa-danger-soft, #FBECEA);
+	color: var(--tisa-danger-ink, #8E3128);
+	font-size: var(--tisa-fs-meta, 12px); line-height: 1.9;
+}
+.tcbpm-progressbar-line { display: flex; align-items: center; gap: var(--tisa-sp-2, 8px); }
+#tcbpm-progress { max-width: 920px; }
+
+/* دیالوگ */
+.tcbpm-dialog-backdrop { position: fixed; inset: 0; z-index: 100000; display: flex; align-items: flex-start; justify-content: center; padding-top: 8vh; background: rgba(31, 42, 46, .45); }
+.tcbpm-dialog {
+	width: 92%; max-width: 620px;
+	padding: var(--tisa-sp-5, 24px);
+	border-radius: var(--tisa-r-lg, 16px);
+	background: var(--tisa-surface, #fff);
+	box-shadow: var(--tisa-shadow-lg, 0 20px 60px rgba(31, 42, 46, .25));
+}
+.tcbpm-dialog h3 { margin-top: 0; font-size: var(--tisa-fs-h3, 16px); }
+.tcbpm-dialog .tcbpm-dialog-body { max-height: 60vh; overflow: auto; font-size: var(--tisa-fs-body, 14px); line-height: 2; }
+.tcbpm-dialog .tcbpm-dialog-body input[type=text],
+.tcbpm-dialog .tcbpm-dialog-body input[type=number] { width: 100%; max-width: 280px; }
+.tcbpm-dialog-actions { display: flex; justify-content: flex-start; gap: var(--tisa-sp-2, 8px); margin-top: var(--tisa-sp-4, 16px); flex-direction: row-reverse; }
+.tcbpm-dialog-actions .button { margin: 0; }
+
+/* جدول اجراها + وضعیت‌ها: زمینهٔ نرم + متن معنایی، یک خانواده */
+.tcbpm-runs-table td { vertical-align: middle; }
+.tcbpm-runs-table .tcbpm-run-actions .button { margin: 1px 2px; }
+.tcbpm-status-badge { display: inline-block; padding: 2px 10px; border-radius: var(--tisa-r-pill, 999px); font-size: var(--tisa-fs-tiny, 11px); font-weight: 600; }
+.tcbpm-st-running     { background: var(--tisa-info-soft, #E9F1F8);    color: var(--tisa-info, #3F6E9E); }
+.tcbpm-st-queued      { background: var(--tisa-warning-soft, #FCF3D7); color: var(--tisa-warning-ink, #8A6116); }
+.tcbpm-st-done        { background: var(--tisa-success-soft, #E5F4E7); color: var(--tisa-success, #1A7F37); }
+.tcbpm-st-rolled_back { background: var(--tisa-surface-3, #EFEBE1);    color: var(--tisa-ink-soft, #45555C); }
+.tcbpm-st-interrupted { background: var(--tisa-warning-soft, #FCF3D7); color: var(--tisa-warning-ink, #8A6116); }
+.tcbpm-st-stopped,
+.tcbpm-st-failed      { background: var(--tisa-danger-soft, #FBECEA);  color: var(--tisa-danger-ink, #8E3128); }
+.tcbpm-st-cancelled   { background: var(--tisa-surface-3, #EFEBE1);    color: var(--tisa-muted, #77828A); }
+.tcbpm-run-progress { min-width: 120px; }
+.tcbpm-run-progress .tcbpm-bar { display: inline-block; max-width: 110px; margin: 0; vertical-align: middle; }
+
+/* تب‌ها (تک‌صفحه) */
+.tcbpm-nav { margin-bottom: 0; }
+.tcbpm-tab-content { padding-top: var(--tisa-sp-4, 16px); }
+.tcbpm-tab-content > p:first-child { max-width: 1000px; }
+
+/* کم‌فضا */
+body.tisa-compact .tcbpm-card { padding: var(--tisa-sp-4, 16px); }

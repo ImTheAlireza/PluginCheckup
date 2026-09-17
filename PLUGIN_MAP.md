@@ -1,0 +1,284 @@
+# 🗺️ نقشهٔ پلاگین‌های تیساکیس — TisaCase Plugin Suite
+
+> نتیجهٔ بازبینی اولیهٔ ۹ پلاگین وردپرس/ووکامرس.
+> نسخهٔ کد مرجع: commit `8efbb70` (۹ فایل ZIP). زیپ‌ها در `/home/user/extracted/` استخراج شده‌اند (خارج از مخزن، برای مطالعه).
+> تاریخ بازبینی: ۱۴۰۵/۰۶/۲۲ — 2026-09-13
+
+---
+
+## ۱) نمای کلی
+
+| # | پلاگین | نسخه | حوزهٔ کاری | معماری | فایل/سطر کد | بلوغ |
+|---|--------|-------|-------------|---------|--------------|--------|
+| 1 | `bulk-product-cleaner` | 12.4.0 | حذف انبوه پیش‌نویس‌ها + تصاویر با بکاپ ۹۰ روزه | OOP، autoloader، ۸ کلاس | 11 / ~4900 | ⭐⭐⭐⭐⭐ |
+| 2 | `tisacase-bulk-price-manager` | 2.2.0 → **جایگزین: `tisacase-pricing` 1.0.0** | مدیریت گروهی قیمت عادی/فروش/عمده + لاگ + رول‌بک | OOP، ۶ کلاس + جدول اختصاصی | 13 / ~3800 | ⭐⭐⭐⭐⭐ |
+| 3 | `tisacase-order-phone-exporter` | 1.3.1 | خروجی موبایل سفارش‌ها در فایل‌های ۱۰هزارتایی | OOP، ۱۱ کلاس، استریم | 17 / ~1900 | ⭐⭐⭐⭐⭐ |
+| 4 | `tisacase-product-description` | 1.4.1 | قوانین خودکار توضیحات (چاپی/قاب) + رول‌بک | OOP، ۴ کلاس | 8 / ~2900 | ⭐⭐⭐⭐⭐ |
+| 5 | `case-special-package` | 1.2.0 | «پکیج ویژه» روی قاب‌ها (قیمت به‌ازای هر عدد) | Singleton + Settings API، تک‌فایل | 4 / ~1400 | ⭐⭐⭐⭐ |
+| 6 | `tisacase-pricing-manager` | 1.1.0 → **جایگزین: `tisacase-pricing` 1.0.0** | قیمت‌گذاری داینامیک **بدون** بازنویسی دیتابیس | تک‌کلاس، تک‌فایل | 4 / ~920 | ⭐⭐⭐⭐ |
+| 7 | `wc-sku-prefix-bar` | 1.4.0 | نوار پیشوند SKU + تولید SKU + REST برای ربات | تک‌کلاس فشرده | 5 / ~115 | ⭐⭐⭐ |
+| 8 | `tisa-product-importer` | 0.6.5 | ایمپورت ZIP ربات تلگرام → محصول متغیر پیش‌نویس | تک‌کلاس استاتیک | 2 / ~480 | ⭐⭐⭐ |
+| 9 | `bulk-tracking-upload` | 2.1 | آپلود CSV کد رهگیری + شورت‌کد پیگیری | رویه‌ای (procedural) | 1 / ~740 | ⭐⭐ |
+
+**خط قرمز سراسری:** شمارهٔ ۹ تنها پلاگینی است که **نشت اطلاعات هویتی مشتری (PII)** دارد (بخش ۵، F1). بقیه از نظر امنیتی قابل‌دفاع‌اند.
+
+---
+
+## ۲) پروفایل هر پلاگین
+
+### 1) Bulk Product Cleaner — `bdc_*`
+هدف: حذف دسته‌جمعی محصولات `draft`/`pending`/`private`/`trash` به‌همراه تصویرشان، **هیچ حذفی بدون بکاپ انجام نمی‌شود**.
+
+- بوت محافظه‌کار: در ریکوئست فرانت‌اند بعد از ثبت `CRON_PURGE` خارج می‌شود؛ هیچ کلاسی parse نمی‌شود (`bulk-product-cleaner.php:107-122`). کل بوت در `try/catch (Throwable)` — سایت هرگز از کار نمی‌افتد (`:95-119`).
+- موتور بکاپ: کپی کامل post + postmeta + variations + terms + نظرات/کامنت‌متا + فایل‌های تصویری؛ بازیابی با همان IDها. `run_id` اعتبارسنجی می‌شود و **هر مسیر با `realpath` داخل ریشهٔ بکاپ قفل است** (`class-bdc-backup.php:1330-1350`, `:1409-1419`).
+- پوشهٔ `uploads/bdc-backups/` با `.htaccess` (mod_authz 2.2/2.4) + `index.php` + README راهنمای nginx (`class-bdc-install.php:70-95`).
+- دسته‌ای‌سازی تطبیقی: اندازهٔ batch بر اساس زمان واقعی سرور تا سقف ۶ ثانیه تنظیم می‌شود، با clamp سرور در برابر عدد دستکاری‌شدهٔ کلاینت (`class-bdc-ajax.php:85-150`) + قفل همزمانی با پاسخ 409 + `ignore_user_abort`.
+- حذف از طریق CRUD/REST رسمی ووکامرس (نه `DELETE` مستقیم) → جدول lookup و ترم‌ها تمیز می‌مانند.
+- WP-CLI: `wp bdc clean|backups|restore|purge`. تمام رشته‌ها i18n (۱۶۲ فراخوانی مترجم + فایل `.pot`).
+- دسترسی: `manage_options` از طریق فیلتر `bdc_required_capability` (`class-bdc-ajax.php:163`).
+
+### 2) TisaCase Bulk Price Manager — `tcbpm_*`
+هدف: تغییر گروهی امن `_regular_price` / `_sale_price` / متای قیمت عمده، با **پیش‌نمایش اجباری**، لاگ کامل و رول‌بک.
+
+- کاتالوگ عملیات در `class-tcbpm-ops.php:30-45`: regular/sale/wholesale × درصد/مبلغ/set/clear + `wholesale_from_retail_percent`.
+- **پیش‌نمایش اجباری با توکن HMAC**: `make_token()` امضای `sha256(canonical(args), wp_salt('nonce'))` است؛ اجرای واقعی فقط با توکن معتبر مجاز است، پس اگر بین پیش‌نمایش و اجرا تنظیمات عوض شود، اجرا 409 می‌گیرد (`ops:273-284`، `ajax:132-135`).
+- جدول‌های `wp_tisacase_bpm_runs` و `wp_tisacase_bpm_log` + `maybe_install()` در `admin_init` (بدون نیاز به غیرفعال/فعال‌سازی) + نگه‌داری ۹۰ روزه با کرون روزانه.
+- کنترل هم‌زمانی با «busy slot» و وضعیت‌های `running/queued/interrupted/rolled_back/cancelled` + ادامهٔ اجرای نیمه‌تمام (resume). اجرا متعلق به کاربر دیگر → 403 (`ajax:103-106`).
+- فیلترهای `KIND_PERCENT` سقف ۱۰۰٪ برای تخفیف، `PERCENT_CEIL`/`RESULT_CEIL` برای جلوگیری از overflow و `INF`.
+- خروجی CSV با nonce جداگانه برای هر run (`ajax:380-396`)، پردازش صفحه‌ای ۵۰۰تایی.
+- **تنها پلاگینی که تست خودکار دارد**: `tests/run-tests.php` + `stubs.php` (بدون وردپرس، `php tests/run-tests.php`).
+
+### 3) TisaCase Order Phone Exporter — `tisacase_*`
+هدف: استخراج شماره موبایل همهٔ سفارش‌ها در فایل‌های اکسل ۱۰هزارتایی، بدون هدر، فرمت `989xxxxxxxxx`.
+
+- **کوئری خام فقط-خواندنی و سازگار با HPOS**: حالت HPOS از `wc_orders` + `wc_order_addresses`، حالت قدیم از `posts` + `MAX(pm.meta_value)` با `GROUP BY` (سازگار `ONLY_FULL_GROUP_BY`)؛ صفحه‌بندی با cursor (`id > %d`) نه OFFSET عمیق (`class-tisacase-queries.php`).
+- نرمال‌سازی شماره: ارقام فارسی/عربی، `0098`، `0989`، `09x`، `9xx` → `98` + ۱۰ رقم، وگرنه حذف (`class-tisacase-phone.php`).
+- Dedup با **مرتب‌سازی تکه‌ای خارجی** (سقف ۱۰۰هزار خط هر تکه) و بافر ۶۴KB → فشار حافظه کنترل‌شده (`class-tisacase-pipeline.php`).
+- امنیت خروجی: پوشهٔ خصوصی با نام **هش‌دار** (`sha256(user_id|wp_salt('auth'))`) + `.htaccess` deny + `index.html`؛ دانلود فقط از طریق لیست سفید `state['files']` + nonce + capability، و استریم SpreadsheetML 2003 بدون ZipArchive/PhpSpreadsheet (`class-tisacase-download.php`).
+- مدیریت جلسهٔ دقیق: `save_state_guarded()` نمی‌گذارد پاسخ دیرهنگام، جلسهٔ لغو‌شده یا run قدیمی را «احیا» کند؛ قفل ۲ دقیقه‌ای؛ sweep کرونی فایل‌های ۲۴ ساعته.
+- بارگذاری فقط در زمینه‌های لازم (admin/cron/CLI) — در بازدید عادی عملاً صفر هزینه.
+
+### 4) TisaCase Product Description — `TisaCase_Desc_*`
+هدف: همان اسنیپت Code Snippets در قالب افزونه استاندارد؛ توضیحات «مراجعه به TISACHAP.COM» برای SKUهای چاپی، «توجه قاب» برای محصولات دارای کلمهٔ قاب.
+
+- هوک‌ها: `woocommerce_new_product` / `woocommerce_update_product` / `save_post_product` با اولویت ۳۰ → پوشش ذخیره دستی، ادمین و REST (`class-tisacase-desc-core.php:21-25`).
+- موتور قابل‌تنظیم از پنل: الگوی SKU (`/^(?:CH|SB)(?:\d|$)/i`)، کلمات کلیدی، متن‌ها، `clear_unmatched` (پیش‌فرض خاموش = محصولات بی‌قانون دست‌نخورده)، `skip_if_contains`، و «زمان آماده‌سازی» (`_tisacase_prep_time`، با دکمهٔ تشخیص خودکار کلید متا).
+- **رجوع‌پذیر**: regex شکستهٔ ذخیره‌شده با `@preg_match` تست و به پیش‌فرض برمی‌گردد (`core:78-82`) — ضد خرابی ورودی.
+- قبل از هر اصلاح انبوه/انتخابی، بکاپ توضیحات قبلی نوشته می‌شود؛ هنگام بازگردانی محصولاتی که کاربر بعداً دستی ویرایش کرده رد می‌شوند.
+- پنل سه‌تب + AJAX دسته‌ای + WP-CLI `wp tisacase repair`. ۱۳ نقطهٔ nonce/cap مجزا در ادمین (۱۱ `current_user_can`) — بهترین پوشش دسترسی در suite.
+- تنها پلاگینی که منوی `add_menu_page` مستقل (`TisaCase`) دارد؛ بقیه زیرمجموعهٔ ووکامرس‌اند.
+
+### 5) پکیج ویژه قاب موبایل — `wcsp_*`
+هدف: چک‌باکس «پکیج ویژه» با قیمت ثابت **به‌ازای هر عدد** روی محصولات قاب.
+
+- واجد‌شرط بودن چندلایه: (۱) لیست استثنا بر اساس SKU — همیشه اولویت اول، (۲) تیک دستی `auto/force_on/force_off`، (۳) عضویت در دسته‌های منتخب، (۴) کلمهٔ کلیدی عنوان با حالت `contains|starts_with`. نرمال‌سازی ی/ک/نیم‌فاصله قبل از تطبیق (`case-special-package.php:700-780`).
+- مبلغ روی **قیمت واحد** اضافه می‌شود (`adjust_price:913-945`) → در سبد، پرداخت، جمع کل، مالیات و فاکتورها بدون دستکاری totals کار می‌کند؛ به‌علاوه متای `_wcsp_package_unit_price` و `_wcsp_package_total` روی آیتم سفارش.
+- **اعتبارسنجی سمت سرور**: `add_cart_item_data` دوباره `is_eligible()` را چک می‌کند؛ پس تیک‌زدن اجباری از طریق دستکاری فرم ممکن نیست. محافظ حلقه با `did_action('woocommerce_before_calculate_totals') >= 3`.
+- HPOS سازگار و **بلوک‌های سبد/پرداخت صراحتاً ناسازگار اعلام شده‌اند** (`:77-82`) — درست و صادقانه.
+- داشبورد آماری با کش `wcsp_stats_v1` و flush روی ذخیرهٔ محصول/تغییر وضعیت سفارش/آیتم جدید.
+- تنظیمات از طریق Settings API روی `options.php` (nonce و capability توسط هسته) + `sanitize_settings()` کامل.
+
+### 6) TisaCase Pricing Manager — `tisacase_pricing_manager_*`
+هدف: قیمت‌گذاری داینامیک با فیلتر، **بدون نوشتن در دیتابیس** → قوانین روی محصولات آینده هم خودکار اعمال می‌شوند.
+
+- اولویت `99999` روی `woocommerce_product_get_*` و نسخه‌های `product_variation_get_*` + `woocommerce_variation_prices_*`؛ هاش قیمت‌های واریاسیون با `plugin/version/mode` سنجیده می‌شود تا کش خراب نشود (`:74-86`, `:449-456`).
+- اولویت قانون: محصول > دسته‌بندی (با زیردسته‌ها از `get_term_children`) > سراسری (`resolve_rule:197-235`)، با کش در-درخواستی برای rule/category/wholesale.
+- محافظ‌ها: محصولات با **فروش ویژه واقعی** (`get_sale_price('edit') > 0`) هرگز دست نمی‌خورند؛ قیمت همکاری (`_tisacase_wholesale_price`) برای نقش `tisacase_partner` یا capability `tisacase_view_wholesale_prices` ثابت می‌ماند؛ رِند به مضرب ۸۰۰۰ (و ۸۰۰۰۰ در ارز IRR)؛ تضمین `sale < regular` با کسر یک گام.
+- `protect_partner_cache()` روی `template_redirect` برای کاربر همکار: `DONOTCACHEPAGE` + `nocache_headers()` — فکر درست برای صفحه‌کشی عمومی.
+- «همگام‌سازی سریع ۱۰٪ + ۱۰٪» فقط یک آپشن عوض می‌کند، بدون لوپ روی محصولات.
+- ذخیره از طریق `admin_post_*` + `check_admin_referer` + capability؛ جستجوی محصول/دسته با nonce.
+
+### 7) WooCommerce SKU Prefix Bar — `wcspb_*`
+- از `wp_wc_product_meta_lookup` (و fallback به postmeta) SKUها را می‌خواند، الگوی `prefix + عدد` را استخراج و بزرگ‌ترین شماره + پدینگ را به‌ازای هر پیشوند نگه می‌دارد؛ نتیجه ۶ ساعت در transient.
+- سه نقطهٔ UI: نوار چیپس بالای لیست محصولات، دراپ‌داون «درج SKU بعدی» داخل متاباکس SKU، و کنترل «تکراری بودن SKU» با لینک به ویرایش محصول متناظر (برای variation، والد نمایش داده می‌شود).
+- REST `wcspb/v1/next-sku` با `permission_callback = current_user_can('edit_products')` → مصرف‌کنندهٔ ربات تلگرام.
+- flush کش روی `save_post_product/variation`، `deleted_post`، `woocommerce_update_product` + غیرفعال‌سازی.
+
+### 8) Tisa Product ZIP Importer — `Tisa_Product_Zip_Importer`
+- ورودی: `product.zip` ربات تلگرام شامل `product.json` + تصویرها. خروجی: محصول **پیش‌نویس** با SKU خودکار و ماتریس کامل واریاسیون (دکارتین).
+- `CATEGORY_PARENTS` مسیر دسته‌ها را کامل می‌کند (مثلاً «هوک ایرپاد» ← «اکسسوری» ← ...) و والدین را هم به محصول می‌چسباند — رفع مشکل شناخته‌شدهٔ ووکامرس در تخصیص اجداد.
+- قانون مهم: صفت با **یک مقدار** صفت نیست (به عنوان هویت محصول می‌ماند)؛ ≥۲ مقدار = محور واریاسیون. محور «مدل» همیشه اول.
+- حالت `update` (شارژ محصول): ZIP را در transient با توکن تصادفی ۲۰ کاراکتری نگه می‌دارد، کاربر محصول مقصد را جستجو/انتخاب می‌کند، سپس **جایگزینی کامل** واریاسیون‌ها (واریانت‌های قدیمی حذف قطعی می‌شوند؛ در حالت ساده‌شدن، private + outofstock می‌شوند تا تاریخچهٔ سفارش‌ها نشکند).
+- `prices.iphone/android` برای قیمت‌گذاری تفکیکی مدل‌ها؛ `mode`/`image_mode` (keep|replace).
+- ثبات: `try/catch` + حذف محصول ساخته‌شده در صورت خطای میانی، `wp_delete_post(id, true)`، پاک‌سازی temp dir، فراخوانی `WC_Product_Variable::sync()` و `wc_delete_product_transients()`.
+- واریاسیون‌ها از طریق CRUD ساخته می‌شوند + نوشتن صریح `attribute_*` تا ادمین مقدار را preselect کند (رفع باگ «هر مدل»).
+
+### 9) Bulk Tracking Code Upload — `bwt_*`
+- دو صفحه: آپلود CSV (`order_id,tracking_code`) و پاک‌سازی (انتخابی/همه). ردیف خالی در ستون دوم = حذف کد.
+- تشخیص هدر، تبدیل ارقام فارسی/عربی، بررسی وجود سفارش + نوع `shop_order`، سقف ۵MB، فقط پسوند `.csv`، گزارش ردیف‌به‌ردیف خطاها در جدول.
+- نوشتن همزمان در `postmeta` و `$order->update_meta_data` (سازگاری HPOS)؛ پاک‌سازی سراسری با `$wpdb->delete` روی `postmeta` + `wc_orders_meta`.
+- شورت‌کد `[tracking_search_form]` برای صفحهٔ «پیگیری سفارش» + لینک `tracking.post.ir`.
+- سبک رویه‌ای، CSS/HTML درون‌خطی، بدون i18n/کلاس/uninstall. **تک‌نفرهٔ قدیمی‌سبک مجموعه.**
+
+---
+
+## ۳) نقشهٔ داده‌های مشترک (برای جلوگیری از تداخل)
+
+| کلید | نوع | نوشته‌شده توسط | خوانده‌شده توسط |
+|------|-----|------------------|------------------|
+| `_tisacase_wholesale_price` | post meta | `tisacase-bulk-price-manager` (ویرایش گروهی) | `tisacase-pricing-manager` (قفل «دست نزن» برای همکار) |
+| `_wcsp_mode` | post meta | `case-special-package` | خودش |
+| `_wcsp_package_unit_price`, `_wcsp_package_total` | order item meta | `case-special-package` | فاکتورها |
+| `_tracking_code` | order meta | `bulk-tracking-upload` | قالب/ایمیل فروشگاه |
+| `_tisacase_prep_time` | post meta (قابل تغییر) | `tisacase-product-description` | قالب/افزونهٔ زمان آماده‌سازی |
+| `bdc_backup_index`, `bdc_db_version` | option | `bulk-product-cleaner` | خودش |
+| `tcbpm_settings`, `tcbpm_db_version` | option + ۲ جدول | `tisacase-bulk-price-manager` | خودش |
+| `tisacase_pricing_manager_rules_v1`, `..._cache_v1` | option | `tisacase-pricing-manager` | خودش |
+| `tisacase_desc_options` | option | `tisacase-product-description` | خودش |
+| `wcsp_settings` | option | `case-special-package` | خودش |
+| `wp_tisacase_bpm_runs` / `wp_tisacase_bpm_log` | جدول | `tisacase-bulk-price-manager` | uninstall → DROP ✅ |
+| `uploads/bdc-backups/` | فایل | `bulk-product-cleaner` | بکاپ ۹۰ روزه |
+| `uploads/tisacase-private-phone-exports/` | فایل | `tisacase-order-phone-exporter` | sweep ۲۴ ساعته |
+| `wcspb_latest_skus`, `tisa_update_*`, `tisacase_state_*`, `bdc_*` transients | transient | هر افزونه برای خودش | |
+
+کرون‌ها: `bdc_purge_expired_backups` (روزانه)، `tcbpm_process_scheduled_tick`، `tcbpm_daily_cleanup`، `tisacase_phone_export_sweep` (ساعتی). همه در uninstall مربوطه `wp_clear_scheduled_hook` می‌شوند **به‌جز** پلاگین‌های بدون uninstall.
+
+**منطق SKU در دو جا پیاده شده:** `next_sku()` در ایمپورتر و `get_latest()` در SKU Prefix Bar. الگوهایشان فرق دارد: SKU Prefix Bar بزرگ‌ترین عددِ هر پیشوند را با پدینگ حفظ می‌کند (`ABCD0042` → `ABCD0043`)، ولی `next_sku()` ایمپورتر `max+1` بدون پدینگ تولید می‌کند (`ABCD0042` → `ABCD43`). اگر هر دو روی فروشگاه فعال باشند، دو سیستم SKU سازندهٔ متفاوت خواهند بود.
+
+---
+
+## ۴) قراردادهای سبکی (چیزی که در ادامه رعایت می‌کنم)
+
+**پیش‌فرض‌های حرفه‌ای که در پلاگین‌های بالای مجموعه دیده می‌شود:**
+1. محافظ `defined('ABSPATH') || exit` روی تک‌تک فایل‌های PHP.
+2. capability + nonce روی هر نقطهٔ ورودی (`check_ajax_referer` / `check_admin_referer`) — در BDC و TCBPM یک تابع `guard()` مرکزی وجود دارد.
+3. کوئری‌های خام فقط با `$wpdb->prepare` و لیست‌های `IN()` ساخته‌شده از `absint`.
+4. پردازش دسته‌ای (batched) + سقف زمان/حافظه + قفل همزمانی، به‌جای لوپ بزرگ روی محصولات.
+5. حالت پیش‌نمایش (dry run) و رول‌بک قبل از هر عملیات مخرب.
+6. ترجیح CRUD ووکامرس بر متای خام؛ اعلام HPOS با `FeaturesUtil`.
+7. پوشهٔ خصوصی + `.htaccess` + `index.php` برای هر فایل قابل‌ دانلود.
+8. `uninstall.php` کامل (پاک‌سازی آپشن، transient، کرون و جدول‌ها).
+9. فیلترهای `apply_filters` برای رفتارهای قابل‌تنظیم + مستندسازی changelog در `readme.txt`.
+
+**نقطه‌ضعف‌های سبلیِ یکنواخت در مجموعه:**
+- فقط `bulk-product-cleaner` i18n کامل دارد؛ `bulk-tracking-upload` / `case-special-package` / `tisa-product-importer` / `tisacase-pricing-manager` **صفر** فراخوانی مترجم (رشته‌های فارسی هاردکد).
+- فقط `order-phone-exporter` فایل‌های `index.php` سکوت در پوشه‌ها دارد.
+- attribution ناهمگون: ۶ پلاگین «علیرضا شعبان زاده»، ولی `tisacase-pricing-manager` → *Shayan Zakizadeh*، `wc-sku-prefix-bar` → *Arena*، `tisacase-product-description` → *TisaCase*. اگر هدف انتشار است باید یکدست شود.
+- URIهای `example.com` در BDC و `case-special-package` باقی مانده.
+- نسخه‌گذاری نامرتبط: 0.6.5 تا 12.4.0 در یک مجموعه؛ `bulk-tracking-upload` فقط `2.1` (نه semver کامل).
+- هیچ `LICENSE` فایل همراهی نیست (برای GPL بودن رشتهٔ هدر کافی است ولی برای .org توصیه می‌شود).
+- سطوح دسترسی یکسان نیست: `manage_options` (BDC, bulk-tracking) در برابر `manage_woocommerce` (بقیه).
+
+---
+
+## ۵) یافته‌های اولیه، مرتب‌شده بر اساس شدت
+
+### 🔴 بحرانی — باید فوری رفع شود
+
+**F1 · نشت اطلاعات مشتری در `bulk-tracking-upload` (IDOR)**
+`bulk-tracking-upload.php:377-455`
+شورت‌کد `[tracking_search_form]` هر `order_id` را از `$_POST` می‌گیرد، `wc_get_order($order_id)` صدا می‌کند و بدون هیچ احراز مالکیتی: نام و نام خانوادگی، آدرس کامل (خیابان/شهر/استان/کدپستی)، تاریخ سفارش و کد رهگیری را چاپ می‌کند. شماره سفارش‌های ووکامرس ترتیبی‌اند → یک ربات ساده می‌تواند کل بانک اطلاعات مشتری را بخورد. هیچ nonce، rate-limit، کوکی تأیید یا کلید (order key) در کار نیست.
+رفع پیشنهادی (هر سه لایه):
+- `if ( ! $order || ! hash_equals( $order->get_order_key(), $_POST['order_key'] ?? '' ) )` → پیگیری با «شماره سفارش + کد رهگیری/ایمیل/موبایل» به‌جای شناسهٔ تنها؛
+- کش + شمارندهٔ تلاش ناموفق (transient بر اساس IP) برای محدودسازی؛
+- در صورت نبود امکان تغییر فرم، حداقل فیلدها به «نام کوچک + شهر + کد رهگیری» تقلیل یابد و آدرس دقیق حذف شود.
+
+### 🟠 زیاد
+
+**F2 · `tisa-product-importer`: استخراج ZIP بدون مهار**
+`:126-141` و `:444-468`
+هیچ سقفی روی حجم فایل، تعداد فایل‌ها یا حجم پس از استخراج نیست (zip bomb → پر شدن دیسک/timeout). `extractTo` مستقیماً به temp اجرا می‌شود و سپس `file_get_contents` روی هر فایل با پسوند تصویر خوانده می‌شود؛ اگر ZIP یک **symlink** به بیرون (مثلاً `wp-config.php`) داشته باشد، محتوایش به‌عنوان پیوست عمومی فروشگاه منتشر می‌شود.
+رفع: `if ($zip->numFiles > 300) fail()`؛ بررسی `$stat['size']` قبل از extract؛ و برای هر فایل `is_link() === false && 0 === strpos(realpath($file), realpath($dir))` قبل از `file_get_contents`.
+
+**F3 · `bulk-tracking-upload`: پردازش یکجای کل فایل**
+`:196-345`
+کل CSV در یک ریکوئست PHP، ردیف‌به‌ردیف با `$order->save()` (هر ردیف = چند کوئری) پردازش می‌شود. با ۵۰۰۰ ردیف روی هاست اشتراکی timeout محتمل است و چون transaction/ checkpoint ندارد، فایل **نصفه‌کاره** اعمال می‌شود بدون گزارش دقیق کجا مانده. همهٔ پلاگین‌های دیگر همین مجموعه batch+progress دارند.
+رفع: همان الگوی `bdc_process_batch` / `tcbpm_run` — AJAX دسته‌ای با نوار پیشرفت و ادامه از `row_offset`.
+
+**F4 · نبود `uninstall.php` در ۵ پلاگین**
+`bulk-tracking-upload`, `case-special-package`, `tisa-product-importer`, `tisacase-pricing-manager`, `wc-sku-prefix-bar`
+پس از حذف، `wcsp_settings`، `tisacase_pricing_manager_rules_v1`، ترنزنت‌های `wcspb_*` و `tisa_update_*` باقی می‌مانند؛ بدتر: اگر قصد جابه‌جایی/بازنصب روی `tisacase-pricing-manager` باشد، قوانین فعالِ قیمت‌گذاری داینامیک به‌صورت خاموش‌شدنی باقی می‌مانند و قیمت‌های سایت همچنان تغییر کرده نمایش داده می‌شوند در حالی که افزونه‌ای نیست.
+
+### 🟡 متوسط
+
+**F5 · تداخل `case-special-package` با `tisacase-pricing-manager`**
+`case-special-package.php:942` در برابر `tisacase-pricing-manager.php:357-413`
+قیمت پکیج روی `get_regular_price('edit')` (مقدار خام دیتابیس، بدون فیلتر) جمع می‌شود، درحالی‌که قیمت نمایشی در کاتالوگ از فیلتر قیمت‌گذاری داینامیک می‌آید. نتیجه: «قیمت محصول صفحه = A»، «قیمت نهایی سبد = قیمت DB + پکیج». اگر هر دو افزونه فعال‌اند، قیمت‌های پرداخت با آنچه مشتری دیده یکی نیست.
+رفع: در `adjust_price` از `$product->get_price('view')` (یا فیلتر `woocommerce_product_get_price`) به‌عنوان پایه استفاده شود، یا مستند/آزمایش‌شده اعلام شود که این دو همزمان فعال نباشند.
+
+**F6 · `tisacase-bulk-price-manager`: اندپوینت پیش‌نمایش بدون بررسی نقش**
+`includes/class-tcbpm-ajax.php:32`
+`ajax_run/finish/rollback_start/rollback_page/cancel` همه `guard()` را صدا می‌زنند (nonce + `TCBPM_Core::can()`)، اما `ajax_preview` **فقط** nonce داخل `args_from_post()` چک می‌کند و `guard()` ندارد. نتیجه: هر کاربر لاگین‌شده‌ای که به nonce دسترس پیدا کند (یا هر افزونه‌ای که `tcbpm_nonce` را جای دیگر چاپ کند) می‌تواند نام/قیمت/SKU انبوه محصولات را استخراج کند و کوئری سنگین `selection_parent_ids` روی کل کاتالوگ اجرا کند (DoS). یک خط رفع: `self::guard();` در ابتدای متد.
+
+**F7 · CSV Injection در خروجی `tisacase-bulk-price-manager`**
+`class-tcbpm-ajax.php:411-450`
+مقادیر «نام والد / SKU / نام شیء» مستقیم در `fputcsv` می‌روند. اگر عنوان محصولی با `=`, `+`, `-`, `@` شروع شود، هنگام باز شدن در Excel به‌عنوان فرمول اجرا می‌شود. رفع: پیشوند `'` (یا `="..."`) برای فیلدهای متنی.
+
+**F8 · `tisa-product-importer`: SKU مسابقه‌ای و دیتابیس دور زده‌شده**
+`:167-187`, `:340-349`
+`next_sku()` یک `SELECT meta_value LIKE 'PFX%'` روی کل `postmeta` است و سپس `max+1` بدون پدینگ؛ دو ایمپورت همزمان می‌توانند SKU یکسان بسازند (و ووکامرس چون `_sku` را مستقیم در متا نوشته، `_wcdupe_sku` را هم متوجه نمی‌شود). نوشتن قیمت‌ها هم مستقیم با `update_post_meta` است، نه `$product->set_regular_price()/save()` → ریسک کهنه‌ماندن `wp_wc_product_meta_lookup` (فیلتر/مرتب‌سازی قیمت در ووکامرس و HPOS lookup).
+رفع: `wc_get_product_id_by_sku()` + حلقهٔ تلاش، ساخت محصول با `WC_Product_Variable`/`save()`، و `wc_update_product_lookup_stats($product_id)` در انتها.
+
+**F9 · وابستگی به فونت گوگل در ادمین `case-special-package`**
+`:159` — `fonts.googleapis.com`. در شبکهٔ ایران گاهی مسدود/کند است و `admin.css` روی Vazirmatn سوار شده؛ همچنین درخواست خروجی از سرور برای GDPR حساس است. رفع: فونت را در `assets/fonts/` میزبانی کنید (`@font-face` محلی) یا `@import` را به `system-ui` fallback تبدیل کنید.
+
+**F10 · `wc-sku-prefix-bar`: تشخیص صفحهٔ بسیار شکننده**
+`:34-44`
+`foreach (array_keys($_GET) as $key) if ('post_type' !== $key) return false;` یعنی با **هر** پارامتر اضافی (یک افزونهٔ فیلتر، `?post_status=`, `?orderby=`, پیام موفقیت وردپرس، …) نوار کاملاً ناپدید می‌شود — و رفتار «گاهی هست، گاهی نیست» که دیباگش دشوارترین حالت ممکن است. رفع: فقط `base`/`post_type` را از `get_current_screen()` بخوان و شرط GET را حذف کن.
+
+**F11 · `tisacase-pricing-manager`: حفرهٔ «قیمت همکاری»**
+`:357-413`
+منطق فعلی فقط می‌گوید «برای کاربر همکار قیمت را دست نکن»؛ هیچ‌جا `_tisacase_wholesale_price` را **به‌عنوان قیمت نمایشی** جایگزین نمی‌کند. یعنی نقش `tisacase_partner` همان قیمت DB (خرده‌فروشی) را می‌بیند، مگر اینکه اسنیپت/افزونهٔ دیگری این کار را بکند. باید روشن شود آن تکهٔ گمشده کجاست — اگر در Code Snippets است، همین‌جا هم یک `filter_active_price` برای partner لازم است.
+
+**F12 · `bulk-product-cleaner/uninstall.php:26`**
+`option_name LIKE 'bdc_%'` هر آپشنی با پیشوند `bdc_` را پاک می‌کند، نه فقط کلیدهای این افزونه. اگر افزونه/اسنیپت دیگری از همان پیشوند استفاده کند، بی‌صدا پاک می‌شود. رفع: حلقه روی لیست صریح کلیدها.
+
+**F13 · i18n**
+در ۴ پلاگین هیچ رشته‌ای ترجمه‌پذیر نیست؛ اگر روزی بخواید روی `.org` یا برای مشتری انگلیسی‌زبان منتشر کنید، ۴ پلاگین پایین‌تر از بقیه رد می‌شوند. (الگوی قابل‌کپی: `bulk-product-cleaner` + `tisacase-order-phone-exporter`.)
+
+### ⚪ کم / آرایشی
+- `wc-sku-prefix-bar:106` — در REST، اگر پیشوندی سابقه نداشته باشد `prefix.'1'` برمی‌گردد (بدون پدینگ)؛ با F8 هم‌خوان شود.
+- `bulk-tracking-upload:665-676` — `$wpdb->delete` سراسری، `post_id`های غیرسفارش را هم می‌زند (اگر جای دیگری `_tracking_code` داشته باشد) و object cache را invalidate نمی‌کند.
+- `case-special-package:801-813` — `save_product_field` به nonce/cap خودش تکیه نمی‌کند (به `woocommerce_process_product_meta` وابسته است)؛ `isset($_POST)` بدون nonce-verification علامت phpcs می‌خورد.
+- `tisa-product-importer:50-53` — پیام‌های موفقیت/خطا در query string نگه داشته می‌شوند (بوکمارک/لاگ‌نویز، هرچند `esc_html` شده).
+- `case-special-package:315-327` — خروجی‌های SVG با `echo` خام عددی (عدد internal است، XSS نیست، ولی `esc_attr` برای انطباق با phpcs لازم است).
+- `tisacase-pricing-manager:246` — `can_apply()` در زمینهٔ wp-cron قیمت داینامیک اعمال نمی‌کند؛ ایمیل‌های سفارش تولیدشده در کرون قیمت DB را نشان می‌دهند (در admin-ajax درست رفتار می‌کند ✅).
+- پلاگین‌های ۱، ۲، ۴، ۶، ۷، ۸، ۹ `declare_compatibility('custom_order_tables')` ندارند؛ هرچه با سفارش‌ها کار نمی‌کنند مجاز است ولی برای جلوگیری از «compatibility mode» اجباری خوب است اضافه شود.
+
+---
+
+## ۶) چیزی که واقعاً خوب ساخته شده (لازم است حفظ شود)
+
+1. **هیچ‌جا هیچ حذف/تغییر مخربی بدون dry-run و مسیر بازگشت انجام نمی‌شود** — BDC، TCBPM، TisaCase Desc هر سه بکاپ + rollback دارند. این امضای مهندسی این مجموعه است.
+2. الگوی واحد «batch + time guard + lock + resume» در چهار پلاگین مستقل پیاده شده (BDC، TCBPM، phone-exporter، desc) — کاندیدای استخراج به یک کتابخانهٔ مشترک (`tisacase-wp-sdk`).
+3. آماده‌سازی در برابر HPOS در سه سطح (کوئری، `declare_compatibility`، خواندن دو-مسیرهٔ postmeta/object).
+4. امنیت فایل‌های خروجی در phone-exporter (پوشهٔ هش‌دار + لیست سفید + nonce + استریم بدون نوشتن فایل عمومی) — الگویی که باید به BDC و ایمپورتر هم سرایت کند.
+5. مستندسازی changelog در `readme.txt` (BDC 12.0→12.4 با ذکر علتِ دقیقِ هر بهینه‌سازی) و READMEهای کاربردی; این سطح از توضیح در افزونه‌های داخلی کمیاب است.
+6. تست مستقل از وردپرس در `tisacase-bulk-price-manager/tests` — هسته با استاب تست شده (تبدیل عدد فارسی، nonce، سقف‌ها، canonical/HMAC token).
+
+## ۷) پیشنهاد مسیر بعدی (به ترتیب بازدهی/هزینه)
+
+| اولویت | کار | برآورد |
+|--------|-----|--------|
+| ۱ | F1 نشت PII در `bulk-tracking-upload` (order key + rate limit) | ۱–۲ ساعت |
+| ۲ | F2 مهار ZIP در ایمپورتر + F6 یک خط `guard()` + F7 CSV prefix | ۱ ساعت |
+| ۳ | F4 افزودن `uninstall.php` به ۵ پلاگین | ۴۵ دقیقه |
+| ۴ | F5/F11 روشن‌شدن تعامل pricingها (تصمیم محصولی، بعد کد) | گفت‌وگو |
+| ۵ | F3 batch‌سازی `bulk-tracking-upload` (هم‌راستا کردن با بقیه) | ۳–۴ ساعت |
+| ۶ | F13 i18n + F9 فونت محلی + یکدست‌سازی headerها/نسخه‌ها | ۲–۳ ساعت |
+| ۷ | استخراج SDK مشترک (batch/lock/rollback) و افزودن تست برای بقیه | پروژهٔ جدا |
+
+
+## افزونهٔ ادغامی `tisacase-pricing` (1.1.0)
+
+جایگزین کامل `tisacase-bulk-price-manager` + `tisacase-pricing-manager`؛ از صفر با همان قابلیت‌ها:
+
+- `includes/class-tcp-settings.php` — ثابت‌ها، تنظیمات عملیات گروهی (`tcp_settings`)، ثبت هوک‌ها، مهاجرت یک‌بارهٔ گزینه‌های قدیمی (`tcbpm_settings`، `tisacase_pricing_manager_rules_v1`)، هشدار تداخل اگر افزونه‌های قدیمی فعال باشند.
+- `includes/class-tcp-rules.php` — موتور داینامیک (اولویت محصول ← دسته ← سراسری، حفظ فروش ویژهٔ واقعی و قیمت همکاری، گردکردن به …۸۰۰۰، هش کش واریشن، nocache برای همکار). گزینه `tcp_rules`. نقش/کپ/متا قدیمی حفظ شده.
+- `class-tcp-db.php` / `-ops.php` / `-ajax.php` / `-scheduler.php` — عملیات گروهی (جدول‌های `tcp_runs`/`tcp_log`، پیش‌نمایش با توکن، اجرای صفحه‌ای، بازگردانی، CSV، صف WP-Cron).
+- `class-tcp-admin.php` + `views/{rules,bulk,runs,settings}.php` — یک صفحه زیر ووکامرس (`admin.php?page=tisacase-pricing`) با سر سبز و چهار تب قرصی.
+- تاریخچهٔ اجراهای افزونهٔ قدیمی منتقل نمی‌شود (جدول‌های جدید)؛ قیمت‌ها/متاها دست‌نخورده‌اند.
+- **1.1.0:** `class-tcp-round.php` (رند به رقم دلخواه/گام، تخفیف متغیر ±J قطعی بر اساس شناسه)؛ قوانین داینامیک: حالت رند per-rule (none/round/jitter)، بازهٔ زمانی، کف/سقف، استثنا؛ تغییر گروهی: تاگل «رند به ۸» + «تخفیف متغیر» (فقط عملیات درصد تخفیف) داخل args/توکن؛ تنظیمات: رقم رند، گام، دامنهٔ نوسان؛ همهٔ چک‌باکس‌ها → `tisa-switch`.
+- **1.2.0:** تب «کد تخفیف» (`class-tcp-coupons.php`, `views/coupons.php`, `assets/coupons.js`) روی `shop_coupon` ووکامرس: ساخت/ویرایش، تولید انبوه یک‌بارمصرف با گروه (`_tcp_batch`)، فهرست با وضعیت/کپی/فعال‌غیرفعال/حذف، CSV، تاگل «رند به ۸» (`_tcp_round_to_8` → fee منفی «رند قیمت» در `woocommerce_cart_calculate_fees`).
+- **case-special-package 1.4.0** — بازطراحی کامل ادمین به زبان TisaCase (سر سبز + تب‌های قرصی، کارت‌های تخت، `tisa-switch`/`tisa-input`/`tisa-code`)؛ فقط CSS و مارکاپ، بدون تغییر منطق. استایل inline بخش فرانت (صفحه محصول) عمداً دست نخورده.
+- **case-special-package 1.4.1** — آمار سفارش‌ها با کوئری مستقیم روی `order_itemmeta._wcsp_package_total` (به‌جای پیمایش همهٔ سفارش‌ها)؛ دکمهٔ «بازمحاسبهٔ آمار» (`admin_post_wcsp_refresh_stats`)؛ جدول ۱۰ سفارش اخیر دارای پکیج؛ نتیجهٔ صفر فقط ۵ دقیقه کش می‌شود.
+- **bulk-tracking-upload 2.3.0** — دو صفحهٔ آپلود/پاک‌سازی به زبان TisaCase: سر سبز مشترک (`bwt_render_hero`) با تب‌های قرصی بین دو صفحه، کارت‌های تخت، KPI نتیجهٔ آپلود، `tisa-notice`/`tisa-table`/`tisa-btn`/`tisa-input`؛ فقط مارکاپ و CSS — F1/F2/F3 دست نخورده.
+- **wc-telegram-orders 1.11.0** (افزونهٔ دهم؛ منبع `wc-telegram-orders (1).zip`) — ادمین به زبان TisaCase: سر سبز + تب‌های قرصی (سفارش‌ها و گزارش / اعلان موجودی / لاگ)، form-table داخل کارت، ۱۰ چک‌باکس → `tisa-switch`، کارت‌های تست/گزارش دستی/عیب‌یابی، لاگ با KPI و نشان سطح کلاسی (`log_badge`)؛ `assets/admin.css` جدید با enqueue فقط روی صفحهٔ خودش. بدون تغییر منطق ارسال/کرون/لاگ.
+- **tisacase-hub 1.6.0** — رجیستری: «ارسال سفارش‌ها به تلگرام» (گروه سفارش‌ها، آیکون `send`)؛ نوتیس هاب → قرص شیشه‌ای داخل هیرو با آیکون و دکمهٔ بستن، محو خودکار موفق‌ها بعد از ۵ ثانیه، پاک‌کردن `tsh_msg` از URL؛ `sweep_temp_write_tests()` بعد از هر به‌روزرسانی (کارت هاب و `upgrader_process_complete`) فایل‌های صفر بایتی `temp-write-test-*` را در ریشه‌های شناخته‌شده پاک می‌کند.
+- **wc-telegram-orders 1.11.1** — محاسبهٔ کیف پول: `order_gross_total()` (آیتم‌ها+مالیات+حمل+هزینه‌های مثبت) و `order_amounts()` → `{order_total}` = نقدی + کیف پول، `{paid_amount}` = نقدی؛ تشخیص سهم کیف پول به ترتیب: فیلتر → fee منفی با نام کیف پول → کلید متای تنظیم‌شده → اختلاف total با جمع واقعی (منهای feeهای منفی دیگر) → متاهای مشابه (ترجیح برابر با اختلاف) → fee مثبت. گزارش روزانه و پیام وضعیت هم از grand استفاده می‌کنند؛ جدول عیب‌یابی total/gross/grand/paid را نشان می‌دهد.
+- **wc-telegram-orders 1.12.0** (از تحلیل لاگ ۵۰۰ ردیفی): پیام‌های وضعیت → صف کرون `wc_telegram_send_status` با فاصلهٔ `status_gap` (پیش‌فرض ۳ ثانیه) و ۳ تلاش مجدد؛ فهرست `status_ignore` (پیش‌فرض `pws-in-stock`)؛ سفارش‌های معوق: هوک‌های `woocommerce_new_order_item`/`after_order_object_save` + جاروی ۱۵ دقیقه‌ای `wc_telegram_sweep_pending` (ارسال/لغو/انقضای ۲۴ساعته)؛ 429 تا ۳۰ ثانیه صبر؛ نویز `duplicate_blocked`/`flush_nothing` به info/debug.
+- **wc-telegram-orders 1.12.1** — بازچینی کامل فرم‌ها: حذف form-table، کارت‌های جدا (اتصال / پیام سفارش / تغییر وضعیت / گزارش روزانه / هشدار موجودی / قالب اعلان)، گرید دو ستونه `.wcto-row`، متن‌های راهنما کوتاه، فاصلهٔ داخلی بیشتر، نوار ذخیرهٔ چسبان؛ چیپ‌های متغیر (`var_chips`, `assets/admin.js`) با کلیک در جای مکان‌نما درج می‌شوند (بلاک if_wallet متن انتخاب‌شده را می‌پیچد).
+- **wc-telegram-orders 1.12.2** — ضد سیل: یک پیام وضعیت در صف به ازای هر سفارش، سقف صف ۳۰۰ و اسلات حداکثر ۳۰ دقیقه جلو؛ `spawn_cron` حداکثر هر ۱۰ ثانیه؛ حافظهٔ مشترک 429 (`wc_telegram_429_until`) بین همهٔ درخواست‌ها.
+- **wc-telegram-orders 1.12.3** — متغیرهای `{discount_total}` `{discount_number}` `{coupons}` و بلاک `{if_discount}…{/if_discount}`؛ قالب پیش‌فرض خط «🏷 تخفیف: … (کد)» بین جمع محصولات و حمل‌ونقل دارد (TEMPLATE_VERSION 1.12.3؛ قالب‌های دست‌نخورده خودکار ارتقا می‌یابند).
+- **wc-telegram-orders 1.12.4** — قالب پیش‌فرض: خط کیف پول `({wallet_number}+ تومان از کیف پول)` و بدون خط خالی قبل از «نحوه پرداخت» (TEMPLATE_VERSION 1.12.4).
+- **tisacase-order-phone-exporter 1.5.0** — فقط UI: سر سبز (نشان HPOS/Legacy + نسخه)، کارت «ساخت خروجی» با سوییچ حذف تکراری + دکمه‌ها در یک ردیف (یک دکمهٔ پُر)، ۴ کاشی KPI (بررسی‌شده/معتبر/بدون شماره/تکراری) به‌جای خط آماری، فایل‌ها به‌صورت ردیف شماره‌دار با دکمهٔ دانلود، راهنمای تاشو کوتاه. منطق AJAX/کوئری دست‌نخورده. `TISA_PHONE_EXPORTER_VERSION` اضافه شد.
