@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       ارسال سفارش‌ها به تلگرام ووکامرس
  * Description:       ارسال خودکار سفارش‌های جدید ووکامرس به تلگرام با فرمت فارسی دلخواه + گزارش روزانه فروش (با سنجاق خودکار) + اعلان کمبود موجودی محصولات + سیستم لاگ رویدادها در پنل.
- * Version:           1.12.4
+ * Version:           1.14.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            علیرضا شعبان زاده
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('WC_TELEGRAM_ORDERS_VERSION', '1.12.4');
+define('WC_TELEGRAM_ORDERS_VERSION', '1.14.1');
 define('WC_TELEGRAM_ORDERS_OPTION', 'wc_telegram_orders_settings');
 define('WC_TELEGRAM_ORDERS_FILE', __FILE__);
 
@@ -44,6 +44,9 @@ class WC_Telegram_Orders {
     const TEMPLATE_VERSION_OPTION = 'wc_telegram_template_version'; // نسخهٔ قالب پیش‌فرضی که اعمال شده
     const TEMPLATE_VERSION = '1.12.4';                        // فقط با تغییرِ قالب پیش‌فرض بالا می‌رود
     const STOCK_STATE_META = '_wc_telegram_stock_state';      // وضعیت اعلان موجودی هر محصول: '' | low | out
+    const HEALTH_STREAK_OPTION = 'wc_telegram_fail_streak';   // شمار ارسال‌های ناموفق پشت‌سرهم (هشدار سلامت)
+    const HEALTH_ALERT_OPTION  = 'wc_telegram_health_alert';  // زمان آخرین هشدار سلامت (جلوگیری از تکرار)
+    const FORCE_SEND_META      = '_wc_telegram_force';        // ارسال اجباریِ یک‌بارمصرف (بدون شرط پرداخت)
 
     // صف اعلان‌های موجودی همین درخواست — در پایان درخواست یکجا ارسال می‌شود
     // (سفارش چندقلمی → یک پیام، نه چند پیام پشت‌سرهم)
@@ -104,6 +107,13 @@ class WC_Telegram_Orders {
         add_filter('woocommerce_order_actions', [$this, 'add_order_action']);
         add_action('woocommerce_order_action_wc_telegram_resend', [$this, 'resend_via_order_action']);
 
+        // اکشن گروهی در لیست سفارش‌ها — هر دو حالت: لیست قدیمی (CPT) و HPOS
+        add_filter('bulk_actions-edit-shop_order', [$this, 'add_bulk_actions']);
+        add_filter('bulk_actions-woocommerce_page_wc-orders', [$this, 'add_bulk_actions']);
+        add_action('handle_bulk_actions-edit_shop_order', [$this, 'handle_bulk_send'], 10, 3);
+        add_action('handle_bulk_actions-woocommerce_page_wc-orders', [$this, 'handle_bulk_send'], 10, 3);
+        add_action('admin_notices', [$this, 'bulk_send_notice']);
+
         // اطلاع کوتاه با هر تغییر وضعیت سفارش (لغو، تکمیل، استرداد و...)
         add_action('woocommerce_order_status_changed', [$this, 'on_status_changed'], 10, 4);
 
@@ -118,6 +128,10 @@ class WC_Telegram_Orders {
     public function defaults() {
         return [
             'enabled'       => 'yes',
+            // شرط پرداخت: سفارش تا رسیدن به وضعیت مجاز (پیش‌فرض «در حال انجام» = پرداخت‌شده) معرفی نمی‌شود؛
+            // سفارش در انتظار پرداخت/لغوشده هیچ پیامی نمی‌گیرد
+            'paid_gate'     => 'yes',
+            'send_statuses' => 'processing',
             'bot_token'     => '',
             'chat_ids'      => '',
             'template'      => $this->default_template(),
@@ -132,6 +146,16 @@ class WC_Telegram_Orders {
             'timezone'        => 'Asia/Tehran',
             'currency_label'  => 'تومان',
             'items_link'      => 'yes',   // عنوان هر آیتم در پیام سفارش به صفحهٔ محصول لینک شود
+            // تاریخ شمسی در پیام‌ها و پنل
+            'jalali_date'     => 'yes',
+            'jalali_digits'   => 'yes',   // رقم‌های تاریخ به فارسی (۱۴۰۵/۰۶/۲۶)
+            // ارسال گروهی از لیست سفارش‌ها
+            'bulk_gap'        => 2,       // فاصلهٔ بین پیام‌های ارسال گروهی (ثانیه) — ضد سیل
+            'bulk_max'        => 50,      // سقف تعداد سفارش در هر ارسال گروهی
+            // هشدار سلامت ربات
+            'health_enabled'  => 'yes',
+            'health_threshold'=> 5,       // چند ارسال ناموفقِ پشت‌سرهم = هشدار
+            'health_cooldown' => 6,       // حداقل فاصلهٔ بین دو هشدار (ساعت)
             // تب «اعلانات محصولات»
             'stock_enabled'     => 'yes',
             'stock_threshold'   => 5,
@@ -368,6 +392,34 @@ class WC_Telegram_Orders {
         /* ---- تب «ارسال سفارشات جدید» ---- */
         if ($tab === '' || $tab === 'orders') {
             $out['enabled'] = (!empty($input['enabled']) && $input['enabled'] === 'yes') ? 'yes' : 'no';
+            // تاریخ شمسی در پیام‌ها و پنل
+            $out['jalali_date']   = (!empty($input['jalali_date']) && $input['jalali_date'] === 'yes') ? 'yes' : 'no';
+            $out['jalali_digits'] = (!empty($input['jalali_digits']) && $input['jalali_digits'] === 'yes') ? 'yes' : 'no';
+            // ارسال گروهی از لیست سفارش‌ها (ضد سیل)
+            if (isset($input['bulk_gap'])) {
+                $out['bulk_gap'] = max(0, min(60, (int) $input['bulk_gap']));
+            }
+            if (isset($input['bulk_max'])) {
+                $out['bulk_max'] = max(1, min(200, (int) $input['bulk_max']));
+            }
+            // هشدار سلامت ربات
+            $out['health_enabled'] = (!empty($input['health_enabled']) && $input['health_enabled'] === 'yes') ? 'yes' : 'no';
+            if (isset($input['health_threshold'])) {
+                $out['health_threshold'] = max(2, min(50, (int) $input['health_threshold']));
+            }
+            if (isset($input['health_cooldown'])) {
+                $out['health_cooldown'] = max(1, min(168, (int) $input['health_cooldown']));
+            }
+            // شرط پرداخت: فقط سفارش‌های پرداخت‌شده (وضعیت مجاز) به تلگرام بروند
+            $out['paid_gate'] = (!empty($input['paid_gate']) && $input['paid_gate'] === 'yes') ? 'yes' : 'no';
+            if (isset($input['send_statuses'])) {
+                $send_statuses = array_values(array_unique(array_filter(array_map(function ($x) {
+                    // اول کوچک‌سازی، بعد حذف پیشوند wc- (ورودی می‌تواند WC-ON-HOLD باشد)
+                    return sanitize_key(str_replace('wc-', '', strtolower(trim($x))));
+                }, explode(',', (string) $input['send_statuses'])))));
+                // خالی/نامعتبر → پیش‌فرض امن: فقط «در حال انجام»
+                $out['send_statuses'] = $send_statuses ? implode(',', $send_statuses) : 'processing';
+            }
             // توکن: اگر خالی ارسال شد، توکن قبلی حفظ می‌شود؛ تیک «حذف توکن» پاکش می‌کند
             $in_token = isset($input['bot_token']) ? sanitize_text_field(trim($input['bot_token'])) : '';
             if ($in_token !== '') {
@@ -456,14 +508,14 @@ class WC_Telegram_Orders {
         if ($tab === '' && isset($_REQUEST['tab'])) {
             $tab = sanitize_key(wp_unslash($_REQUEST['tab']));
         }
-        wp_safe_redirect($this->tab_url(in_array($tab, ['orders', 'products'], true) ? $tab : 'orders'));
+        wp_safe_redirect($this->tab_url(in_array($tab, ['orders', 'products', 'stats'], true) ? $tab : 'orders'));
         exit;
     }
 
-    // تب فعال صفحه تنظیمات (orders | products) — از URL، با اعتبارسنجی
+    // تب فعال صفحه تنظیمات (orders | products | stats) — از URL، با اعتبارسنجی
     private function current_tab() {
         $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : 'orders';
-        return in_array($tab, ['orders', 'products'], true) ? $tab : 'orders';
+        return in_array($tab, ['orders', 'products', 'stats'], true) ? $tab : 'orders';
     }
 
     private function tab_url($tab) {
@@ -506,6 +558,7 @@ class WC_Telegram_Orders {
                 <nav class="wcto-tabs">
                     <a href="<?php echo esc_url($this->tab_url('orders')); ?>" class="wcto-tab <?php echo $tab === 'orders' ? 'is-active' : ''; ?>">سفارش‌ها و گزارش</a>
                     <a href="<?php echo esc_url($this->tab_url('products')); ?>" class="wcto-tab <?php echo $tab === 'products' ? 'is-active' : ''; ?>">اعلان موجودی</a>
+                    <a href="<?php echo esc_url($this->tab_url('stats')); ?>" class="wcto-tab <?php echo $tab === 'stats' ? 'is-active' : ''; ?>">آمار فروش</a>
                     <a href="#wcto-log" class="wcto-tab wcto-tab--ghost">لاگ رویدادها</a>
                 </nav>
             </header>
@@ -518,6 +571,8 @@ class WC_Telegram_Orders {
 
             <?php if ($tab === 'products'): ?>
                 <?php $this->render_products_tab($s, $opt); ?>
+            <?php elseif ($tab === 'stats'): ?>
+                <?php $this->render_stats_tab($s, $opt); ?>
             <?php else: ?>
                 <?php $this->render_orders_tab($s, $opt); ?>
             <?php endif; ?>
@@ -560,6 +615,10 @@ class WC_Telegram_Orders {
     /* ---------- تب ۱: ارسال سفارشات جدید ---------- */
     private function render_orders_tab($s, $opt) {
         $has_token = !empty($s['bot_token']);
+        // اسلاگ وضعیت‌های ثبت‌شده در همین سایت — برای راهنمای «وضعیت‌های مجاز ارسال»
+        $status_slugs = function_exists('wc_get_order_statuses')
+            ? array_map(function ($x) { return str_replace('wc-', '', $x); }, array_keys(wc_get_order_statuses()))
+            : ['processing', 'completed', 'on-hold', 'pending', 'cancelled', 'refunded', 'failed'];
         ?>
         <?php $this->maybe_render_debug(); ?>
 
@@ -599,6 +658,66 @@ class WC_Telegram_Orders {
                             <p class="wcto-hint">فقط اگر سهم کیف پول اشتباه تشخیص داده شد؛ کلید را از «عیب‌یابی سفارش» بردارید.</p>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>شرط ارسال سفارش</h2><p>سفارش در انتظار پرداخت یا لغوشده به تلگرام نمی‌رود؛ با پرداخت شدن (تغییر وضعیت) معرفی می‌شود.</p></div></div>
+                <div class="wcto-card-body">
+                    <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[paid_gate]" value="yes" <?php checked(isset($s['paid_gate']) ? $s['paid_gate'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>فقط سفارش‌های پرداخت‌شده ارسال شوند</span></label>
+                    <div class="wcto-field">
+                        <label class="wcto-label" for="wc-tg-send-statuses">وضعیت‌های مجاز ارسال</label>
+                        <input type="text" id="wc-tg-send-statuses" name="<?php echo esc_attr($opt); ?>[send_statuses]" value="<?php echo esc_attr(isset($s['send_statuses']) ? $s['send_statuses'] : 'processing'); ?>" class="tisa-input tisa-input--code" dir="ltr" placeholder="processing" />
+                        <p class="wcto-hint">اسلاگ وضعیت‌ها با ویرگول؛ پیش‌فرض <code dir="ltr">processing</code> (در حال انجام = پرداخت‌شده). تا رسیدن به این وضعیت، پیام سفارش در انتظار می‌ماند و پیام «لغو» یا «در انتظار پرداخت» نمی‌رود.</p>
+                        <p class="wcto-hint">وضعیت‌های این سایت: <code dir="ltr"><?php echo esc_html(implode(', ', $status_slugs)); ?></code></p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>ارسال گروهی از لیست سفارش‌ها</h2><p>در لیست سفارش‌ها چند سفارش را انتخاب کنید و «ارسال به تلگرام» را بزنید.</p></div></div>
+                <div class="wcto-card-body">
+                    <div class="wcto-row">
+                        <div class="wcto-field wcto-field--sm">
+                            <label class="wcto-label" for="wc-tg-bulk-gap">فاصلهٔ بین پیام‌ها</label>
+                            <div class="wcto-unit"><input type="number" id="wc-tg-bulk-gap" name="<?php echo esc_attr($opt); ?>[bulk_gap]" value="<?php echo (int) (isset($s['bulk_gap']) ? $s['bulk_gap'] : 2); ?>" min="0" max="60" step="1" dir="ltr" class="tisa-input" /><span>ثانیه</span></div>
+                            <p class="wcto-hint">ضد سیل: پیام‌ها پلکانی در صف می‌روند تا تلگرام ۴۲۹ ندهد.</p>
+                        </div>
+                        <div class="wcto-field wcto-field--sm">
+                            <label class="wcto-label" for="wc-tg-bulk-max">سقف تعداد در هر اجرا</label>
+                            <input type="number" id="wc-tg-bulk-max" name="<?php echo esc_attr($opt); ?>[bulk_max]" value="<?php echo (int) (isset($s['bulk_max']) ? $s['bulk_max'] : 50); ?>" min="1" max="200" step="1" dir="ltr" class="tisa-input" />
+                            <p class="wcto-hint">سفارش‌های بیشتر از این سقف در همان اجرا رد می‌شوند.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>تاریخ پیام‌ها</h2><p>تاریخ شمسی داخلی — نیازی به افزونهٔ جداگانه نیست.</p></div></div>
+                <div class="wcto-card-body">
+                    <div class="wcto-switches">
+                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[jalali_date]" value="yes" <?php checked(isset($s['jalali_date']) ? $s['jalali_date'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>تاریخ شمسی باشد</span></label>
+                        <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[jalali_digits]" value="yes" <?php checked(isset($s['jalali_digits']) ? $s['jalali_digits'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>رقم‌ها به فارسی (۱۴۰۵/۰۶/۲۶)</span></label>
+                    </div>
+                    <p class="wcto-hint">نمونه: <bdi><?php echo esc_html($this->format_date(get_option('date_format') . ' ' . get_option('time_format'), time())); ?></bdi> — چون مستقیماً از میلادی محاسبه می‌شود، با افزونه‌های شمسی دیگر تداخل نمی‌کند (تبدیل دوبار رخ نمی‌دهد).</p>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>هشدار سلامت ربات</h2><p>اگر ارسال‌ها پشت‌سرهم شکست بخورند، یک پیام هشدار به چت می‌رود.</p></div></div>
+                <div class="wcto-card-body">
+                    <label class="tisa-switch wcto-switch"><input type="checkbox" name="<?php echo esc_attr($opt); ?>[health_enabled]" value="yes" <?php checked(isset($s['health_enabled']) ? $s['health_enabled'] : 'yes', 'yes'); ?> /><span class="tisa-switch__track" aria-hidden="true"></span><span>هشدار سلامت فعال باشد</span></label>
+                    <div class="wcto-row">
+                        <div class="wcto-field wcto-field--sm">
+                            <label class="wcto-label" for="wc-tg-health-th">آستانهٔ شکست</label>
+                            <div class="wcto-unit"><input type="number" id="wc-tg-health-th" name="<?php echo esc_attr($opt); ?>[health_threshold]" value="<?php echo (int) (isset($s['health_threshold']) ? $s['health_threshold'] : 5); ?>" min="2" max="50" step="1" dir="ltr" class="tisa-input" /><span>ارسال ناموفق پشت‌سرهم</span></div>
+                        </div>
+                        <div class="wcto-field wcto-field--sm">
+                            <label class="wcto-label" for="wc-tg-health-cd">بازهٔ توقف هشدار</label>
+                            <div class="wcto-unit"><input type="number" id="wc-tg-health-cd" name="<?php echo esc_attr($opt); ?>[health_cooldown]" value="<?php echo (int) (isset($s['health_cooldown']) ? $s['health_cooldown'] : 6); ?>" min="1" max="168" step="1" dir="ltr" class="tisa-input" /><span>ساعت</span></div>
+                        </div>
+                    </div>
+                    <p class="wcto-hint">وضعیت فعلی: <?php echo esc_html($this->to_persian_digits((string) $this->health_streak())); ?> شکست پشت‌سرهم. اگر خودِ تلگرام قطع باشد، هشدار هم تحویل نمی‌شود — در آن حالت در تب «آمار فروش» و لاگ رویدادها دیده می‌شود.</p>
                 </div>
             </section>
 
@@ -695,6 +814,322 @@ class WC_Telegram_Orders {
                 </form>
             </section>
         </div>
+        <?php
+    }
+
+    /* ---------- تب ۳: آمار فروش ---------- */
+
+    const STATS_CACHE_PREFIX = 'wc_telegram_stats_';
+    const STATS_ORDER_CAP    = 500;  // سقف سفارش‌هایی که در هر محاسبه بررسی می‌شوند (حافظه/زمان)
+
+    /**
+     * جمع‌آوری آمار بازهٔ انتخابی: پرفروش‌ترین محصولات، بزرگ‌ترین مشتریان،
+     * شلوغ‌ترین ساعت‌ها، روش‌های پرداخت و میانگین فاصلهٔ سفارش‌های پرداخت‌شده.
+     * نتیجه ۳۰ دقیقه کش می‌شود تا صفحهٔ تنظیمات سنگین نشود.
+     */
+    public function collect_stats($days = 30, $refresh = false) {
+        $days      = in_array((int) $days, [7, 30, 90], true) ? (int) $days : 30;
+        $cache_key = self::STATS_CACHE_PREFIX . $days;
+        if (!$refresh) {
+            $cached = get_transient($cache_key);
+            if (is_array($cached) && isset($cached['generated'])) {
+                return $cached;
+            }
+        }
+        $empty = [
+            'days' => $days, 'count' => 0, 'revenue' => 0.0, 'items' => 0, 'products' => [],
+            'customers' => [], 'hours' => [], 'payments' => [], 'avg_gap' => 0, 'oldest' => 0,
+            'newest' => 0, 'truncated' => false, 'generated' => time(), 'available' => false,
+        ];
+        if (!function_exists('wc_get_orders')) {
+            return $empty;
+        }
+        $this->maybe_raise_memory();
+        $paid_statuses = apply_filters('wc_telegram_paid_statuses', ['processing', 'completed']);
+        $since         = time() - ($days * DAY_IN_SECONDS);
+        $orders        = wc_get_orders([
+            'status'       => $paid_statuses,
+            'date_created' => '>=' . $since,
+            'limit'        => self::STATS_ORDER_CAP,
+            'orderby'      => 'date',
+            'order'        => 'DESC',
+            'return'       => 'objects',
+        ]);
+
+        $data = $empty;
+        $data['available'] = true;
+        $paid_ts = [];
+        foreach ((array) $orders as $order) {
+            if (!$order instanceof WC_Order) {
+                continue;
+            }
+            // محافظ: اگر کوئری وضعیت را فیلتر نکرده باشد، خودمان فقط پرداخت‌شده‌ها را حساب می‌کنیم
+            if (!in_array(str_replace('wc-', '', (string) $order->get_status()), $paid_statuses, true)) {
+                continue;
+            }
+            $amounts = $this->order_amounts($order);
+            $grand   = (float) $amounts['grand'];
+            $data['revenue'] += $grand;
+            $data['count']++;
+
+            $created = $order->get_date_created() ? $order->get_date_created()->getTimestamp() : 0;
+            if ($created > 0) {
+                if (!$data['oldest'] || $created < $data['oldest']) {
+                    $data['oldest'] = $created;
+                }
+                if ($created > $data['newest']) {
+                    $data['newest'] = $created;
+                }
+                // ساعت با منطقهٔ زمانی پلاگین (بدون تبدیل شمسی/رقم فارسی — برای محاسبه است)
+                $hour = (int) $this->plugin_date('G', $created);
+                $data['hours'][$hour] = isset($data['hours'][$hour]) ? $data['hours'][$hour] + 1 : 1;
+            }
+
+            foreach ($order->get_items() as $item) {
+                if (!is_object($item) || !method_exists($item, 'get_quantity')) {
+                    continue;
+                }
+                $name = trim((string) $item->get_name());
+                if ($name === '') {
+                    continue;
+                }
+                $qty  = max(0, (int) $item->get_quantity());
+                $line = (float) $item->get_total();
+                $data['items'] += $qty;
+                if (!isset($data['products'][$name])) {
+                    $data['products'][$name] = ['qty' => 0, 'sum' => 0.0, 'orders' => 0];
+                }
+                $data['products'][$name]['qty']    += $qty;
+                $data['products'][$name]['sum']    += $line;
+                $data['products'][$name]['orders'] += 1;
+            }
+
+            $phone = $this->fix_phone($order->get_billing_phone());
+            $key   = ($phone !== '—' && $phone !== '') ? $phone : trim((string) $order->get_billing_email());
+            if ($key !== '') {
+                $name = trim((string) $order->get_formatted_billing_full_name());
+                if (!isset($data['customers'][$key])) {
+                    $data['customers'][$key] = ['name' => '', 'count' => 0, 'sum' => 0.0];
+                }
+                $data['customers'][$key]['count'] += 1;
+                $data['customers'][$key]['sum']   += $grand;
+                if ($data['customers'][$key]['name'] === '' && $name !== '') {
+                    $data['customers'][$key]['name'] = $name;
+                }
+            }
+
+            $pm = trim((string) $order->get_payment_method_title());
+            $pm = ($pm !== '') ? $pm : 'نامشخص';
+            if (!isset($data['payments'][$pm])) {
+                $data['payments'][$pm] = ['count' => 0, 'sum' => 0.0];
+            }
+            $data['payments'][$pm]['count'] += 1;
+            $data['payments'][$pm]['sum']   += $grand;
+
+            $paid_at = method_exists($order, 'get_date_paid') ? $order->get_date_paid() : null;
+            if ($paid_at) {
+                $paid_ts[] = $paid_at->getTimestamp();
+            }
+            $this->clean_order_cache($order->get_id());
+        }
+
+        // میانگین فاصلهٔ بین دو سفارش پرداخت‌شده (روی زمان پرداخت، نه ثبت)
+        sort($paid_ts);
+        if (count($paid_ts) > 1) {
+            $data['avg_gap'] = (int) round(($paid_ts[count($paid_ts) - 1] - $paid_ts[0]) / (count($paid_ts) - 1));
+        }
+
+        $data['truncated'] = ($data['count'] >= self::STATS_ORDER_CAP);
+        set_transient($cache_key, $data, 30 * MINUTE_IN_SECONDS);
+        return $data;
+    }
+
+    // فهرست را بر اساس یک کلید، نزولی مرتب و به n ردیف اول محدود می‌کند
+    private function stats_top(array $rows, $sort_key, $n = 5) {
+        $val = function ($row) use ($sort_key) {
+            if (is_array($row)) {
+                return isset($row[$sort_key]) ? $row[$sort_key] : 0;
+            }
+            return is_numeric($row) ? $row : 0; // فهرست‌های ساده مثل «ساعت => تعداد»
+        };
+        uasort($rows, function ($a, $b) use ($val) {
+            return $val($b) <=> $val($a);
+        });
+        return array_slice($rows, 0, max(1, (int) $n), true);
+    }
+
+    private function render_stats_tab($s, $opt) {
+        $days    = isset($_GET['stats_days']) ? (int) $_GET['stats_days'] : 30;
+        $days    = in_array($days, [7, 30, 90], true) ? $days : 30;
+        $refresh = !empty($_GET['stats_refresh']);
+        $d       = $this->collect_stats($days, $refresh);
+        $avg_bag = ($d['count'] > 0) ? ($d['revenue'] / $d['count']) : 0;
+        $rev     = max(0.0, (float) $d['revenue']);
+        $pct     = function ($v) use ($rev) {
+            return $rev > 0 ? (int) round((((float) $v) / $rev) * 100) : 0;
+        };
+
+        // آمار امروزِ ارسال‌ها از جدول لاگ
+        try {
+            $now = new \DateTime('now', $this->plugin_timezone());
+            $now->setTime(0, 0, 0);
+            $day_start = $now->getTimestamp();
+        } catch (\Exception $e) {
+            $day_start = time() - DAY_IN_SECONDS;
+        }
+        $sent_today  = $this->count_logs(['search' => 'order_sent', 'since' => $day_start]);
+        $error_today = $this->count_logs(['level' => 'error', 'since' => $day_start]);
+        $streak      = $this->health_streak();
+        $threshold   = max(2, (int) (isset($s['health_threshold']) ? $s['health_threshold'] : 5));
+
+        $period_url = function ($n) {
+            return add_query_arg('stats_days', (string) $n, $this->tab_url('stats'));
+        };
+        ?>
+        <div class="wcto-filters">
+            <?php foreach ([7 => '۷ روز', 30 => '۳۰ روز', 90 => '۹۰ روز'] as $n => $label): ?>
+                <a class="tisa-btn <?php echo $n === $days ? 'tisa-btn--primary' : 'tisa-btn--ghost'; ?>" href="<?php echo esc_url($period_url($n)); ?>"><?php echo esc_html($label); ?></a>
+            <?php endforeach; ?>
+            <a class="tisa-btn tisa-btn--ghost" href="<?php echo esc_url(add_query_arg('stats_refresh', '1', $period_url($days))); ?>">بازمحاسبهٔ آمار</a>
+            <span class="wcto-hint">محاسبهٔ آخر: <?php echo esc_html($this->format_date(get_option('date_format') . ' H:i', $d['generated'])); ?> — تا ۳۰ دقیقه کش می‌شود</span>
+        </div>
+
+        <?php if (empty($d['available']) || $d['count'] === 0): ?>
+            <div class="tisa-notice tisa-notice--info wcto-notice">در این بازه سفارش پرداخت‌شده‌ای پیدا نشد<?php echo $d['available'] ? '' : ' (ووکامرس در دسترس نیست)'; ?>.</div>
+        <?php endif; ?>
+
+        <div class="wcto-kpis">
+            <span class="wcto-kpi"><span class="t">سفارش‌های پرداخت‌شده</span><span class="v"><?php echo esc_html($this->to_persian_digits((string) $d['count'])); ?></span></span>
+            <span class="wcto-kpi"><span class="t">جمع فروش</span><span class="v"><?php echo esc_html($this->money($d['revenue'])); ?></span></span>
+            <span class="wcto-kpi"><span class="t">میانگین سبد</span><span class="v"><?php echo esc_html($this->money($avg_bag)); ?></span></span>
+            <span class="wcto-kpi"><span class="t">میانگین فاصلهٔ بین دو سفارش پرداخت‌شده</span><span class="v"><?php echo esc_html($this->to_persian_digits($this->human_duration($d['avg_gap']))); ?></span></span>
+            <span class="wcto-kpi"><span class="t">آیتم‌های فروخته‌شده</span><span class="v"><?php echo esc_html($this->to_persian_digits((string) $d['items'])); ?></span></span>
+            <span class="wcto-kpi <?php echo $sent_today > 0 ? '' : 'wcto-kpi--warn'; ?>"><span class="t">ارسال موفق امروز (تلگرام)</span><span class="v"><?php echo esc_html($this->to_persian_digits((string) $sent_today)); ?></span></span>
+            <span class="wcto-kpi <?php echo $error_today > 0 ? 'wcto-kpi--bad' : ''; ?>"><span class="t">خطاهای امروز</span><span class="v"><?php echo esc_html($this->to_persian_digits((string) $error_today)); ?></span></span>
+            <span class="wcto-kpi <?php echo $streak >= $threshold ? 'wcto-kpi--bad' : ($streak > 0 ? 'wcto-kpi--warn' : ''); ?>"><span class="t">شکست‌های پشت‌سرهم ربات</span><span class="v"><?php echo esc_html($this->to_persian_digits((string) $streak)); ?></span></span>
+        </div>
+
+        <?php if (!empty($d['truncated'])): ?>
+            <div class="tisa-notice tisa-notice--info wcto-notice">آمار بر اساس <?php echo esc_html($this->to_persian_digits((string) self::STATS_ORDER_CAP)); ?> سفارش اخیرِ بازه محاسبه شده است (سقف حافظه).</div>
+        <?php endif; ?>
+
+        <div class="wcto-grid-2">
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>پرفروش‌ترین محصولات</h2><p>بر اساس مبلغ فروش در بازهٔ انتخابی.</p></div></div>
+                <div class="wcto-card-body">
+                    <?php $products = $this->stats_top($d['products'], 'sum', 8); ?>
+                    <?php if (empty($products)): ?>
+                        <p class="wcto-empty">داده‌ای نیست.</p>
+                    <?php else: ?>
+                        <table class="wcto-stats-table">
+                            <thead><tr><th></th><th>محصول</th><th>تعداد</th><th>سفارش</th><th>سهم</th><th>مبلغ</th></tr></thead>
+                            <tbody>
+                            <?php $r = 0; foreach ($products as $name => $row): $r++; ?>
+                                <tr>
+                                    <td><span class="rank <?php echo $r === 1 ? 'rank--1' : ''; ?>"><?php echo esc_html($this->to_persian_digits((string) $r)); ?></span></td>
+                                    <td><?php echo esc_html($name); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $row['qty'])); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $row['orders'])); ?></td>
+                                    <td class="num muted"><?php echo esc_html($this->to_persian_digits((string) $pct($row['sum']))); ?>٪</td>
+                                    <td class="num"><?php echo esc_html($this->money($row['sum'])); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>بزرگ‌ترین مشتریان</h2><p>بیشترین مجموع خرید (با تلفن یا ایمیل شناسایی می‌شوند).</p></div></div>
+                <div class="wcto-card-body">
+                    <?php $customers = $this->stats_top($d['customers'], 'sum', 8); ?>
+                    <?php if (empty($customers)): ?>
+                        <p class="wcto-empty">مشتری با تلفن/ایمیل ثبت‌شده پیدا نشد.</p>
+                    <?php else: ?>
+                        <table class="wcto-stats-table">
+                            <thead><tr><th></th><th>مشتری</th><th>تماس</th><th>سفارش</th><th>مجموع</th></tr></thead>
+                            <tbody>
+                            <?php $r = 0; foreach ($customers as $key => $row): $r++; ?>
+                                <tr>
+                                    <td><span class="rank <?php echo $r === 1 ? 'rank--1' : ''; ?>"><?php echo esc_html($this->to_persian_digits((string) $r)); ?></span></td>
+                                    <td><?php echo esc_html($row['name'] !== '' ? $row['name'] : 'بدون نام'); ?></td>
+                                    <td class="num muted"><?php echo esc_html($key); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $row['count'])); ?></td>
+                                    <td class="num"><?php echo esc_html($this->money($row['sum'])); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>شلوغ‌ترین ساعت‌های روز</h2><p>بر پایهٔ زمان ثبت سفارش (منطقهٔ زمانی پلاگین).</p></div></div>
+                <div class="wcto-card-body">
+                    <?php $hours = $this->stats_top($d['hours'], 0, 6); ?>
+                    <?php if (empty($hours)): ?>
+                        <p class="wcto-empty">داده‌ای نیست.</p>
+                    <?php else: ?>
+                        <?php $max_h = max(1, (int) max($hours)); ?>
+                        <table class="wcto-stats-table">
+                            <thead><tr><th>ساعت</th><th>سفارش</th><th>سهم از سفارش‌ها</th></tr></thead>
+                            <tbody>
+                            <?php foreach ($hours as $h => $c): ?>
+                                <?php $w = (int) round((((int) $c) / $max_h) * 100); ?>
+                                <tr>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits(str_pad((string) $h, 2, '0', STR_PAD_LEFT) . ':00')); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $c)); ?></td>
+                                    <td><span class="wcto-bar"><i style="width: <?php echo esc_attr((string) $w); ?>%"></i></span></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+            </section>
+
+            <section class="wcto-card">
+                <div class="wcto-card-head"><span class="wcto-dot"></span><div><h2>روش‌های پرداخت</h2><p>سهم هر درگاه از فروش بازه.</p></div></div>
+                <div class="wcto-card-body">
+                    <?php $payments = $this->stats_top($d['payments'], 'sum', 6); ?>
+                    <?php if (empty($payments)): ?>
+                        <p class="wcto-empty">داده‌ای نیست.</p>
+                    <?php else: ?>
+                        <table class="wcto-stats-table">
+                            <thead><tr><th>روش</th><th>سفارش</th><th>سهم</th><th>مبلغ</th></tr></thead>
+                            <tbody>
+                            <?php foreach ($payments as $pm => $row): ?>
+                                <tr>
+                                    <td><?php echo esc_html($pm); ?></td>
+                                    <td class="num"><?php echo esc_html($this->to_persian_digits((string) $row['count'])); ?></td>
+                                    <td class="num muted"><?php echo esc_html($this->to_persian_digits((string) $pct($row['sum']))); ?>٪</td>
+                                    <td class="num"><?php echo esc_html($this->money($row['sum'])); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+            </section>
+        </div>
+
+        <section class="wcto-card">
+            <div class="wcto-card-head"><span class="wcto-dot wcto-dot--muted"></span><div><h2>بازهٔ داده</h2></div></div>
+            <div class="wcto-card-body">
+                <p class="wcto-hint">
+                    <?php if ($d['oldest'] && $d['newest']): ?>
+                        از <?php echo esc_html($this->format_date(get_option('date_format') . ' H:i', $d['oldest'])); ?>
+                        تا <?php echo esc_html($this->format_date(get_option('date_format') . ' H:i', $d['newest'])); ?>
+                        — <?php echo esc_html($this->to_persian_digits((string) $d['count'])); ?> سفارش پرداخت‌شده
+                        (وضعیت‌های <?php echo esc_html(implode(', ', (array) apply_filters('wc_telegram_paid_statuses', ['processing', 'completed']))); ?>).
+                    <?php else: ?>
+                        داده‌ای برای نمایش بازه نیست.
+                    <?php endif; ?>
+                </p>
+            </div>
+        </section>
         <?php
     }
 
@@ -812,8 +1247,9 @@ class WC_Telegram_Orders {
             return;
         }
 
-        // اگر آدرس یا اقلام هنوز ثبت نشده (درگاه‌هایی مثل ملت/دیجیکالا سفارش را زود می‌سازند)،
-        // فعلاً هیچ پیامی نفرست؛ با کامل شدن، فقط «یک» پیام کامل ارسال می‌شود — نه دو پیام
+        // اگر آدرس یا اقلام هنوز ثبت نشده (درگاه‌هایی مثل ملت/دیجیکالا سفارش را زود می‌سازند)
+        // یا سفارش هنوز پرداخت نشده، فعلاً هیچ پیامی نفرست؛
+        // با پرداخت/تکمیل، فقط «یک» پیام کامل ارسال می‌شود — نه دو پیام
         $missing = [];
         if (!$this->has_address($order)) {
             $missing[] = 'آدرس';
@@ -826,6 +1262,25 @@ class WC_Telegram_Orders {
             $order->add_order_note('⏳ ' . implode(' و ', $missing) . ' هنوز ثبت نشده؛ پیام تلگرام پس از تکمیل اطلاعات ارسال می‌شود.');
             $order->save_meta_data();
             $this->log('info', 'order', 'order_pending', sprintf('سفارش #%s معوق شد: %s هنوز ثبت نشده.', $order->get_order_number(), implode(' و ', $missing)), ['missing' => $missing], $order->get_id());
+            return;
+        }
+
+        // شرط پرداخت: سفارش در انتظار پرداخت (pending) یا لغوشده معرفی نمی‌شود؛
+        // پیام با تغییر وضعیت به وضعیت مجاز (پیش‌فرض «در حال انجام» = پرداخت‌شده) می‌رود
+        if (!$this->order_send_is_allowed($order, $s)) {
+            if ($this->order_status_is_dead($order->get_status())) {
+                // سفارش از دست رفته — پرچمی نمی‌سازیم که جارو دنبالش بگردد
+                $this->log('info', 'order', 'order_skipped_dead', sprintf('سفارش #%s با وضعیت «%s» به تلگرام ارسال نشد (سفارش مرده).', $order->get_order_number(), wc_get_order_status_name($order->get_status())), ['status' => $order->get_status()], $order->get_id());
+                return;
+            }
+            $order->update_meta_data('_wc_telegram_pending', 'yes');
+            $order->add_order_note(sprintf(
+                '⏳ سفارش هنوز پرداخت نشده (وضعیت «%s»)؛ پیام تلگرام پس از تغییر وضعیت به «%s» ارسال می‌شود.',
+                wc_get_order_status_name($order->get_status()),
+                $this->allowed_statuses_label($s)
+            ));
+            $order->save_meta_data();
+            $this->log('info', 'order', 'order_pending_payment', sprintf('سفارش #%s معرفی نشد: منتظر پرداخت است (وضعیت «%s»؛ مجاز: %s).', $order->get_order_number(), wc_get_order_status_name($order->get_status()), implode(',', $this->send_allowed_statuses($s))), ['status' => $order->get_status(), 'allowed' => $this->send_allowed_statuses($s)], $order->get_id());
             return;
         }
 
@@ -871,17 +1326,151 @@ class WC_Telegram_Orders {
         $order->save_meta_data();
     }
 
+    /* ---------------- اکشن گروهی در لیست سفارش‌ها ---------------- */
+
+    public function add_bulk_actions($actions) {
+        $actions['wc_telegram_bulk_send']  = 'ارسال به تلگرام (فقط وضعیت‌های مجاز)';
+        $actions['wc_telegram_bulk_force'] = 'ارسال به تلگرام (بدون شرط پرداخت)';
+        return $actions;
+    }
+
+    /**
+     * پردازش اکشن گروهی با محافظت در برابر سیل:
+     * سقف تعداد در هر اجرا، فاصلهٔ زمانی بین پیام‌ها، قفل ضد دابل‌کلیک
+     * و رد کردن سفارش‌هایی که از قبل در صف هستند.
+     */
+    public function handle_bulk_send($redirect_to, $doaction, $object_ids) {
+        if (!in_array((string) $doaction, ['wc_telegram_bulk_send', 'wc_telegram_bulk_force'], true)) {
+            return $redirect_to;
+        }
+        if (!current_user_can('manage_woocommerce')) {
+            return $this->bulk_notice_url($redirect_to, 'forbidden');
+        }
+        $s = $this->get_settings();
+        if ($s['enabled'] !== 'yes') {
+            return $this->bulk_notice_url($redirect_to, 'disabled');
+        }
+        $ids = array_values(array_unique(array_filter(array_map('absint', (array) $object_ids))));
+        if (empty($ids)) {
+            return $this->bulk_notice_url($redirect_to, 'empty');
+        }
+        // ضد سیل: دابل‌کلیک یا رفرش، دو بار پشت‌سرهم صف نمی‌سازد
+        if (get_transient('wc_telegram_bulk_lock')) {
+            return $this->bulk_notice_url($redirect_to, 'locked');
+        }
+        set_transient('wc_telegram_bulk_lock', 1, 30);
+
+        $force  = ((string) $doaction === 'wc_telegram_bulk_force');
+        $gap    = max(0, min(60, (int) (isset($s['bulk_gap']) ? $s['bulk_gap'] : 2)));
+        $max    = max(1, min(200, (int) (isset($s['bulk_max']) ? $s['bulk_max'] : 50)));
+        $cut    = count($ids) > $max;
+        if ($cut) {
+            $ids = array_slice($ids, 0, $max);
+        }
+
+        $this->maybe_raise_memory();
+        $n = ['queued' => 0, 'status' => 0, 'dup' => 0, 'bad' => 0, 'cut' => count((array) $object_ids) - count($ids)];
+        $i = 0;
+        foreach ($ids as $id) {
+            $order = wc_get_order($id);
+            if (!$order instanceof WC_Order) {
+                $n['bad']++;
+                continue;
+            }
+            if (!$force && !$this->order_send_is_allowed($order, $s)) {
+                $n['status']++; // وضعیت مجاز نیست (مثلاً هنوز پرداخت نشده)
+                continue;
+            }
+            // اگر برای همین سفارش ارسال/تلاش مجدد از قبل زمان‌بندی شده، اسلات جدید نمی‌سازیم
+            if (wp_next_scheduled(self::SEND_ORDER_HOOK, [$id])) {
+                $n['dup']++;
+                continue;
+            }
+            $order->delete_meta_data('_wc_telegram_sent');
+            $order->delete_meta_data('_wc_telegram_attempts');
+            $order->delete_meta_data('_wc_telegram_expired');
+            if ($force) {
+                // پرچم یک‌بارمصرف: پردازشگر کرون شرط پرداخت را برای همین سفارش نادیده می‌گیرد
+                $order->update_meta_data(self::FORCE_SEND_META, 'yes');
+                $order->delete_meta_data('_wc_telegram_pending');
+            }
+            $order->save_meta_data();
+            // فاصلهٔ پلکانی بین پیام‌ها تا تلگرام 429 ندهد
+            $this->schedule_order_send($id, $i * $gap);
+            $i++;
+            $n['queued']++;
+            $this->clean_order_cache($id);
+        }
+
+        $this->log('info', 'order', 'bulk_send',
+            sprintf('ارسال گروهی: %d سفارش در صف، %d رد (وضعیت)، %d تکراری، %d نامعتبر%s.', $n['queued'], $n['status'], $n['dup'], $n['bad'], $cut ? ' (محدود به ' . $max . ' سفارش)' : ''),
+            $n + ['force' => $force, 'gap' => $gap], 0);
+        set_transient('wc_telegram_bulk_result', $n + ['force' => $force, 'gap' => $gap], 120);
+        return $this->bulk_notice_url($redirect_to, 'ok');
+    }
+
+    private function bulk_notice_url($redirect_to, $code) {
+        return add_query_arg('wc_telegram_bulk', (string) $code, (string) $redirect_to);
+    }
+
+    public function bulk_send_notice() {
+        if (!isset($_GET['wc_telegram_bulk'])) {
+            return;
+        }
+        $code = sanitize_key(wp_unslash($_GET['wc_telegram_bulk']));
+        $n    = get_transient('wc_telegram_bulk_result');
+        delete_transient('wc_telegram_bulk_result');
+        $texts = [
+            'forbidden' => ['danger', 'اجازهٔ انجام این کار را ندارید.'],
+            'disabled'  => ['warning', 'ارسال به تلگرام در تنظیمات غیرفعال است.'],
+            'empty'     => ['warning', 'هیچ سفارشی انتخاب نشده بود.'],
+            'locked'    => ['warning', 'یک ارسال گروهی همین حالا در جریان است؛ چند لحظه دیگر دوباره تلاش کنید.'],
+        ];
+        if (isset($texts[$code])) {
+            echo '<div class="notice notice-' . esc_attr($texts[$code][0]) . '"><p>' . esc_html($texts[$code][1]) . '</p></div>';
+            return;
+        }
+        if (!is_array($n)) {
+            return;
+        }
+        $msg = sprintf(
+            '%d سفارش برای ارسال به تلگرام در صف قرار گرفت%s.',
+            (int) $n['queued'],
+            ((int) $n['gap'] > 0) ? sprintf(' (با فاصلهٔ %d ثانیه بین پیام‌ها)', (int) $n['gap']) : ''
+        );
+        $extra = [];
+        if (!empty($n['status'])) {
+            $extra[] = sprintf('%d سفارش به دلیل وضعیت غیرمجاز رد شد', (int) $n['status']);
+        }
+        if (!empty($n['dup'])) {
+            $extra[] = sprintf('%d سفارش از قبل در صف بود', (int) $n['dup']);
+        }
+        if (!empty($n['bad'])) {
+            $extra[] = sprintf('%d شناسهٔ نامعتبر', (int) $n['bad']);
+        }
+        if (!empty($n['cut'])) {
+            $extra[] = sprintf('%d سفارش به دلیل سقف تعداد رد شد', (int) $n['cut']);
+        }
+        if ($extra) {
+            $msg .= ' — ' . implode('، ', $extra) . '.';
+        }
+        echo '<div class="notice notice-success"><p>' . esc_html($msg) . '</p></div>';
+    }
+
     // پیام کوتاه تغییر وضعیت — روی ایجاد سفارش اجرا نمی‌شود، فقط روی تغییر واقعی وضعیت
     public function on_status_changed($order_id, $old_status, $new_status, $order = null) {
         $s = $this->get_settings();
-        if ($s['enabled'] !== 'yes' || $s['status_enabled'] !== 'yes') {
+        if ($s['enabled'] !== 'yes') {
             return;
         }
         if ($old_status === $new_status) {
             return;
         }
-        // اول پیام معوق (اگر هست)؛ اگر همین حالا پیام کامل رفت، پیام کوتاه لازم نیست
-        if ($this->flush_pending_message($order_id, $order)) {
+        // اول پیام معوق (اگر هست)؛ اگر همین حالا پیام کامل رفت، پیام کوتاه لازم نیست.
+        // این بررسی مستقل از کلید «ارسال پیام تغییر وضعیت» است: سفارش پرداخت‌شده باید
+        // با تغییر وضعیت به «در حال انجام» معرفی شود حتی وقتی پیام‌های کوتاه خاموش‌اند.
+        $flushed = $this->flush_pending_message($order_id, $order);
+        if ($s['status_enabled'] !== 'yes' || $flushed) {
             return;
         }
         $fresh_status = wc_get_order($order_id);
@@ -1121,14 +1710,14 @@ class WC_Telegram_Orders {
                 continue;
             }
             $st = $order->get_status();
-            if (in_array($st, ['cancelled', 'refunded', 'failed', 'trash'], true)) {
+            if ($this->order_status_is_dead($st)) {
                 $order->delete_meta_data('_wc_telegram_pending');
                 $order->save_meta_data();
                 $n['dropped']++;
                 continue;
             }
-            $flush_statuses = apply_filters('wc_telegram_flush_statuses', ['processing', 'completed', 'on-hold']);
-            if ($this->order_ready($order) || in_array($st, $flush_statuses, true)) {
+            // فقط سفارشی که از نظر وضعیت مجاز است (پیش‌فرض: پرداخت‌شده = «در حال انجام») معرفی می‌شود
+            if ($this->order_send_is_allowed($order, $s)) {
                 $this->schedule_order_send($order->get_id());
                 $n['flushed']++;
                 continue;
@@ -1163,6 +1752,59 @@ class WC_Telegram_Orders {
         return $this->has_address($order) && $this->has_items($order);
     }
 
+    /* ---------------- شرط ارسال: فقط سفارش‌های پرداخت‌شده ---------------- */
+
+    // وضعیت‌هایی که ارسال پیام سفارش را آزاد می‌کنند (پیش‌فرض: processing = در حال انجام = پرداخت‌شده)
+    private function send_allowed_statuses($s = null) {
+        $s = $s ?: $this->get_settings();
+        $raw = isset($s['send_statuses']) ? (string) $s['send_statuses'] : '';
+        $list = array_values(array_unique(array_filter(array_map(function ($x) {
+            // اول کوچک‌سازی، بعد حذف پیشوند wc- (ورودی می‌تواند WC-ON-HOLD باشد)
+            return sanitize_key(str_replace('wc-', '', strtolower(trim($x))));
+        }, explode(',', $raw)))));
+        return $list ? $list : ['processing'];
+    }
+
+    // شرط پرداخت فعال است؟ (غیرفعال = رفتار نسخه‌های قبل)
+    private function paid_gate_enabled($s = null) {
+        $s = $s ?: $this->get_settings();
+        return !isset($s['paid_gate']) || $s['paid_gate'] === 'yes';
+    }
+
+    // فهرست قدیمی «وضعیت‌های پولی» — فقط وقتی شرط پرداخت خاموش است استفاده می‌شود
+    private function legacy_flush_statuses() {
+        return apply_filters('wc_telegram_flush_statuses', ['processing', 'completed', 'on-hold']);
+    }
+
+    /**
+     * آیا پیام این سفارش از نظر وضعیت مجاز به ارسال است؟
+     * شرط پرداخت روشن (پیش‌فرض): فقط وضعیت‌های فهرست «وضعیت‌های مجاز ارسال» —
+     * یعنی سفارش در انتظار پرداخت یا لغوشده هیچ پیامی نمی‌گیرد و با رسیدن به
+     * «در حال انجام» (پرداخت‌شده) معرفی می‌شود.
+     * شرط پرداخت خاموش: رفتار قبلی — آماده بودن سفارش یا رسیدن به وضعیت پولی.
+     */
+    private function order_send_is_allowed($order, $s = null) {
+        $s = $s ?: $this->get_settings();
+        $status = str_replace('wc-', '', (string) $order->get_status());
+        if ($this->paid_gate_enabled($s)) {
+            return in_array($status, $this->send_allowed_statuses($s), true);
+        }
+        return $this->order_ready($order) || in_array($status, $this->legacy_flush_statuses(), true);
+    }
+
+    // وضعیت‌های مرده: این سفارش دیگر هیچ پیامی نمی‌گیرد و پرچم‌هایش پاک می‌شود
+    private function order_status_is_dead($status) {
+        return in_array(str_replace('wc-', '', (string) $status), ['cancelled', 'auto-cancelled', 'refunded', 'failed', 'trash'], true);
+    }
+
+    // نام خوانای وضعیت‌های مجاز (برای یادداشت سفارش و لاگ)
+    private function allowed_statuses_label($s = null) {
+        $names = array_filter(array_map(function ($slug) {
+            return function_exists('wc_get_order_status_name') ? wc_get_order_status_name($slug) : $slug;
+        }, $this->send_allowed_statuses($s)));
+        return $names ? implode(' یا ', $names) : 'پرداخت‌شده';
+    }
+
     // بررسی پیام معوق — خروجی true یعنی پیام کامل جاری است و پیام کوتاه تغییر وضعیت لازم نیست.
     // (سفارش‌های دیجیکالا که موقع ثبت آدرس نداشتند، + سازگاری با پرچم نسخه 1.5.0)
     // خودِ ارسال به کرون موکول می‌شود تا پرداخت/تسویه‌حساب منتظر پاسخ تلگرام نماند.
@@ -1179,24 +1821,32 @@ class WC_Telegram_Orders {
             return false;
         }
         $pending = ($order->get_meta('_wc_telegram_pending') === 'yes');
+        $expired = ($order->get_meta('_wc_telegram_expired') === 'yes');
         $legacy  = ($order->get_meta('_wc_telegram_sent') === 'yes'
                  && $order->get_meta('_wc_telegram_needs_address') === 'yes');
-        if (!$pending && !$legacy) {
+        if (!$pending && !$legacy && !$expired) {
             return false;
         }
         $st = $order->get_status();
         // مرگ خاموش: لغو/استرداد/ناموفق قبل از اولین معرفی — بدون هیچ پیامی
-        if (in_array($st, ['cancelled', 'refunded', 'failed', 'trash'], true)) {
+        if ($this->order_status_is_dead($st)) {
             $order->delete_meta_data('_wc_telegram_pending');
             $order->delete_meta_data('_wc_telegram_needs_address');
+            $order->delete_meta_data('_wc_telegram_expired');
             $order->save_meta_data();
             return false;
         }
-        // آماده ارسال وقتی آدرس و اقلام هر دو آمده‌اند،
-        // یا به وضعیت پولی رسیده (حتی اگر چیزی هنوز ناقص است)
-        $flush_statuses = apply_filters('wc_telegram_flush_statuses', ['processing', 'completed', 'on-hold']);
-        if (!$this->order_ready($order) && !in_array($st, $flush_statuses, true)) {
+        // شرط پرداخت: تا رسیدن به وضعیت مجاز (پیش‌فرض «در حال انجام» = پرداخت‌شده) صبر می‌کنیم؛
+        // رسیدن به آن وضعیت حتی با آدرس/اقلام ناقص هم پیام را آزاد می‌کند
+        if (!$this->order_send_is_allowed($order, $s)) {
             return false; // هنوز زود است — صبر کن
+        }
+        // سفارش منقضی (بیش از ۲۴ ساعت معوق) حالا پرداخت شده — دوباره وارد چرخهٔ ارسال
+        // می‌شود تا پرداخت دیرهنگام بی‌پاسخ نماند (و از فهرست جارو هم خارج شده بود)
+        if ($expired && !$pending) {
+            $order->delete_meta_data('_wc_telegram_expired');
+            $order->update_meta_data('_wc_telegram_pending', 'yes');
+            $order->save_meta_data();
         }
         $this->schedule_order_send($order->get_id());
         $this->log('debug', 'order', 'flush_queued', sprintf('پیام معوق سفارش #%s زمان‌بندی شد.', $order->get_order_number()), ['status' => $st], $order->get_id());
@@ -1225,17 +1875,36 @@ class WC_Telegram_Orders {
         if (defined('DOING_CRON') && DOING_CRON) {
             return;
         }
-        if (defined('DISABLE_WP_CRON') && DISABLE_WP_CRON) {
-            return; // کرون واقعی سرور کار را انجام می‌دهد
-        }
         // بیش از یک بار در هر ۱۰ ثانیه کرون را بیدار نکن (سیل درخواست به wp-cron.php)
         if (get_transient('wc_telegram_cron_spawned')) {
             return;
         }
         set_transient('wc_telegram_cron_spawned', 1, 10);
+        if (defined('DISABLE_WP_CRON') && DISABLE_WP_CRON) {
+            // کرون وردپرس خاموش است و کرون سرور هم ممکن است دیر اجرا شود؛
+            // خودمان wp-cron.php را با یک درخواست غیرهمزمان (بدون انتظار پاسخ) بیدار می‌کنیم
+            $this->ping_wp_cron();
+            return;
+        }
         if (function_exists('spawn_cron')) {
             spawn_cron(time());
         }
+    }
+
+    // بیدار کردن wp-cron.php وقتی DISABLE_WP_CRON فعال است — غیرهمزمان و بی‌تأثیر بر زمان پاسخ صفحه
+    private function ping_wp_cron() {
+        if (!function_exists('site_url') || !function_exists('wp_remote_post')) {
+            return;
+        }
+        $url = site_url('/wp-cron.php?doing_wp_cron=' . rawurlencode(microtime()));
+        wp_remote_post($url, [
+            'timeout'   => 0.01,
+            'blocking'  => false,
+            'sslverify' => apply_filters('https_local_ssl_verify', false),
+            'cookies'   => [],
+            'body'      => [],
+        ]);
+        $this->log('debug', 'system', 'cron_ping', 'کرون وردپرس خاموش است (DISABLE_WP_CRON)؛ wp-cron.php با درخواست غیرهمزمان بیدار شد.', ['url' => $url], 0);
     }
 
     // قفل اتمیک ارسال برای هر سفارش — دو درخواست هم‌زمان دو پیام نمی‌فرستند
@@ -1277,6 +1946,26 @@ class WC_Telegram_Orders {
         if ($s['enabled'] !== 'yes') {
             return;
         }
+        // ارسال اجباری (از اکشن دستی/گروهی): یک‌بارمصرف است و شرط پرداخت را نادیده می‌گیرد
+        $force = ($order->get_meta(self::FORCE_SEND_META) === 'yes');
+        if ($force) {
+            $order->delete_meta_data(self::FORCE_SEND_META);
+        }
+        // محافظ نهایی: اگر بین زمان‌بندی و اجرا وضعیت عوض شده (لغو شده یا هنوز پرداخت نشده)،
+        // پیام نمی‌رود؛ پرچم معوق می‌ماند تا با رسیدن به وضعیت مجاز معرفی شود
+        if (!$force && !$this->order_send_is_allowed($order, $s)) {
+            if ($this->order_status_is_dead($order->get_status())) {
+                $order->delete_meta_data('_wc_telegram_attempts');
+                $order->save_meta_data();
+                $this->log('info', 'order', 'order_skipped_dead', sprintf('سفارش #%s ارسال نشد: وضعیت «%s».', $order->get_order_number(), wc_get_order_status_name($order->get_status())), ['status' => $order->get_status()], $order_id);
+                return;
+            }
+            $order->update_meta_data('_wc_telegram_pending', 'yes');
+            $order->delete_meta_data('_wc_telegram_attempts');
+            $order->save_meta_data();
+            $this->log('debug', 'order', 'order_send_blocked', sprintf('سفارش #%s هنوز ارسال نمی‌شود: وضعیت «%s» (مجاز: %s).', $order->get_order_number(), wc_get_order_status_name($order->get_status()), implode(',', $this->send_allowed_statuses($s))), ['status' => $order->get_status()], $order_id);
+            return;
+        }
         if (!$this->acquire_send_lock($order_id)) {
             return; // پردازش دیگری در حال ارسال است
         }
@@ -1301,6 +1990,10 @@ class WC_Telegram_Orders {
         if (!$order instanceof WC_Order) {
             return;
         }
+        $s = $this->get_settings();
+        if ($s['enabled'] !== 'yes') {
+            return;
+        }
         $pending = ($order->get_meta('_wc_telegram_pending') === 'yes');
         $legacy  = ($order->get_meta('_wc_telegram_sent') === 'yes'
                  && $order->get_meta('_wc_telegram_needs_address') === 'yes');
@@ -1308,15 +2001,15 @@ class WC_Telegram_Orders {
             return;
         }
         $st = $order->get_status();
-        if (in_array($st, ['cancelled', 'refunded', 'failed', 'trash'], true)) {
+        if ($this->order_status_is_dead($st)) {
             $order->delete_meta_data('_wc_telegram_pending');
             $order->delete_meta_data('_wc_telegram_needs_address');
             $order->save_meta_data();
             return;
         }
-        $flush_statuses = apply_filters('wc_telegram_flush_statuses', ['processing', 'completed', 'on-hold']);
-        if (!$this->order_ready($order) && !in_array($st, $flush_statuses, true)) {
-            return; // هنوز آماده نیست — پرچم می‌ماند
+        // شرط پرداخت: اگر وضعیت عوض شده و دیگر مجاز نیست (مثلاً لغو شده)، پیام نمی‌رود
+        if (!$this->order_send_is_allowed($order, $s)) {
+            return; // پرچم معوق می‌ماند تا با تغییر وضعیت به حالت مجاز برود
         }
         if (!$this->acquire_send_lock($order_id)) {
             return;
@@ -1327,6 +2020,7 @@ class WC_Telegram_Orders {
                 $order->update_meta_data('_wc_telegram_sent', 'yes');
                 $order->delete_meta_data('_wc_telegram_pending');
                 $order->delete_meta_data('_wc_telegram_needs_address');
+                $order->delete_meta_data('_wc_telegram_expired');
                 $order->delete_meta_data('_wc_telegram_attempts');
                 $order->add_order_note('📍 پیام کامل سفارش به تلگرام ارسال شد.');
                 $order->save_meta_data();
@@ -1454,7 +2148,7 @@ class WC_Telegram_Orders {
         $replacements = [
             '{order_number}'      => $order->get_order_number(),
             '{order_id}'          => $order->get_id(),
-            '{order_date}'        => $order->get_date_created() ? $this->plugin_date(get_option('date_format') . ' ' . get_option('time_format'), $order->get_date_created()->getTimestamp()) : '',
+            '{order_date}'        => $order->get_date_created() ? $this->format_date(get_option('date_format') . ' ' . get_option('time_format'), $order->get_date_created()->getTimestamp()) : '',
             '{order_status}'      => wc_get_order_status_name($order->get_status()),
             '{order_total}'       => $this->money($amounts['grand'], $order),                          // مجموع سفارش = نقدی + کیف پول
             '{currency}'          => $order->get_currency(),
@@ -2038,6 +2732,119 @@ class WC_Telegram_Orders {
         return date_i18n($format, $timestamp + $offset);
     }
 
+    /* ---------------- تاریخ شمسی (داخلی) ---------------- */
+
+    /**
+     * فرمت تاریخ بر اساس تنظیمات: شمسی (پیش‌فرض) یا میلادی.
+     * مسیر شمسی مستقیماً از تاریخ میلادی محاسبه می‌شود و به date_i18n دست نمی‌زند؛
+     * پس اگر افزونهٔ شمسیِ دیگری هم فعال باشد، تاریخ دوبار تبدیل نمی‌شود.
+     */
+    public function format_date($format, $timestamp) {
+        $s = $this->get_settings();
+        if (empty($s['jalali_date']) || $s['jalali_date'] !== 'yes') {
+            return $this->plugin_date($format, $timestamp);
+        }
+        $digits = !isset($s['jalali_digits']) || $s['jalali_digits'] === 'yes';
+        return $this->jalali_date($format, $timestamp, $digits);
+    }
+
+    // تاریخ شمسی با قالب date() مانند — توکن‌های پشتیبانی‌شده: Y y m n d j F M H G i s a A
+    private function jalali_date($format, $timestamp, $persian_digits = true) {
+        $timestamp = (int) $timestamp;
+        try {
+            $tz     = $this->plugin_timezone();
+            $offset = $tz->getOffset(new \DateTime('@' . $timestamp));
+        } catch (\Exception $e) {
+            $offset = (int) round((float) get_option('gmt_offset', 0) * HOUR_IN_SECONDS);
+        }
+        $ts = $timestamp + $offset;
+        list($jy, $jm, $jd) = $this->gregorian_to_jalali((int) gmdate('Y', $ts), (int) gmdate('n', $ts), (int) gmdate('j', $ts));
+
+        $months = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+        $map = [
+            'Y' => str_pad((string) $jy, 4, '0', STR_PAD_LEFT),
+            'y' => str_pad((string) ($jy % 100), 2, '0', STR_PAD_LEFT),
+            'm' => str_pad((string) $jm, 2, '0', STR_PAD_LEFT),
+            'n' => (string) $jm,
+            'd' => str_pad((string) $jd, 2, '0', STR_PAD_LEFT),
+            'j' => (string) $jd,
+            'F' => $months[$jm - 1],
+            'M' => $months[$jm - 1],
+        ];
+
+        $format = (string) $format;
+        $len    = strlen($format);
+        $out    = '';
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $format[$i];
+            if ($ch === '\\') { // کاراکتر فرار
+                $i++;
+                $out .= ($i < $len) ? $format[$i] : '';
+                continue;
+            }
+            if (isset($map[$ch])) {
+                $out .= $map[$ch];
+                continue;
+            }
+            // بقیهٔ توکن‌ها (ساعت/دقیقه/ثانیه و…) از همان زمان محلی گرفته می‌شوند
+            $out .= (strpos('HhGisauAlLwWztTeIOPZcrUD', $ch) !== false) ? gmdate($ch, $ts) : $ch;
+        }
+        return $persian_digits ? $this->to_persian_digits($out) : $out;
+    }
+
+    // تبدیل میلادی به شمسی (الگوریتم استاندارد jdf — دقیق برای سال‌های ۱۲۰۶ تا ۱۶۳۳ شمسی)
+    private function gregorian_to_jalali($gy, $gm, $gd) {
+        $g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+        $gy  = (int) $gy;
+        $gm  = max(1, min(12, (int) $gm));
+        $gd  = (int) $gd;
+        $gy2 = ($gm > 2) ? ($gy + 1) : $gy;
+        $days = 355666 + (365 * $gy) + (int) (($gy2 + 3) / 4) - (int) (($gy2 + 99) / 100) + (int) (($gy2 + 399) / 400) + $gd + $g_d_m[$gm - 1];
+        $jy = -1595 + (33 * (int) ($days / 12053));
+        $days %= 12053;
+        $jy += 4 * (int) ($days / 1461);
+        $days %= 1461;
+        if ($days > 365) {
+            $jy += (int) (($days - 1) / 365);
+            $days = ($days - 1) % 365;
+        }
+        if ($days < 186) {
+            $jm = 1 + (int) ($days / 31);
+            $jd = 1 + ($days % 31);
+        } else {
+            $jm = 7 + (int) (($days - 186) / 30);
+            $jd = 1 + (($days - 186) % 30);
+        }
+        return [$jy, $jm, $jd];
+    }
+
+    private function to_persian_digits($text) {
+        return str_replace(
+            ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+            ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'],
+            (string) $text
+        );
+    }
+
+    // «۳ ساعت و ۲۵ دقیقه» — برای نمایش فاصلهٔ میانگین بین سفارش‌ها
+    private function human_duration($seconds) {
+        $seconds = max(0, (int) $seconds);
+        $parts = [];
+        $d = (int) ($seconds / DAY_IN_SECONDS);
+        $h = (int) (($seconds % DAY_IN_SECONDS) / HOUR_IN_SECONDS);
+        $m = (int) (($seconds % HOUR_IN_SECONDS) / MINUTE_IN_SECONDS);
+        if ($d > 0) {
+            $parts[] = $d . ' روز';
+        }
+        if ($h > 0) {
+            $parts[] = $h . ' ساعت';
+        }
+        if ($m > 0 || empty($parts)) {
+            $parts[] = $m . ' دقیقه';
+        }
+        return implode(' و ', $parts);
+    }
+
     // نزدیک‌ترین ساعت مشخص (به وقت منطقه زمانی پلاگین) — اگر امروز گذشته باشد، فردا
     private function next_run_timestamp($time) {
         if (!preg_match('/^(\d{1,2}):(\d{2})$/', trim((string) $time), $m)) {
@@ -2353,14 +3160,14 @@ class WC_Telegram_Orders {
         $paid_statuses = apply_filters('wc_telegram_daily_paid_statuses', ['processing', 'completed']);
 
         // بازه در یک روز تقویمی؟ فقط همان تاریخ؛ وگرنه بازه کامل (کرون دیر → بازه چندروزه)
-        if ($this->plugin_date('Y-m-d', $day_start) === $this->plugin_date('Y-m-d', $day_end)) {
-            $date_str = $this->plugin_date(get_option('date_format'), $day_start);
+        if ($this->format_date('Y-m-d', $day_start) === $this->format_date('Y-m-d', $day_end)) {
+            $date_str = $this->format_date(get_option('date_format'), $day_start);
             if (($day_end - $day_start) < DAY_IN_SECONDS - 1) {
-                $date_str .= ' — ⏰ تا ساعت ' . $this->plugin_date('H:i', $day_end);
+                $date_str .= ' — ⏰ تا ساعت ' . $this->format_date('H:i', $day_end);
             }
         } else {
-            $date_str = $this->plugin_date(get_option('date_format'), $day_start)
-                      . ' تا ' . $this->plugin_date(get_option('date_format'), $day_end);
+            $date_str = $this->format_date(get_option('date_format'), $day_start)
+                      . ' تا ' . $this->format_date(get_option('date_format'), $day_end);
         }
 
         $msg = "📊 <b>گزارش فروش</b>\n"
@@ -2473,7 +3280,7 @@ class WC_Telegram_Orders {
             $msg .= '… و ' . $rest . ' سفارش دیگر.' . "\n";
         }
         $msg .= "</blockquote>";
-        $msg .= "\n--------------------------\n🕐 تولید: " . $this->plugin_date(get_option('date_format') . ' ' . get_option('time_format'), time()) . ' (نسخه ' . WC_TELEGRAM_ORDERS_VERSION . ')';
+        $msg .= "\n--------------------------\n🕐 تولید: " . $this->format_date(get_option('date_format') . ' ' . get_option('time_format'), time()) . ' (نسخه ' . WC_TELEGRAM_ORDERS_VERSION . ')';
 
         return $msg;
     }
@@ -3092,7 +3899,7 @@ class WC_Telegram_Orders {
         };
 
         $msg  = "📦 <b>اسکن انبار — محصولات زیر آستانه (کمتر از " . $threshold . " عدد)</b>\n";
-        $msg .= '🕐 ' . $this->plugin_date(get_option('date_format') . ' ' . get_option('time_format'), time()) . "\n";
+        $msg .= '🕐 ' . $this->format_date(get_option('date_format') . ' ' . get_option('time_format'), time()) . "\n";
         $msg .= "--------------------------\n";
         if ($out) {
             $msg .= '🚫 <b>اتمام موجودی (' . count($out) . "):</b>\n";
@@ -3157,9 +3964,70 @@ class WC_Telegram_Orders {
             }
         }
         if ($errors) {
+            $this->track_send_result(false, implode(' | ', $errors));
             return ['ok' => false, 'message' => implode(' | ', $errors), 'sent' => $sent];
         }
+        $this->track_send_result(true, '');
         return ['ok' => true, 'message' => sprintf('پیام به %d مقصد ارسال شد.', count($chats)), 'sent' => $sent];
+    }
+
+    /* ---------------- هشدار سلامت ربات ---------------- */
+
+    // در میانهٔ ارسالِ خودِ هشدار سلامت، شمارنده دست نمی‌خورد (وگرنه بازگشت بی‌نهایت یا صفر شدن اشتباه)
+    private $sending_health_alert = false;
+
+    private function health_enabled($s = null) {
+        $s = $s ?: $this->get_settings();
+        return !empty($s['health_enabled']) && $s['health_enabled'] === 'yes';
+    }
+
+    /** شمارش نتایج ارسال‌ها؛ N شکست پشت‌سرهم → یک هشدار به چت (با بازهٔ توقف) */
+    private function track_send_result($ok, $error = '') {
+        if ($this->sending_health_alert) {
+            return;
+        }
+        if ($ok) {
+            if ((int) get_option(self::HEALTH_STREAK_OPTION, 0) !== 0) {
+                update_option(self::HEALTH_STREAK_OPTION, 0, false);
+            }
+            return;
+        }
+        $s = $this->get_settings();
+        if (!$this->health_enabled($s)) {
+            return;
+        }
+        $streak = (int) get_option(self::HEALTH_STREAK_OPTION, 0) + 1;
+        update_option(self::HEALTH_STREAK_OPTION, $streak, false);
+
+        $threshold = max(2, (int) (isset($s['health_threshold']) ? $s['health_threshold'] : 5));
+        if ($streak < $threshold) {
+            return;
+        }
+        $cooldown = max(1, (int) (isset($s['health_cooldown']) ? $s['health_cooldown'] : 6)) * HOUR_IN_SECONDS;
+        $last     = (int) get_option(self::HEALTH_ALERT_OPTION, 0);
+        if ((time() - $last) < $cooldown) {
+            return; // هنوز در بازهٔ توقف هستیم
+        }
+        update_option(self::HEALTH_ALERT_OPTION, time(), false);
+
+        $msg = "⚠️ <b>هشدار سلامت ربات تلگرام</b>\n"
+             . '🔴 ' . $this->to_persian_digits((string) $streak) . ' ارسال پشت‌سرهم ناموفق بود.' . "\n"
+             . '🕐 ' . $this->format_date(get_option('date_format') . ' ' . get_option('time_format'), time()) . "\n"
+             . 'آخرین خطا: ' . htmlspecialchars(mb_substr(wp_strip_all_tags((string) $error), 0, 300), ENT_QUOTES, 'UTF-8') . "\n"
+             . 'موارد رایج: توکن عوض شده، ربات از گروه حذف شده، یا محدودیت نرخ تلگرام (429).';
+
+        $this->sending_health_alert = true;
+        $res = $this->send_to_all_chats($msg);
+        $this->sending_health_alert = false;
+
+        $this->log('error', 'system', 'health_alert',
+            sprintf('هشدار سلامت ارسال شد: %d شکست پشت‌سرهم. تحویل خودِ هشدار: %s', $streak, empty($res['ok']) ? 'ناموفق' : 'موفق'),
+            ['streak' => $streak, 'threshold' => $threshold, 'delivered' => !empty($res['ok']), 'error' => mb_substr((string) $error, 0, 300)], 0);
+    }
+
+    // شمار فعلی شکست‌های پشت‌سرهم (برای داشبورد)
+    public function health_streak() {
+        return (int) get_option(self::HEALTH_STREAK_OPTION, 0);
     }
 
     // ارسال پیام‌های طولانی (مثل گزارش روزانه) در چند تکه — تکه‌بندی ایمن از نظر HTML
@@ -3531,6 +4399,7 @@ class WC_Telegram_Orders {
             'channel'   => in_array($channel, $channels, true) ? $channel : '',
             'search'    => isset($args['search']) ? mb_substr(sanitize_text_field((string) $args['search']), 0, 120) : '',
             'object_id' => isset($args['object_id']) ? absint($args['object_id']) : 0,
+            'since'     => isset($args['since']) ? (int) $args['since'] : 0,
             'per_page'  => min(500, max(10, isset($args['per_page']) ? (int) $args['per_page'] : 50)),
             'page'      => max(1, isset($args['page']) ? (int) $args['page'] : 1),
         ];
@@ -3547,6 +4416,10 @@ class WC_Telegram_Orders {
         }
         if ($f['object_id'] > 0) {
             $where[] = $wpdb->prepare('object_id = %d', $f['object_id']);
+        }
+        if (!empty($f['since'])) {
+            // created_at به وقت UTC ذخیره می‌شود
+            $where[] = $wpdb->prepare('created_at >= %s', gmdate('Y-m-d H:i:s', (int) $f['since']));
         }
         if ($f['search'] !== '') {
             $like    = '%' . $wpdb->esc_like($f['search']) . '%';
@@ -3668,7 +4541,7 @@ class WC_Telegram_Orders {
         foreach ((array) $rows as $r) {
             fputcsv($handle, [
                 (int) $r->id,
-                $this->plugin_date(get_option('date_format') . ' H:i:s', strtotime($r->created_at . ' UTC')),
+                $this->format_date(get_option('date_format') . ' H:i:s', strtotime($r->created_at . ' UTC')),
                 isset($labels[$r->level]) ? $labels[$r->level] : $r->level,
                 isset($channels[$r->channel]) ? $channels[$r->channel] : $r->channel,
                 $r->event,
@@ -3823,7 +4696,7 @@ class WC_Telegram_Orders {
                     <?php foreach ($rows as $r): ?>
                         <tr>
                             <td class="wcto-time">
-                                <?php echo esc_html($this->plugin_date(get_option('date_format') . ' H:i:s', strtotime($r->created_at . ' UTC'))); ?>
+                                <?php echo esc_html($this->format_date(get_option('date_format') . ' H:i:s', strtotime($r->created_at . ' UTC'))); ?>
                             </td>
                             <td><?php echo $this->log_badge($r->level); ?></td>
                             <td><?php echo esc_html(isset($channels[$r->channel]) ? $channels[$r->channel] : $r->channel); ?></td>

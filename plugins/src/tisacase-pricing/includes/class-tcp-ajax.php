@@ -30,6 +30,7 @@ if ( ! class_exists( 'TCP_Ajax' ) ) {
 		 * --------------------------------------------------------------- */
 
 		public static function ajax_preview() {
+			self::guard(); // nonce + capability — پیش‌نمایش هم مثل بقیهٔ اندپوینت‌ها محافظت می‌شود
 			$args = TCP_Ops::args_from_post( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 			if ( is_wp_error( $args ) ) {
 				self::send_wp_error( $args );
@@ -444,15 +445,15 @@ if ( ! class_exists( 'TCP_Ajax' ) ) {
 					fputcsv( $out, array(
 						$row_no,
 						(int) $rr['run_id'],
-						$rr['object_type'],
+						TCP_Settings::csv_cell( $rr['object_type'] ),
 						$pid ? $pid : $oid,
-						$pid ? $par_title : $obj_title,
-						isset( $skus[ $pid ] ) ? $skus[ $pid ] : '',
+						TCP_Settings::csv_cell( $pid ? $par_title : $obj_title ),
+						TCP_Settings::csv_cell( isset( $skus[ $pid ] ) ? $skus[ $pid ] : '' ),
 						$oid,
-						$obj_title,
-						isset( $skus[ $oid ] ) ? $skus[ $oid ] : '',
-						(string) $rr['before_value'],
-						(string) $rr['after_value'],
+						TCP_Settings::csv_cell( $obj_title ),
+						TCP_Settings::csv_cell( isset( $skus[ $oid ] ) ? $skus[ $oid ] : '' ),
+						TCP_Settings::csv_cell( $rr['before_value'] ),
+						TCP_Settings::csv_cell( $rr['after_value'] ),
 						(string) $rr['created_at'],
 					) );
 				}

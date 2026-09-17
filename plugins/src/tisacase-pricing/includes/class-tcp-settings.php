@@ -228,5 +228,21 @@ if ( ! class_exists( 'TCP_Settings' ) ) {
 			);
 			return isset( $labels[ $key ] ) ? $labels[ $key ] : $key;
 		}
+
+		/**
+		 * محافظ CSV Injection: اگر مقدار با نویسه‌های فرمول‌ساز شروع شود، با یک '
+		 * خنثی می‌شود تا هنگام باز شدن در اکسل به‌عنوان فرمول اجرا نشود.
+		 * مقدارهای صرفاً عددی دست‌نخورده می‌مانند تا ماهیت عددی‌شان در اکسل حفظ شود.
+		 */
+		public static function csv_cell( $v ) {
+			$v = (string) $v;
+			if ( '' === $v || is_numeric( $v ) ) {
+				return $v;
+			}
+			if ( false !== strpbrk( $v[0], "=+-@\t\r" ) ) {
+				return "'" . $v;
+			}
+			return $v;
+		}
 	}
 }

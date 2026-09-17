@@ -206,3 +206,42 @@ a.wcto-kpi:hover { border-color: var(--tisa-primary, #0E7C6B); }
 .wcto-empty-val { color: var(--tisa-muted, #77828A); }
 
 body.tisa-compact .wcto-card-body { padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px) var(--tisa-sp-4, 16px); }
+
+/* ---------- تب «آمار فروش» ---------- */
+/* برچسب و مقدار KPI زیر هم (نه کنار هم) */
+.wcto-kpi .t, .wcto-kpi .v { display: block; }
+.wcto-kpi .v { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; word-break: break-word; }
+
+/* دکمه‌های بازه: مستقل از نسخهٔ هاب — متن حالت فعال همیشه سفید */
+.wcto-filters .tisa-btn {
+	display: inline-flex; align-items: center; gap: 6px;
+	padding: 7px 14px; border-radius: 999px;
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	background: var(--tisa-surface, #fff);
+	color: var(--tisa-ink, #1F2A2E);
+	font-size: 12px; font-weight: 700; line-height: 1.4;
+	text-decoration: none; cursor: pointer;
+}
+.wcto-filters .tisa-btn:hover { border-color: var(--tisa-primary, #0E7C6B); color: var(--tisa-primary, #0E7C6B); }
+.wcto-filters .tisa-btn--primary,
+.wcto-filters .tisa-btn--primary:hover,
+.wcto-filters .tisa-btn--primary:visited {
+	background: var(--tisa-primary, #0E7C6B);
+	border-color: var(--tisa-primary, #0E7C6B);
+	color: #fff;
+}
+
+/* نوار افقی برای «شلوغ‌ترین ساعت‌ها» به‌جای کاراکتر ▇ */
+.wcto-bar { display: block; height: 8px; border-radius: 999px; background: var(--tisa-surface-2, #EEECE6); overflow: hidden; min-width: 60px; }
+.wcto-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--tisa-primary, #0E7C6B), var(--tisa-primary-bright, #17A088)); }
+
+/* جدول‌های آمار */
+.wcto-stats-table { width: 100%; border-collapse: collapse; }
+.wcto-stats-table th { font-size: 11px; color: var(--tisa-muted, #77828A); font-weight: 600; text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--tisa-border, #E3E1DA); }
+.wcto-stats-table td { padding: 8px; border-bottom: 1px solid var(--tisa-border, #E3E1DA); font-size: 13px; }
+.wcto-stats-table tbody tr:last-child td { border-bottom: 0; }
+.wcto-stats-table tbody tr:hover td { background: var(--tisa-surface-2, #FAFAF8); }
+.wcto-stats-table .num { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wcto-stats-table .rank { display: inline-block; min-width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 6px; background: var(--tisa-surface-2, #EEECE6); color: var(--tisa-muted, #77828A); font-size: 11px; font-weight: 700; }
+.wcto-stats-table .rank--1 { background: var(--tisa-primary, #0E7C6B); color: #fff; }
+.wcto-stats-table .muted { color: var(--tisa-muted, #77828A); }

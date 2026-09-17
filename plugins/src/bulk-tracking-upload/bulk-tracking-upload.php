@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Bulk Tracking Code Upload for WooCommerce
  * Description: آپلود انبوه کد رهگیری از اکسل و نمایش اطلاعات کامل سفارش + لینک پیگیری پست
- * Version: 2.3.0
+ * Version: 2.4.0
  * Author: علیرضا شعبان زاده
  */
 
@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('BWT_VERSION', '2.3.0');
+define('BWT_VERSION', '2.4.0');
 
 // ========== 1. افزودن منو به پیشخوان ==========
 add_action('admin_menu', 'bwt_add_admin_menu');
@@ -437,79 +437,143 @@ function bwt_normalize_digits($str) {
 
 // ========== 4. شورت‌کد جدید با اطلاعات کامل ==========
 add_shortcode('tracking_search_form', 'bwt_tracking_search_form');
+/**
+ * نرمال‌سازی شمارهٔ موبایل به قالب یکتای 989XXXXXXXXX.
+ * ورودی: فارسی/عربی، فاصله/خط‌تیره/پرانتز، پیشوندهای +98 / 0098 / 98 / 0.
+ * خروجی نامعتبر = رشتهٔ خالی.
+ */
+function bwt_normalize_phone($input) {
+    $s = bwt_normalize_digits((string) $input);
+    $s = preg_replace('/[^0-9]/', '', $s);
+    if ($s === '') {
+        return '';
+    }
+    if (strpos($s, '0098') === 0) {
+        $s = substr($s, 4);
+    } elseif (strlen($s) === 12 && strpos($s, '98') === 0) {
+        $s = substr($s, 2);
+    }
+    if (strpos($s, '0') === 0) {
+        $s = substr($s, 1);
+    }
+    if (strlen($s) === 10 && strpos($s, '9') === 0) {
+        return '98' . $s;
+    }
+    return '';
+}
+
+// مقایسهٔ شمارهٔ ثبت‌شده روی سفارش با ورودی کاربر (بدون افشای اطلاعات، زمان‌ثابت)
+function bwt_phones_match($stored, $input) {
+    $a = bwt_normalize_phone($stored);
+    $b = bwt_normalize_phone($input);
+    if ($a === '' || $b === '') {
+        return false;
+    }
+    return hash_equals($a, $b);
+}
+
+// محدودسازی تلاش‌های ناموفق پیگیری بر اساس IP (ضد درو کردن شماره سفارش‌ها)
+function bwt_client_ip() {
+    return isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : 'cli';
+}
+function bwt_track_throttle_key() {
+    return 'bwt_track_fail_' . md5(bwt_client_ip());
+}
+function bwt_track_is_throttled() {
+    return (int) get_transient(bwt_track_throttle_key()) >= 10;
+}
+function bwt_track_note_fail() {
+    $key = bwt_track_throttle_key();
+    set_transient($key, (int) get_transient($key) + 1, 15 * MINUTE_IN_SECONDS);
+}
+function bwt_track_reset_fails() {
+    delete_transient(bwt_track_throttle_key());
+}
+
 function bwt_tracking_search_form() {
     ob_start();
     $result_html = '';
     $submitted_order_id = isset($_POST['order_id']) ? sanitize_text_field(wp_unslash($_POST['order_id'])) : '';
+    $submitted_phone    = isset($_POST['billing_phone']) ? sanitize_text_field(wp_unslash($_POST['billing_phone'])) : '';
 
     if (isset($_POST['tracking_submit'])) {
-        $order_id_raw = $submitted_order_id;
-        $order_id_normalized = bwt_normalize_digits($order_id_raw);
-
-        if ($order_id_raw === '') {
-            $result_html = '<div class="bwt-result error">❌ لطفاً شماره سفارش را وارد کنید.</div>';
-        } elseif (!ctype_digit($order_id_normalized)) {
-            $result_html = '<div class="bwt-result error">❌ شماره سفارش باید عددی باشد.</div>';
+        if (bwt_track_is_throttled()) {
+            $result_html = '<div class="bwt-result error">❌ تعداد تلاش‌های ناموفق بیش از حد مجاز است. لطفاً ۱۵ دقیقه دیگر دوباره تلاش کنید.</div>';
         } else {
-            $order_id = intval($order_id_normalized);
-            $order = wc_get_order($order_id);
+            $order_id_raw = $submitted_order_id;
+            $order_id_normalized = bwt_normalize_digits($order_id_raw);
 
-            if (!$order) {
-                $result_html = '<div class="bwt-result error">❌ شماره سفارش نامعتبر است. لطفاً دوباره بررسی کنید.</div>';
+            if ($order_id_raw === '' || $submitted_phone === '') {
+                $result_html = '<div class="bwt-result error">❌ وارد کردن شماره سفارش و شماره موبایلی که سفارش با آن ثبت شده، الزامی است.</div>';
+            } elseif (!ctype_digit($order_id_normalized)) {
+                $result_html = '<div class="bwt-result error">❌ شماره سفارش باید عددی باشد.</div>';
             } else {
-                $tracking_code = get_post_meta($order_id, '_tracking_code', true);
-                if (empty($tracking_code) && method_exists($order, 'get_meta')) {
-                    $tracking_code = $order->get_meta('_tracking_code');
-                }
+                $order_id = intval($order_id_normalized);
+                $order = wc_get_order($order_id);
 
-                if ($tracking_code) {
-                    $billing_first_name = $order->get_billing_first_name();
-                    $billing_last_name  = $order->get_billing_last_name();
-                    $billing_address_1  = $order->get_billing_address_1();
-                    $billing_address_2  = $order->get_billing_address_2();
-                    $billing_city       = $order->get_billing_city();
-                    $billing_state      = $order->get_billing_state();
-                    $billing_postcode   = $order->get_billing_postcode();
+                // احراز مالکیت: شماره سفارش به‌تنهایی کافی نیست — موبایل ثبت‌شده روی سفارش هم باید بخواند.
+                // پیام خطا برای «سفارش نامعتبر» و «موبایل نامطابق» یکی است تا وجود سفارش لو نرود.
+                $verified = $order && bwt_phones_match($order->get_billing_phone(), $submitted_phone);
 
-                    $full_address = $billing_address_1;
-                    if ($billing_address_2) {
-                        $full_address .= ' - ' . $billing_address_2;
-                    }
-                    $full_address .= '، ' . $billing_city;
-                    if ($billing_state) {
-                        $full_address .= '، ' . $billing_state;
-                    }
-                    if ($billing_postcode) {
-                        $full_address .= '، کد پستی: ' . $billing_postcode;
-                    }
-
-                    $order_date = $order->get_date_created();
-                    $order_date_formatted = $order_date ? $order_date->date_i18n('j F Y - H:i') : '—';
-
-                    $post_tracking_link = 'https://tracking.post.ir/?id=' . urlencode($tracking_code);
-
-                    $result_html  = '<div class="bwt-result success">';
-                    $result_html .= '<h3>📦 اطلاعات سفارش شما</h3>';
-                    $result_html .= '<div class="order-info">';
-                    $result_html .= '<p><strong>👤 نام و نام خانوادگی:</strong> ' . esc_html($billing_first_name . ' ' . $billing_last_name) . '</p>';
-                    $result_html .= '<p><strong>📍 آدرس:</strong> ' . esc_html($full_address) . '</p>';
-                    $result_html .= '<p><strong>📅 تاریخ ثبت سفارش:</strong> ' . esc_html($order_date_formatted) . '</p>';
-                    $result_html .= '<p><strong>🔢 شماره سفارش:</strong> ' . esc_html($order_id) . '</p>';
-                    $result_html .= '<hr>';
-                    $result_html .= '<p><strong>📮 کد رهگیری پستی:</strong></p>';
-                    $result_html .= '<div class="tracking-code-box">' . esc_html($tracking_code) . '</div>';
-                    $result_html .= '<p><a href="' . esc_url($post_tracking_link) . '" target="_blank" rel="noopener noreferrer" class="post-tracking-btn">🚚 پیگیری مرسوله در سایت پست</a></p>';
-                    $result_html .= '</div></div>';
+                if (!$verified) {
+                    bwt_track_note_fail();
+                    $result_html = '<div class="bwt-result error">❌ شماره سفارش یا شماره موبایل واردشده معتبر نیست. شماره موبایل باید همان شماره‌ای باشد که سفارش با آن ثبت شده است.</div>';
                 } else {
-                    $result_html = '<div class="bwt-result error">'
-                    . 'چنانچه در این بخش هنوز شماره مرسوله سفارش شما نمایش داده نشده است، به این معناست که سفارش در یکی از مراحل آماده‌سازی، تولید، بسته‌بندی یا ارسال قرار دارد و هنوز به شرکت حمل‌ونقل تحویل نشده است.<br><br>'
-                    . 'زمان آماده‌سازی سفارش‌ها به شرح زیر است:<br>'
-                    . 'کالاهای عادی: حداکثر ۷ روز کاری<br>'
-                    . 'کالاهای چاپی و سفارشی: بین ۷ تا ۱۸ روز کاری (با توجه به فرآیند تولید)<br>'
-                    . 'روزهای کاری صرفاً از شنبه تا چهارشنبه محاسبه می‌شوند و پنج‌شنبه، جمعه و تعطیلات رسمی جزو روزهای کاری محسوب نمی‌گردند.<br>'
-                    . 'پس از تحویل سفارش به شرکت حمل‌ونقل، شماره مرسوله به‌صورت خودکار در همین صفحه ثبت و قابل مشاهده خواهد بود.<br><br>'
-                    . 'خواهشمند است تا پیش از ثبت شماره مرسوله، از ارسال درخواست یا پیگیری جداگانه از طریق پیام خصوصی یا ارتباط با ادمین خودداری فرمایید؛ زیرا تمامی مراحل اطلاع‌رسانی و ثبت اطلاعات مرسوله از طریق همین صفحه انجام می‌شود.<br><br>'
-                    . 'از شکیبایی و همراهی ارزشمند شما سپاسگزاریم.</div>';
+                    bwt_track_reset_fails();
+                    $tracking_code = get_post_meta($order_id, '_tracking_code', true);
+                    if (empty($tracking_code) && method_exists($order, 'get_meta')) {
+                        $tracking_code = $order->get_meta('_tracking_code');
+                    }
+
+                    if ($tracking_code) {
+                        $billing_first_name = $order->get_billing_first_name();
+                        $billing_last_name  = $order->get_billing_last_name();
+                        $billing_address_1  = $order->get_billing_address_1();
+                        $billing_address_2  = $order->get_billing_address_2();
+                        $billing_city       = $order->get_billing_city();
+                        $billing_state      = $order->get_billing_state();
+                        $billing_postcode   = $order->get_billing_postcode();
+
+                        $full_address = $billing_address_1;
+                        if ($billing_address_2) {
+                            $full_address .= ' - ' . $billing_address_2;
+                        }
+                        $full_address .= '، ' . $billing_city;
+                        if ($billing_state) {
+                            $full_address .= '، ' . $billing_state;
+                        }
+                        if ($billing_postcode) {
+                            $full_address .= '، کد پستی: ' . $billing_postcode;
+                        }
+
+                        $order_date = $order->get_date_created();
+                        $order_date_formatted = $order_date ? $order_date->date_i18n('j F Y - H:i') : '—';
+
+                        $post_tracking_link = 'https://tracking.post.ir/?id=' . urlencode($tracking_code);
+
+                        $result_html  = '<div class="bwt-result success">';
+                        $result_html .= '<h3>📦 اطلاعات سفارش شما</h3>';
+                        $result_html .= '<div class="order-info">';
+                        $result_html .= '<p><strong>👤 نام و نام خانوادگی:</strong> ' . esc_html($billing_first_name . ' ' . $billing_last_name) . '</p>';
+                        $result_html .= '<p><strong>📍 آدرس:</strong> ' . esc_html($full_address) . '</p>';
+                        $result_html .= '<p><strong>📅 تاریخ ثبت سفارش:</strong> ' . esc_html($order_date_formatted) . '</p>';
+                        $result_html .= '<p><strong>🔢 شماره سفارش:</strong> ' . esc_html($order_id) . '</p>';
+                        $result_html .= '<hr>';
+                        $result_html .= '<p><strong>📮 کد رهگیری پستی:</strong></p>';
+                        $result_html .= '<div class="tracking-code-box">' . esc_html($tracking_code) . '</div>';
+                        $result_html .= '<p><a href="' . esc_url($post_tracking_link) . '" target="_blank" rel="noopener noreferrer" class="post-tracking-btn">🚚 پیگیری مرسوله در سایت پست</a></p>';
+                        $result_html .= '</div></div>';
+                    } else {
+                        $result_html = '<div class="bwt-result error">'
+                        . 'چنانچه در این بخش هنوز شماره مرسوله سفارش شما نمایش داده نشده است، به این معناست که سفارش در یکی از مراحل آماده‌سازی، تولید، بسته‌بندی یا ارسال قرار دارد و هنوز به شرکت حمل‌ونقل تحویل نشده است.<br><br>'
+                        . 'زمان آماده‌سازی سفارش‌ها به شرح زیر است:<br>'
+                        . 'کالاهای عادی: حداکثر ۷ روز کاری<br>'
+                        . 'کالاهای چاپی و سفارشی: بین ۷ تا ۱۸ روز کاری (با توجه به فرآیند تولید)<br>'
+                        . 'روزهای کاری صرفاً از شنبه تا چهارشنبه محاسبه می‌شوند و پنج‌شنبه، جمعه و تعطیلات رسمی جزو روزهای کاری محسوب نمی‌گردند.<br>'
+                        . 'پس از تحویل سفارش به شرکت حمل‌ونقل، شماره مرسوله به‌صورت خودکار در همین صفحه ثبت و قابل مشاهده خواهد بود.<br><br>'
+                        . 'خواهشمند است تا پیش از ثبت شماره مرسوله، از ارسال درخواست یا پیگیری جداگانه از طریق پیام خصوصی یا ارتباط با ادمین خودداری فرمایید؛ زیرا تمامی مراحل اطلاع‌رسانی و ثبت اطلاعات مرسوله از طریق همین صفحه انجام می‌شود.<br><br>'
+                        . 'از شکیبایی و همراهی ارزشمند شما سپاسگزاریم.</div>';
+                    }
                 }
             }
         }
@@ -521,6 +585,10 @@ function bwt_tracking_search_form() {
             <p>
                 <label for="bwt_order_id">🔍 شماره سفارش خود را وارد کنید:</label>
                 <input type="text" id="bwt_order_id" name="order_id" required placeholder="کد سفارش را به صورت لاتین وارد کنید.." value="<?php echo esc_attr($submitted_order_id); ?>" inputmode="numeric" autocomplete="off" />
+            </p>
+            <p>
+                <label for="bwt_billing_phone">📱 شماره موبایلی که سفارش با آن ثبت شده:</label>
+                <input type="text" id="bwt_billing_phone" name="billing_phone" required placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹" value="<?php echo esc_attr($submitted_phone); ?>" inputmode="tel" autocomplete="off" />
             </p>
             <p>
                 <button type="submit" name="tracking_submit">پیگیری سفارش</button>

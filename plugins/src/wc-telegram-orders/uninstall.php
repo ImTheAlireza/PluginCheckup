@@ -19,6 +19,8 @@ delete_option('wc_telegram_template_version');
 delete_option('wc_telegram_log_db_version');
 delete_option('wc_telegram_status_last_slot');
 delete_option('wc_telegram_status_last_sent');
+delete_option('wc_telegram_fail_streak');
+delete_option('wc_telegram_health_alert');
 delete_transient('wc_telegram_test_result');
 
 wp_clear_scheduled_hook('wc_telegram_daily_report');
@@ -61,7 +63,7 @@ $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '\_transient\_
 $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '\_transient\_timeout\_wc\_telegram\_alert\_%'");
 
 // متاهای وضعیت روی محصولات و سفارش‌ها (حالت قدیمی CPT و متاهای سینک‌شده)
-$meta_keys = "'_wc_telegram_stock_state','_wc_telegram_sent','_wc_telegram_pending','_wc_telegram_needs_address','_wc_telegram_attempts','_wc_telegram_send_lock'";
+$meta_keys = "'_wc_telegram_stock_state','_wc_telegram_sent','_wc_telegram_pending','_wc_telegram_expired','_wc_telegram_needs_address','_wc_telegram_attempts','_wc_telegram_send_lock','_wc_telegram_force'";
 $wpdb->query("DELETE FROM {$wpdb->postmeta} WHERE meta_key IN ({$meta_keys})");
 
 // متاهای سفارش در حالت HPOS (جدول اختصاصی ووکامرس)
