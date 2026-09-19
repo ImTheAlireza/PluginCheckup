@@ -1,922 +1,921 @@
 /**
- * TisaCase Bulk Variation Manager — Admin JavaScript
- * Clean & Native WordPress styling (Matching TisaCase Design System)
+ * TisaCase Bulk Variation Manager — Client Controller
+ *
+ * @package TisaCase_Bulk_Variation_Manager
  */
-(function ($) {
+
+(function($) {
 	'use strict';
 
 	/**
-	 * نمایش/پنهان‌سازی مطمئن کادرها.
-	 * استایل‌های این افزونه با display: … !important نوشته شده‌اند و همین باعث می‌شد
-	 * hide()/slideUp() جی‌کوئری و display:none اینلاین بی‌اثر بمانند (همهٔ کادرها باز می‌ماندند).
-	 * پس همه‌جا با کلاس tcbvm-hidden (!important و اولویت بالاتر) کار می‌کنیم.
+	 * آبجکت مرکزی مدیریت متغیرهای گروهی
 	 */
-	function setVisible(selector, show) {
-		$(selector).toggleClass('tcbvm-hidden', !show);
-	}
+	const TCBVM = {
+		selectedProducts: {},
+		isExecuting: false,
 
-	function isChecked(selector) {
-		return !!(selector && $(selector).length && $(selector).is(':checked'));
-	}
+		init: function() {
+			this.bindTargetMode();
+			this.bindProductSearch();
+			this.bindProductTable();
+			this.bindModelsInput();
+			this.bindPriceFormat();
+			this.bindActions();
+			this.bindPresets();
+			this.bindRollback();
+			this.bindCacheFlush();
+			this.initSelect2();
+		},
 
-	var state = {
-		matchedIds: [],
-		selectedIds: [],
-		isRunning: false,
-		shouldStop: false,
-		currentRunId: null,
-		processedCount: 0,
-		successCount: 0,
-		failedCount: 0
-	};
-
-	$(document).ready(function () {
-		initSegmentBars();
-		initSelect2();
-		initTargetModeToggle();
-		initOpChange();
-		initPresetChips();
-		initModelsCounter();
-		initSearch();
-		initSelection();
-		initPreview();
-		initBulkRun();
-		initRollback();
-		initPresetSave();
-		initCacheFlush();
-	});
-
-	/* -------------------------------------------------------------
-	 * ۰. فعال‌سازی نوار سگمنت دکمه‌ای (Segmented Radio Bars)
-	 * ----------------------------------------------------------- */
-	function initSegmentBars() {
-		$(document).on('change', '.tcbvm-seg-item input[type="radio"]', function () {
-			var $radio = $(this);
-			var name = $radio.attr('name');
-			$('input[name="' + name + '"]').closest('.tcbvm-seg-item').removeClass('is-active');
-			$radio.closest('.tcbvm-seg-item').addClass('is-active');
-		});
-	}
-
-	/* -------------------------------------------------------------
-	 * ۰.۱ فعال‌سازی Select2 برای دراپ‌داون دسته‌بندی‌ها
-	 * ----------------------------------------------------------- */
-	function initSelect2() {
-		var $catSelect = $('#tcbvm-cat-select');
-		if (!$catSelect.length) { return; }
-
-		// مسیر استاندارد ووکامرس: رویداد init را می‌زنیم تا خود ووکامرس (selectWoo) با ظاهر،
-		// RTL، جستجو و data-placeholder همان سلکت را بسازد. فراخوانی مستقیم select2 روی
-		// عنصری که ووکامرس قبلاً ساخته، ساختهٔ قبلی را destroy و از نو می‌سازد و می‌تواند
-		// ظاهر/رفتار کشویی را خراب کند.
-		$(document.body).trigger('wc-enhanced-select-init');
-
-		if ($catSelect.hasClass('enhanced') || $catSelect.data('select2')) { return; }
-
-		// فالبک: اگر اسکریپت ووکامرس بارگیری نشده باشد، خودمان سلکت۲ را اعمال می‌کنیم.
-		if (typeof $.fn.select2 !== 'undefined') {
-			$catSelect.select2({
-				placeholder: 'انتخاب یک یا چند دسته‌بندی…',
-				allowClear: true,
-				width: '100%',
-				dir: $('html').attr('dir') || 'rtl'
-			});
-		}
-	}
-
-	/* -------------------------------------------------------------
-	 * ۱. انتخاب حالت هدف (دسته‌بندی یا دستی)
-	 * ----------------------------------------------------------- */
-	function applyTargetMode(mode) {
-		var manual = (mode === 'manual');
-		// فقط کادرِ حالت فعال باز می‌ماند: دسته‌بندی یا شناسه‌های دستی.
-		setVisible('#tcbvm-cat-box', !manual);
-		setVisible('#tcbvm-manual-box', manual);
-	}
-
-	function initTargetModeToggle() {
-		// وضعیت اولیه بر اساس گزینهٔ انتخاب‌شده (قبلاً استایل اینلاین به‌خاطر !important بی‌اثر بود).
-		applyTargetMode($('input[name="tcbvm_target_mode"]:checked').val() || 'category');
-
-		$(document).on('change', 'input[name="tcbvm_target_mode"]', function () {
-			applyTargetMode($(this).val());
-		});
-
-		setVisible('#tcbvm-clone-ref-wrap', isChecked('#tcbvm-clone-price-check'));
-		$('#tcbvm-clone-price-check').on('change', function () {
-			setVisible('#tcbvm-clone-ref-wrap', $(this).is(':checked'));
-		});
-	}
-
-	/* -------------------------------------------------------------
-	 * ۲. تغییر نوع عملیات در دراپ‌داون
-	 * ----------------------------------------------------------- */
-	function applyOpVisibility(op) {
-		var show = {
-			models: true,
-			replace: false,
-			pricing: true,
-			deleteMode: false
-		};
-
-		switch (op) {
-			case 'remove_models':
-				show.deleteMode = true;
-				break;
-			case 'replace_model':
-				show.models = false;
-				show.replace = true;
-				show.pricing = false;
-				break;
-			case 'sync_preset':
-				show.deleteMode = true;
-				break;
-			case 'bulk_price_stock':
-			case 'add_models':
-			default:
-				break;
-		}
-
-		setVisible('#tcbvm-models-input-wrap', show.models);
-		setVisible('#tcbvm-replace-input-wrap', show.replace);
-		setVisible('#tcbvm-pricing-options-wrap', show.pricing);
-		setVisible('#tcbvm-delete-mode-wrap', show.deleteMode);
-	}
-
-	function initOpChange() {
-		applyOpVisibility($('#tcbvm-op').val());
-		$('#tcbvm-op').on('change', function () {
-			applyOpVisibility($(this).val());
-		});
-	}
-
-	/* -------------------------------------------------------------
-	 * ۳. چیپ‌های درج سریع الگوها
-	 * ----------------------------------------------------------- */
-	function initPresetChips() {
-		$(document).on('click', '.tcbvm-chip-btn', function (e) {
-			e.preventDefault();
-			var pId = $(this).data('preset-id');
-			var preset = tcbvmData.presets[pId];
-			if (!preset || !preset.models) {
-				return;
-			}
-
-			var $textarea = $('#tcbvm-models-input');
-			var currentText = $.trim($textarea.val());
-			var newLines = preset.models.join('\n');
-
-			if (currentText.length > 0) {
-				$textarea.val(currentText + '\n' + newLines);
-			} else {
-				$textarea.val(newLines);
-			}
-
-			$textarea.trigger('input');
-			$textarea.css('border-color', '#0E7C6B');
-			setTimeout(function () {
-				$textarea.css('border-color', '');
-			}, 400);
-		});
-	}
-
-	/* -------------------------------------------------------------
-	 * ۳.۱ شمارندهٔ مدل‌های ورودی (با همان قواعد سرور)
-	 * ----------------------------------------------------------- */
-	function normalizePersian(text) {
-		return (text || '')
-			.replace(/ي/g, 'ی')
-			.replace(/ك/g, 'ک')
-			.replace(/ة|ۀ/g, 'ه')
-			.replace(/\u00a0|\u200c/g, ' ')
-			.replace(/\s+/g, ' ')
-			.trim();
-	}
-
-	/**
-	 * همان منطق TCBVM_OPS::sanitize_model_list — جداکننده «|» و خط جدید؛
-	 * کاما داخل نام مدل حفظ می‌شود (iPhone 7,8,SE یک مدل است).
-	 */
-	function parseModelList(raw) {
-		var text = (raw || '').replace(/\r\n|\r/g, '\n').trim();
-		if (!text) { return []; }
-
-		var parts = text.split(/[|\n]+/);
-
-		if (parts.length < 2) {
-			if (/[,،]\s+/.test(text)) {
-				parts = text.split(/\s*[,،]\s*/);
-			} else if (text.indexOf('،') !== -1) {
-				parts = text.split(/\s*،\s*/);
-			} else {
-				parts = [text];
-			}
-		}
-
-		var seen = {};
-		var out = [];
-		for (var i = 0; i < parts.length; i++) {
-			var item = $.trim(parts[i]);
-			if (!item) { continue; }
-			var key = normalizePersian(item).toLowerCase();
-			if (!key || seen[key]) { continue; }
-			seen[key] = true;
-			out.push(item);
-		}
-		return out;
-	}
-
-	function updateModelsCount() {
-		var $counter = $('#tcbvm-models-count');
-		if (!$counter.length) { return; }
-		var count = parseModelList($('#tcbvm-models-input').val()).length;
-		$counter.text(count + ' مدل شناسایی شد');
-	}
-
-	function initModelsCounter() {
-		updateModelsCount();
-		$(document).on('input change', '#tcbvm-models-input', updateModelsCount);
-		// درج الگو با کلیک انجام می‌شود؛ بعد از آن هم شمارنده تازه شود.
-		$(document).on('click', '.tcbvm-chip-btn', function () {
-			setTimeout(updateModelsCount, 10);
-		});
-	}
-
-	/* -------------------------------------------------------------
-	 * ۴. جستجوی زنده و فیلتر کردن محصولات
-	 * ----------------------------------------------------------- */
-	function initSearch() {
-		$('#tcbvm-btn-search').on('click', function () {
-			var $btn = $(this);
-			var originalHtml = $btn.html();
-
-			var mode = $('input[name="tcbvm_target_mode"]:checked').val() || 'category';
-			var selectedCats = $('#tcbvm-cat-select').val() || [];
-			var includeChildren = $('#tcbvm-cat-children').is(':checked') ? 1 : 0;
-			var keywords = $('#tcbvm-keywords').val();
-			var excludeKeywords = $('#tcbvm-exclude-keywords').val();
-			var manualIds = $('#tcbvm-manual-ids').val();
-			var modelFilter = $('#tcbvm-model-filter').val();
-
-			$btn.prop('disabled', true).text('در حال جستجو…');
-			$('#tcbvm-search-counter').text('در حال اسکن محصولات…');
-
-			$.ajax({
-				url: tcbvmData.ajaxUrl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'tcbvm_search_products',
-					nonce: tcbvmData.nonce,
-					filters: {
-						mode: mode,
-						category_ids: selectedCats,
-						include_children: includeChildren,
-						keywords: keywords,
-						exclude_keywords: excludeKeywords,
-						manual_ids: manualIds,
-						model_term: modelFilter,
-						product_types: ['variable', 'simple']
-					}
-				},
-				success: function (res) {
-					$btn.prop('disabled', false).html(originalHtml);
-					if (res.success) {
-						state.matchedIds = res.data.ids || [];
-						state.selectedIds = state.matchedIds.slice();
-						renderProductsTable(res.data.items, res.data.total);
-						$('#tcbvm-search-counter').html('تعداد <strong>' + res.data.total + '</strong> محصول منطبق یافت شد.');
-					} else {
-						alert(res.data.message || 'خطا در جستجو');
-					}
-				},
-				error: function () {
-					$btn.prop('disabled', false).html(originalHtml);
-					alert('خطای اتصال به سرور هنگام جستجو.');
-				}
-			});
-		});
-	}
-
-	function renderProductsTable(items, total) {
-		var $box = $('#tcbvm-products-box');
-		var $tbody = $('#tcbvm-products-tbody');
-		$tbody.empty();
-
-		if (!items || items.length === 0) {
-			$tbody.html('<tr><td colspan="8" style="text-align:center; padding:24px; color:#64748B;">هیچ محصولی با فیلترهای انتخابی یافت نشد.</td></tr>');
-			setVisible('#tcbvm-products-box', true);
-			updateSelectionBadge();
-			return;
-		}
-
-		$.each(items, function (idx, item) {
-			var modelsHtml = '';
-			if (item.models && item.models.length > 0) {
-				$.each(item.models.slice(0, 6), function (i, m) {
-					modelsHtml += '<span class="tcbvm-tag-model">' + escapeHtml(m) + '</span>';
+		/**
+		 * راه‌اندازی Select2 ووکامرس برای دسته‌بندی‌ها
+		 */
+		initSelect2: function() {
+			if ($.fn.select2) {
+				$('#tcbvm-cat-select').select2({
+					dir: 'rtl',
+					placeholder: $('#tcbvm-cat-select').data('placeholder') || 'دسته‌بندی‌ها را انتخاب کنید…',
+					allowClear: true,
+					width: '100%'
 				});
-				if (item.models_total > 6) {
-					modelsHtml += '<span class="tcbvm-muted">+' + (item.models_total - 6) + '</span>';
-				}
-			} else {
-				modelsHtml = '<span class="tcbvm-muted">بدون متغیر فعلی</span>';
 			}
+		},
 
-			var row = '<tr data-id="' + item.id + '">'
-				+ '<td><input type="checkbox" class="tc-prod-checkbox" value="' + item.id + '" checked></td>'
-				+ '<td><img src="' + item.image_url + '" class="tcbvm-thumb-img" alt=""></td>'
-				+ '<td><strong><a href="' + item.edit_url + '" target="_blank" style="color:#0F172A; text-decoration:none;">' + escapeHtml(item.name) + '</a></strong></td>'
-				+ '<td><code>' + escapeHtml(item.sku) + '</code> <small class="tcbvm-muted">(#' + item.id + ')</small></td>'
-				+ '<td><span style="font-size:12px; color:#475569;">' + escapeHtml(item.cats) + '</span></td>'
-				+ '<td><strong>' + item.variation_count + '</strong> متغیر</td>'
-				+ '<td>' + modelsHtml + '</td>'
-				+ '<td><a href="' + item.edit_url + '" class="tisa-btn tisa-btn--outline tisa-btn--sm" target="_blank">ویرایش</a></td>'
-				+ '</tr>';
+		/**
+		 * فرمت ارقام با جداکننده سه‌رقمی
+		 */
+		formatNumber: function(num) {
+			if (!num && num !== 0) return '0';
+			return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+		},
 
-			$tbody.append(row);
-		});
+		/**
+		 * تبدیل ارقام به فارسی
+		 */
+		toPersianDigits: function(str) {
+			if (str === null || str === undefined) return '';
+			const farsi = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+			return str.toString().replace(/[0-9]/g, function(d) {
+				return farsi[d];
+			});
+		},
 
-		setVisible('#tcbvm-products-box', true);
-		$('#tcbvm-select-all').prop('checked', true);
-		updateSelectionBadge();
-	}
+		/**
+		 * لاگ کردن پیام در کنسول زنده
+		 */
+		log: function(msg, type) {
+			const $console = $('#tcbvm-log-console');
+			if (!$console.length) return;
 
-	/* -------------------------------------------------------------
-	 * ۵. مدیریت چک‌باکس‌ها
-	 * ----------------------------------------------------------- */
-	function initSelection() {
-		$('#tcbvm-select-all').on('change', function () {
-			var isChecked = $(this).is(':checked');
-			$('.tc-prod-checkbox').prop('checked', isChecked);
-			if (isChecked) {
-				state.selectedIds = state.matchedIds.slice();
-			} else {
-				state.selectedIds = [];
-			}
-			updateSelectionBadge();
-		});
+			const time = new Date().toLocaleTimeString('fa-IR');
+			let prefix = '';
+			if (type === 'success') prefix = '✓ ';
+			else if (type === 'error') prefix = '✗ ';
+			else if (type === 'info') prefix = 'ℹ ';
 
-		$(document).on('change', '.tc-prod-checkbox', function () {
-			var id = parseInt($(this).val(), 10);
-			if ($(this).is(':checked')) {
-				if (state.selectedIds.indexOf(id) === -1) {
-					state.selectedIds.push(id);
-				}
-			} else {
-				var idx = state.selectedIds.indexOf(id);
-				if (idx !== -1) {
-					state.selectedIds.splice(idx, 1);
-				}
-			}
-			updateSelectionBadge();
-		});
-	}
+			const line = '[' + time + '] ' + prefix + msg + '\n';
+			$console.append(line);
+			$console.scrollTop($console[0].scrollHeight);
+		},
 
-	function updateSelectionBadge() {
-		var count = state.selectedIds.length;
-		$('#tcbvm-selected-badge').text(count + ' محصول انتخاب‌شده');
-	}
+		/**
+		 * سوییچ بین شیوه‌های انتخاب محصول (دسته‌بندی، شناسه SKU، مستقیم، شناسه عددی)
+		 */
+		bindTargetMode: function() {
+			$('input[name="tcbvm_target_mode"]').on('change', function() {
+				const mode = $(this).val();
+				$('.tcbvm-seg-item').removeClass('is-active');
+				$(this).closest('.tcbvm-seg-item').addClass('is-active');
 
-	/* -------------------------------------------------------------
-	 * ۶. پیش‌نمایش آزمایشی (Dry Run)
-	 * ----------------------------------------------------------- */
-	function initPreview() {
-		$('#tcbvm-btn-preview').on('click', function () {
-			if (state.selectedIds.length === 0) {
-				alert(tcbvmData.i18n.selectProductsPrompt);
-				return;
-			}
-
-			var op = $('#tcbvm-op').val();
-			var params = collectParams(op);
-
-			var $btn = $(this);
-			var orig = $btn.html();
-			$btn.prop('disabled', true).text('در حال بررسی…');
-
-			$.ajax({
-				url: tcbvmData.ajaxUrl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'tcbvm_preview',
-					nonce: tcbvmData.nonce,
-					product_ids: state.selectedIds,
-					operation: op,
-					params: params
-				},
-				success: function (res) {
-					$btn.prop('disabled', false).html(orig);
-					if (res.success) {
-						renderPreviewOutput(res.data);
-					} else {
-						alert(res.data.message || 'خطا در محاسبه پیش‌نمایش');
-					}
-				},
-				error: function () {
-					$btn.prop('disabled', false).html(orig);
-					alert('خطا در ارتباط با سرور.');
+				$('.tcbvm-tab-pane').addClass('tcbvm-hidden');
+				if (mode === 'category') {
+					$('#tcbvm-cat-box').removeClass('tcbvm-hidden');
+				} else if (mode === 'sku') {
+					$('#tcbvm-sku-box').removeClass('tcbvm-hidden');
+				} else if (mode === 'direct') {
+					$('#tcbvm-direct-box').removeClass('tcbvm-hidden');
+				} else if (mode === 'manual') {
+					$('#tcbvm-manual-box').removeClass('tcbvm-hidden');
 				}
 			});
-		});
-	}
+		},
 
-	function renderPreviewOutput(data) {
-		var $box = $('#tcbvm-preview-output');
-		var $content = $('#tcbvm-preview-content');
-		$content.empty();
+		/**
+		 * جستجو و استخراج محصولات
+		 */
+		bindProductSearch: function() {
+			const self = this;
 
-		if (!data.samples || data.samples.length === 0) {
-			$content.html('<p>تغییری برای محصولات نمونه لازم نیست یا مدلی یافت نشد.</p>');
-			setVisible('#tcbvm-preview-output', true);
-			return;
-		}
+			// جستجو بر اساس دسته‌بندی و فیلترها (شامل فیلتر SKU اختیاری)
+			$('#tcbvm-btn-search').on('click', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+				const catIds = $('#tcbvm-cat-select').val() || [];
+				const includeChildren = $('#tcbvm-cat-children').is(':checked') ? 1 : 0;
+				const keywords = $('#tcbvm-keywords').val();
+				const excludeKeywords = $('#tcbvm-exclude-keywords').val();
+				const catSku = $('#tcbvm-cat-sku').val();
 
-		var summaryHtml = '<p style="margin-bottom:12px; font-weight:700; color:#0F172A;">بررسی نمونه‌ای از ' + data.total_selected + ' محصول انتخابی:</p>';
-		$content.append(summaryHtml);
+				$btn.prop('disabled', true).addClass('is-busy');
+				$('#tcbvm-search-counter').text('در حال واکشی محصولات…');
 
-		$.each(data.samples, function (idx, item) {
-			var addsHtml = item.to_add.length ? '<p style="color:#0E7C6B; margin:4px 0;"><strong>+ مدل‌های جدید:</strong> ' + item.to_add.join('، ') + '</p>' : '';
-			var remsHtml = item.to_remove.length ? '<p style="color:#EF4444; margin:4px 0;"><strong>- مدل‌های حذف/ناموجود:</strong> ' + item.to_remove.join('، ') + '</p>' : '';
-			var modsHtml = item.to_modify.length ? '<p style="color:#2563EB; margin:4px 0;"><strong>~ تغییرات:</strong> ' + item.to_modify.join('، ') + '</p>' : '';
-			var notesHtml = item.notes.length ? '<p class="tcbvm-muted" style="margin:4px 0;">' + item.notes.join(' | ') + '</p>' : '';
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_search_products',
+						nonce: tcbvmData.nonce,
+						filters: {
+							category_ids: catIds,
+							include_children: includeChildren,
+							keywords: keywords,
+							exclude_keywords: excludeKeywords,
+							sku: catSku
+						}
+					},
+					success: function(resp) {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						if (resp.success && resp.data && resp.data.items) {
+							resp.data.items.forEach(function(item) {
+								self.selectedProducts[item.id] = item;
+							});
+							self.renderProductTable();
+							$('#tcbvm-search-counter').text(resp.data.message || (resp.data.items.length + ' محصول یافت شد.'));
+						} else {
+							$('#tcbvm-search-counter').text(resp.data && resp.data.message ? resp.data.message : 'محصولی یافت نشد.');
+						}
+					},
+					error: function() {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						$('#tcbvm-search-counter').text('خطا در برقراری ارتباط با سرور.');
+					}
+				});
+			});
 
-			var itemHtml = '<div class="tcbvm-preview-item">'
-				+ '<h4>' + escapeHtml(item.name) + ' <small class="tcbvm-muted">(#' + item.id + ' | SKU: ' + escapeHtml(item.sku) + ')</small></h4>'
-				+ addsHtml + remsHtml + modsHtml + notesHtml
-				+ '</div>';
+			// جستجو اختصاصی بر اساس شناسه / کد محصول (SKU)
+			$('#tcbvm-btn-sku-search').on('click', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+				const skuVal = $('#tcbvm-sku-input').val().trim();
+				const skuMode = $('#tcbvm-sku-mode').val();
 
-			$content.append(itemHtml);
-		});
-
-		setVisible('#tcbvm-preview-output', true);
-		$('html, body').animate({
-			scrollTop: $box.offset().top - 30
-		}, 300);
-	}
-
-	/* -------------------------------------------------------------
-	 * ۷. پردازش دسته‌ای پله‌ای تحت ایجکس (Batch Execution)
-	 * ----------------------------------------------------------- */
-	function initBulkRun() {
-		$('#tcbvm-btn-run').on('click', function () {
-			if (state.isRunning) {
-				return;
-			}
-
-			if (state.selectedIds.length === 0) {
-				alert(tcbvmData.i18n.selectProductsPrompt);
-				return;
-			}
-
-			var op = $('#tcbvm-op').val();
-			var params = collectParams(op);
-
-			if (op === 'replace_model') {
-				if (!params.old_model || !params.new_model) {
-					alert('نام مدل قدیمی و جدید هر دو الزامی هستند.');
+				if (!skuVal) {
+					alert('لطفاً پیشوند یا مقدار شناسه (SKU) مورد نظر را وارد نمایید (مثلاً: CH).');
 					return;
 				}
+
+				$btn.prop('disabled', true).addClass('is-busy');
+				$('#tcbvm-sku-counter').text('در حال استخراج محصولات با شناسه ' + skuVal + '…');
+
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_search_products',
+						nonce: tcbvmData.nonce,
+						filters: {
+							mode: 'sku',
+							sku: skuVal,
+							sku_mode: skuMode
+						}
+					},
+					success: function(resp) {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						if (resp.success && resp.data && resp.data.items) {
+							resp.data.items.forEach(function(item) {
+								self.selectedProducts[item.id] = item;
+							});
+							self.renderProductTable();
+							$('#tcbvm-sku-counter').text(resp.data.message || (resp.data.items.length + ' محصول یافت شد.'));
+						} else {
+							$('#tcbvm-sku-counter').text(resp.data && resp.data.message ? resp.data.message : 'هیچ محصولی با این شناسه یافت نشد.');
+						}
+					},
+					error: function() {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						$('#tcbvm-sku-counter').text('خطا در برقراری ارتباط با سرور.');
+					}
+				});
+			});
+
+			// افزودن دستی شناسه‌ها
+			$('#tcbvm-btn-manual-add').on('click', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+				const rawIds = $('#tcbvm-manual-ids').val();
+				if (!rawIds.trim()) {
+					alert('لطفاً حداقل یک شناسه محصول وارد کنید.');
+					return;
+				}
+
+				$btn.prop('disabled', true);
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_search_products',
+						nonce: tcbvmData.nonce,
+						filters: {
+							mode: 'manual',
+							manual_ids: rawIds
+						}
+					},
+					success: function(resp) {
+						$btn.prop('disabled', false);
+						if (resp.success && resp.data && resp.data.items) {
+							resp.data.items.forEach(function(item) {
+								self.selectedProducts[item.id] = item;
+							});
+							self.renderProductTable();
+							$('#tcbvm-manual-ids').val('');
+						} else {
+							alert('محصول معتبری با این شناسه‌ها یافت نشد.');
+						}
+					},
+					error: function() {
+						$btn.prop('disabled', false);
+						alert('خطا در بررسی شناسه‌ها.');
+					}
+				});
+			});
+
+			// جستجوی مستقیم تک‌محصول با Autocomplete
+			let searchTimeout = null;
+			$('#tcbvm-single-search').on('input keyup', function() {
+				const query = $(this).val().trim();
+				clearTimeout(searchTimeout);
+				if (query.length < 2) {
+					$('#tcbvm-single-dropdown').addClass('tcbvm-hidden').empty();
+					return;
+				}
+
+				searchTimeout = setTimeout(function() {
+					$.ajax({
+						url: tcbvmData.ajaxUrl,
+						type: 'GET',
+						data: {
+							action: 'tcbvm_search_single_products',
+							nonce: tcbvmData.nonce,
+							term: query
+						},
+						success: function(resp) {
+							const $drop = $('#tcbvm-single-dropdown');
+							$drop.empty();
+							if (resp.success && resp.data && resp.data.results && resp.data.results.length) {
+								resp.data.results.forEach(function(item) {
+									const $it = $('<div class="tcbvm-autocomplete-item"></div>');
+									$it.append('<img src="' + item.image_url + '" class="tcbvm-thumb" alt="">');
+									$it.append('<div><strong>' + item.name + '</strong><br><small class="tcbvm-muted">SKU: ' + item.sku + ' | شناسه: #' + item.id + ' (' + item.variation_count + ' متغیر فعلی)</small></div>');
+									$it.on('click', function() {
+										self.selectedProducts[item.id] = item;
+										self.renderProductTable();
+										$drop.addClass('tcbvm-hidden').empty();
+										$('#tcbvm-single-search').val('');
+									});
+									$drop.append($it);
+								});
+								$drop.removeClass('tcbvm-hidden');
+							} else {
+								$drop.append('<div class="tcbvm-autocomplete-item"><small class="tcbvm-muted">محصولی یافت نشد.</small></div>').removeClass('tcbvm-hidden');
+							}
+						}
+					});
+				}, 300);
+			});
+
+			$('#tcbvm-btn-single-search').on('click', function() {
+				$('#tcbvm-single-search').trigger('input');
+			});
+		},
+
+		/**
+		 * رندر و به‌روزرسانی جدول محصولات انتخاب‌شده
+		 */
+		renderProductTable: function() {
+			const self = this;
+			const pids = Object.keys(self.selectedProducts);
+			const $tbody = $('#tcbvm-products-tbody');
+			const $box = $('#tcbvm-products-box');
+
+			if (pids.length === 0) {
+				$box.addClass('tcbvm-hidden');
+				$('#tcbvm-selected-badge').text('۰ محصول انتخاب‌شده');
+				return;
+			}
+
+			$box.removeClass('tcbvm-hidden');
+			$('#tcbvm-selected-badge').text(self.toPersianDigits(self.formatNumber(pids.length)) + ' محصول انتخاب‌شده');
+			$tbody.empty();
+
+			pids.forEach(function(pid) {
+				const item = self.selectedProducts[pid];
+				const isChecked = item.selected !== false;
+				const row = $(
+					'<tr data-pid="' + item.id + '">' +
+						'<td class="tcbvm-col-w38 tcbvm-center"><input type="checkbox" class="tcbvm-product-checkbox" ' + (isChecked ? 'checked' : '') + '></td>' +
+						'<td class="tcbvm-col-w48"><img src="' + (item.image_url || '') + '" class="tcbvm-thumb" alt=""></td>' +
+						'<td><a href="' + (item.edit_url || '#') + '" target="_blank"><strong>' + item.name + '</strong></a></td>' +
+						'<td><span class="tisa-code">' + (item.sku || '—') + '</span> <small class="tcbvm-muted">(#' + item.id + ')</small></td>' +
+						'<td><small class="tcbvm-muted">' + (item.cats || '—') + '</small></td>' +
+						'<td><span class="tcbvm-badge">' + (item.type === 'variable' ? 'متغیر' : 'ساده') + '</span></td>' +
+						'<td><strong>' + self.toPersianDigits(item.variation_count || 0) + '</strong> متغیر</td>' +
+						'<td class="tcbvm-col-w70 tcbvm-center"><button type="button" class="tcbvm-btn-remove-row" title="حذف از لیست">&times;</button></td>' +
+					'</tr>'
+				);
+				$tbody.append(row);
+			});
+		},
+
+		/**
+		 * مدیریت رخدادهای جدول محصولات (چک‌باکس، حذف، پاک کردن همه)
+		 */
+		bindProductTable: function() {
+			const self = this;
+
+			// تغییر وضعیت تک محصول
+			$(document).on('change', '.tcbvm-product-checkbox', function() {
+				const pid = $(this).closest('tr').data('pid');
+				if (self.selectedProducts[pid]) {
+					self.selectedProducts[pid].selected = $(this).is(':checked');
+				}
+				self.updateSelectedBadge();
+			});
+
+			// انتخاب همه / لغو همه
+			$('#tcbvm-select-all').on('change', function() {
+				const checked = $(this).is(':checked');
+				$('.tcbvm-product-checkbox').prop('checked', checked);
+				Object.keys(self.selectedProducts).forEach(function(pid) {
+					self.selectedProducts[pid].selected = checked;
+				});
+				self.updateSelectedBadge();
+			});
+
+			// دکمه حذف تک‌سطر
+			$(document).on('click', '.tcbvm-btn-remove-row', function() {
+				const pid = $(this).closest('tr').data('pid');
+				delete self.selectedProducts[pid];
+				self.renderProductTable();
+			});
+
+			// دکمه پاک کردن کل لیست
+			$('#tcbvm-btn-clear-selection').on('click', function() {
+				if (confirm('آیا مایل به پاک کردن تمام محصولات انتخاب‌شده از لیست هستید؟')) {
+					self.selectedProducts = {};
+					self.renderProductTable();
+				}
+			});
+		},
+
+		updateSelectedBadge: function() {
+			const checkedCount = this.getActiveProductIds().length;
+			$('#tcbvm-selected-badge').text(this.toPersianDigits(this.formatNumber(checkedCount)) + ' محصول فعال');
+		},
+
+		/**
+		 * استخراج شناسه‌های محصولاتی که تیک خورده‌اند
+		 */
+		getActiveProductIds: function() {
+			const self = this;
+			const ids = [];
+			Object.keys(self.selectedProducts).forEach(function(pid) {
+				if (self.selectedProducts[pid].selected !== false) {
+					ids.push(parseInt(pid, 10));
+				}
+			});
+			return ids;
+		},
+
+		/**
+		 * مدیریت ورودی مدل‌ها و الگوهای آماده
+		 */
+		bindModelsInput: function() {
+			const self = this;
+
+			const updateCount = function() {
+				const raw = $('#tcbvm-models-input').val();
+				const list = self.parseModelsList(raw);
+				$('#tcbvm-models-count').text(self.toPersianDigits(list.length) + ' متغیر تعریف شد');
+			};
+
+			$('#tcbvm-models-input').on('input keyup change', updateCount);
+
+			// کلیک روی چیپ الگوهای آماده جهت درج سریع
+			$('.tcbvm-chip-btn').on('click', function(e) {
+				e.preventDefault();
+				const pId = $(this).data('preset-id');
+				if (tcbvmData.presets && tcbvmData.presets[pId] && tcbvmData.presets[pId].models) {
+					const models = tcbvmData.presets[pId].models;
+					$('#tcbvm-models-input').val(models.join('\n')).trigger('input');
+				}
+			});
+		},
+
+		/**
+		 * تفکیک مقادیر مدل‌ها از روی متن
+		 */
+		parseModelsList: function(raw) {
+			if (!raw || !raw.trim()) return [];
+			let lines = [];
+			if (raw.indexOf('\n') !== -1 || raw.indexOf('\r') !== -1 || raw.indexOf('|') !== -1) {
+				lines = raw.split(/[\r\n|]+/);
 			} else {
-				if (!params.models || params.models.length === 0) {
+				lines = raw.split(/[,،]+/);
+			}
+
+			const unique = [];
+			lines.forEach(function(line) {
+				const trimmed = line.trim().replace(/^["'`•\-\s]+|["'`•\-\s]+$/g, '');
+				if (trimmed && unique.indexOf(trimmed) === -1) {
+					unique.push(trimmed);
+				}
+			});
+			return unique;
+		},
+
+		/**
+		 * فرمت زنده قیمت‌ها به حروف و تومان
+		 */
+		bindPriceFormat: function() {
+			const self = this;
+
+			const handlePrice = function($input, $display) {
+				$input.on('input keyup', function() {
+					const digits = $(this).val().replace(/[^\d]/g, '');
+					if (!digits) {
+						$display.text('');
+						return;
+					}
+					const num = parseInt(digits, 10);
+					$display.text(self.toPersianDigits(self.formatNumber(num)) + ' ' + (tcbvmData.currency || 'تومان'));
+				});
+			};
+
+			handlePrice($('#tcbvm-regular-price'), $('#tcbvm-price-preview'));
+			handlePrice($('#tcbvm-sale-price'), $('#tcbvm-sale-preview'));
+		},
+
+		/**
+		 * دکمه‌های پیش‌نمایش و شروع اجرای قطعی
+		 */
+		bindActions: function() {
+			const self = this;
+
+			// پیش‌نمایش قبل از اجرا
+			$('#tcbvm-btn-preview').on('click', function(e) {
+				e.preventDefault();
+				const pids = self.getActiveProductIds();
+				if (!pids.length) {
+					alert(tcbvmData.i18n.selectProductsPrompt);
+					return;
+				}
+
+				const attrName = $('#tcbvm-attr-name').val().trim() || 'مدل گوشی';
+				const models = self.parseModelsList($('#tcbvm-models-input').val());
+				if (!models.length) {
 					alert(tcbvmData.i18n.enterModelsPrompt);
 					return;
 				}
-			}
 
-			var confirmMsg = tcbvmData.i18n.confirmStart.replace('{n}', state.selectedIds.length);
-
-			// برای «همگام‌سازی کامل» دقیقاً بگو چه اتفاقی می‌افتد (چند مدل، حذف کامل قبلی‌ها).
-			if (op === 'sync_preset') {
-				var modelCount = parseModelList(params.models).length;
-				confirmMsg += '\n\nهمگام‌سازی کامل: ' + modelCount + ' مدل شناسایی شد.';
-				confirmMsg += '\nهمهٔ متغیرهای فعلی این ویژگی حذف و دقیقاً ' + modelCount + ' متغیر جدید ساخته می‌شود.';
-				confirmMsg += '\n(نام ویژگی: ' + ($.trim($('#tcbvm-attr-name').val()) || 'مدل') + ')';
-			}
-
-			if (!confirm(confirmMsg)) {
-				return;
-			}
-
-			startBatchProcess(op, params);
-		});
-	}
-
-	function startBatchProcess(op, params) {
-		state.isRunning = true;
-		state.shouldStop = false;
-		state.processedCount = 0;
-		state.successCount = 0;
-		state.failedCount = 0;
-
-		var $btn = $('#tcbvm-btn-run');
-		$btn.prop('disabled', true);
-
-		setVisible('#tcbvm-progress-wrap', true);
-		$('#tcbvm-bar-fill').css('width', '0%');
-		$('#tcbvm-progress-percent').text('0%');
-		$('#tcbvm-progress-text').text('در حال ثبت نشست و تهیه پشتیبان خودکار…');
-		$('#tcbvm-log-console').empty();
-
-		logMessage('Starting run: ' + op + ' on ' + state.selectedIds.length + ' products...');
-
-		$.ajax({
-			url: tcbvmData.ajaxUrl,
-			type: 'POST',
-			dataType: 'json',
-			data: {
-				action: 'tcbvm_start_run',
-				nonce: tcbvmData.nonce,
-				product_ids: state.selectedIds,
-				operation: op,
-				params: params
-			},
-			success: function (res) {
-				if (res.success) {
-					state.currentRunId = res.data.run_id;
-					var batches = res.data.batches;
-					$('#tcbvm-stat-total').text(res.data.total_items);
-					$('#tcbvm-stat-processed').text('0');
-					$('#tcbvm-stat-success').text('0');
-					$('#tcbvm-stat-failed').text('0');
-
-					logMessage('Run session created: ' + state.currentRunId + ' (' + batches.length + ' batches total)');
-					executeNextBatch(0, batches, op, params);
-				} else {
-					state.isRunning = false;
-					$btn.prop('disabled', false);
-					alert(res.data.message || 'خطا در شروع نشست');
-				}
-			},
-			error: function (xhr, status, errorThrown) {
-				state.isRunning = false;
-				$btn.prop('disabled', false);
-				var detail = describeAjaxError(xhr, status, errorThrown);
-				logMessage('[ERROR] ایجاد نشست اجرا ناموفق بود: ' + detail);
-				alert('ایجاد نشست اجرا ناموفق بود.\n' + detail);
-			}
-		});
-	}
-
-	function describeAjaxError(xhr, status, errorThrown) {
-		var parts = [];
-
-		if (xhr && xhr.status) {
-			parts.push('HTTP ' + xhr.status + (xhr.statusText ? ' ' + xhr.statusText : ''));
-		} else if (status === 'timeout') {
-			parts.push('تایم‌اوت سرور (بدون پاسخ)');
-		} else {
-			parts.push('بدون پاسخ سرور');
-		}
-
-		if (status && status !== 'error') { parts.push('(' + status + ')'); }
-		if (errorThrown && errorThrown !== 'error') { parts.push(errorThrown); }
-
-		var body = (xhr && typeof xhr.responseText === 'string') ? xhr.responseText : '';
-		if (body) {
-			var snippet = body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-			if (snippet.length > 240) { snippet = snippet.slice(0, 240) + '…'; }
-			if (snippet) { parts.push('— ' + snippet); }
-		}
-
-		return parts.join(' ');
-	}
-
-	function batchHint(description) {
-		if (/HTTP (500|502|503|504)/.test(description) || /fatal|memory|خطای مهلک|حافظه/i.test(description)) {
-			return 'سرور در میانهٔ پردازش بسته خطا داد. «اندازهٔ هر بسته (Batch Size)» را در تب تنظیمات کمتر کن (مثلاً ۲) و دوباره اجرا کن؛ اگر تکرار شد، پیام خطای همین لاگ را برای پشتیبانی بفرست.';
-		}
-		if (/HTTP 403|nonce|توکن امنیتی/i.test(description)) {
-			return 'توکن امنیتی صفحه منقضی شده است؛ صفحه را رفرش کن و دوباره اجرا کن.';
-		}
-		return '';
-	}
-
-	function updateProgressUi() {
-		var total = state.selectedIds.length || 1;
-		var percent = Math.round((state.processedCount / total) * 100);
-		if (percent > 100) { percent = 100; }
-		$('#tcbvm-bar-fill').css('width', percent + '%');
-		$('#tcbvm-progress-percent').text(percent + '%');
-		$('#tcbvm-stat-processed').text(state.processedCount);
-		$('#tcbvm-stat-success').text(state.successCount);
-		$('#tcbvm-stat-failed').text(state.failedCount);
-	}
-
-	function sendBatch(ids, op, params, callback) {
-		$.ajax({
-			url: tcbvmData.ajaxUrl,
-			type: 'POST',
-			dataType: 'json',
-			timeout: 240000, // سقف ۴ دقیقه؛ عملیات متغیرها می‌تواند طولانی باشد.
-			data: {
-				action: 'tcbvm_execute_batch',
-				nonce: tcbvmData.nonce,
-				run_id: state.currentRunId,
-				batch_ids: ids,
-				operation: op,
-				params: params
-			},
-			success: function (res) {
-				if (res && res.success) {
-					callback(null, res.data);
+				const price = $('#tcbvm-regular-price').val().replace(/[^\d]/g, '');
+				if (!price) {
+					alert(tcbvmData.i18n.enterPricePrompt);
 					return;
 				}
 
-				// پاسخ JSON معتبر ولی «ناموفق» (مثلاً خطای اعتبارسنجی یا خطای مهلک سرور).
-				var message = (res && res.data && res.data.message) ? res.data.message : 'پاسخ نامعتبر از سرور.';
-				if (res && res.data && res.data.fatal) { message = '[FATAL] ' + message; }
-				callback(new Error(message), null);
-			},
-			error: function (xhr, status, errorThrown) {
-				callback(new Error(describeAjaxError(xhr, status, errorThrown)), null);
-			}
-		});
-	}
+				const salePrice = $('#tcbvm-sale-price').val().replace(/[^\d]/g, '');
+				const combineOther = $('#tcbvm-combine-other').is(':checked') ? 1 : 0;
 
-	/**
-	 * اجرای یک بسته با تلاش مجدد هوشمند.
-	 *
-	 * اگر بسته به‌خاطر خطای سرور/شبکه شکست بخورد، به دو نیم تقسیم و دوباره تلاش
-	 * می‌شود (تا تک‌محصولی) تا یک محصول مشکل‌دار کل اجرا را از کار نیندازد.
-	 */
-	function runBatchWithRetry(ids, op, params, depth, callback) {
-		if (!ids.length) {
-			callback(0, 0);
-			return;
-		}
+				const $btn = $(this);
+				$btn.prop('disabled', true).addClass('is-busy');
 
-		sendBatch(ids, op, params, function (err, data) {
-			if (!err) {
-				var okCount = (data && typeof data.success === 'number') ? data.success : ids.length;
-				var failCount = (data && typeof data.failed === 'number') ? data.failed : 0;
-
-				state.processedCount += ids.length;
-				state.successCount += okCount;
-				state.failedCount += failCount;
-				updateProgressUi();
-
-				if (data && data.details) {
-					$.each(data.details, function (i, d) {
-						logMessage((d.success ? '[OK] ' : '[ERR] ') + 'Product #' + d.id + ': ' + d.message);
-					});
-				}
-
-				callback(0, 0);
-				return;
-			}
-
-			// بسته را نصف کن و دوباره تلاش کن.
-			if (ids.length > 1 && depth < 4) {
-				logMessage('[WARN] بستهٔ ' + ids.length + ' محصولی خطا داد؛ تلاش دوباره با دو بستهٔ کوچک‌تر… (' + err.message + ')');
-				var half = Math.ceil(ids.length / 2);
-
-				runBatchWithRetry(ids.slice(0, half), op, params, depth + 1, function () {
-					runBatchWithRetry(ids.slice(half), op, params, depth + 1, function () {
-						callback(0, 0);
-					});
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_preview',
+						nonce: tcbvmData.nonce,
+						product_ids: pids,
+						attr_name: attrName,
+						new_values: models,
+						price: price,
+						sale_price: salePrice,
+						combine_other: combineOther
+					},
+					success: function(resp) {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						if (resp.success && resp.data) {
+							self.renderPreview(resp.data);
+						} else {
+							alert(resp.data && resp.data.message ? resp.data.message : 'خطا در محاسبه پیش‌نمایش.');
+						}
+					},
+					error: function() {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						alert('خطا در ارتباط با سرور.');
+					}
 				});
-				return;
+			});
+
+			// اجرای قطعی عملیات
+			$('#tcbvm-btn-run').on('click', function(e) {
+				e.preventDefault();
+				if (self.isExecuting) return;
+
+				const pids = self.getActiveProductIds();
+				if (!pids.length) {
+					alert(tcbvmData.i18n.selectProductsPrompt);
+					return;
+				}
+
+				const attrName = $('#tcbvm-attr-name').val().trim() || 'مدل گوشی';
+				const models = self.parseModelsList($('#tcbvm-models-input').val());
+				if (!models.length) {
+					alert(tcbvmData.i18n.enterModelsPrompt);
+					return;
+				}
+
+				const price = $('#tcbvm-regular-price').val().replace(/[^\d]/g, '');
+				if (!price) {
+					alert(tcbvmData.i18n.enterPricePrompt);
+					return;
+				}
+
+				const promptMsg = tcbvmData.i18n.confirmStart.replace('{n}', self.toPersianDigits(pids.length));
+				if (!confirm(promptMsg)) {
+					return;
+				}
+
+				self.startBatchExecution({
+					product_ids: pids,
+					attr_name: attrName,
+					new_values: models,
+					price: price,
+					sale_price: $('#tcbvm-sale-price').val().replace(/[^\d]/g, ''),
+					stock_status: $('#tcbvm-stock-status').val(),
+					combine_other: $('#tcbvm-combine-other').is(':checked') ? 1 : 0
+				});
+			});
+		},
+
+		/**
+		 * رندر کارت پیش‌نمایش
+		 */
+		renderPreview: function(data) {
+			const self = this;
+			const $box = $('#tcbvm-preview-output');
+			const $content = $('#tcbvm-preview-content');
+			$content.empty();
+
+			let html = '<div class="tcbvm-preview-grid">';
+			html += '<div class="tcbvm-stat-box"><span class="tcbvm-stat-num">' + self.toPersianDigits(data.total_products) + '</span><span class="tcbvm-stat-lbl">محصول انتخابی</span></div>';
+			html += '<div class="tcbvm-stat-box"><span class="tcbvm-stat-num">' + self.toPersianDigits(data.new_values_count) + '</span><span class="tcbvm-stat-lbl">متغیر جدید (' + data.attr_name + ')</span></div>';
+			html += '<div class="tcbvm-stat-box"><span class="tcbvm-stat-num">' + self.toPersianDigits(self.formatNumber(data.price)) + '</span><span class="tcbvm-stat-lbl">قیمت متغیرها (تومان)</span></div>';
+			html += '<div class="tcbvm-stat-box"><span class="tcbvm-stat-num">' + self.toPersianDigits(self.formatNumber(data.total_new_vars)) + '</span><span class="tcbvm-stat-lbl">مجموع ترکیب‌های تولیدی</span></div>';
+			html += '</div>';
+
+			if (data.samples && data.samples.length) {
+				html += '<h4 style="margin: 16px 0 8px; font-size: 14px;">نمونه محصولات جهت بازسازی متغیرها:</h4>';
+				html += '<div class="tcbvm-table-scroll"><table class="tisa-table tcbvm-table">';
+				html += '<thead><tr><th>شناسه</th><th>نام محصول</th><th>وضعیت فعلی</th><th>تغییرات</th><th>ترکیب ویژگی‌ها</th></tr></thead><tbody>';
+
+				data.samples.forEach(function(s) {
+					html += '<tr>';
+					html += '<td><span class="tisa-code">#' + s.id + '</span></td>';
+					html += '<td><strong>' + s.name + '</strong></td>';
+					html += '<td>' + self.toPersianDigits(s.old_vars) + ' متغیر فعلی</td>';
+					html += '<td><span class="tcbvm-badge tcbvm-badge--success">' + self.toPersianDigits(s.new_vars) + ' متغیر جدید</span></td>';
+					html += '<td><small class="tcbvm-muted">' + s.other_attrs + '</small></td>';
+					html += '</tr>';
+				});
+
+				html += '</tbody></table></div>';
 			}
 
-			// تک‌محصولی هم شکست خورد: ثبت خطا و ادامه دادن با بقیهٔ محصولات.
-			state.processedCount += ids.length;
-			state.failedCount += ids.length;
-			updateProgressUi();
+			$content.html(html);
+			$box.removeClass('tcbvm-hidden');
+			$('html, body').animate({ scrollTop: $box.offset().top - 40 }, 400);
+		},
 
-			logMessage('[ERROR] ' + (ids.length === 1 ? 'Product #' + ids[0] : ids.length + ' محصول') + ': ' + err.message);
-			var hint = batchHint(err.message);
-			if (hint) { logMessage('[HINT] ' + hint); }
+		/**
+		 * اجرای پله‌ای و ایجکس دسته‌ها (Batch Execution Engine)
+		 */
+		startBatchExecution: function(params) {
+			const self = this;
+			self.isExecuting = true;
 
-			callback(0, 0);
-		});
-	}
+			const $progressWrap = $('#tcbvm-progress-wrap');
+			const $bar = $('#tcbvm-bar-fill');
+			const $pText = $('#tcbvm-progress-text');
+			const $pPercent = $('#tcbvm-progress-percent');
+			const $console = $('#tcbvm-log-console');
 
-	function executeNextBatch(batchIndex, batches, op, params) {
-		if (state.shouldStop || batchIndex >= batches.length) {
-			finishBatchProcess();
-			return;
+			$progressWrap.removeClass('tcbvm-hidden');
+			$console.empty();
+			$bar.css('width', '0%');
+			$pPercent.text('0%');
+			$pText.text('در حال آغاز نشست و ایجاد اسنپ‌شات بازگردانی…');
+
+			$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', true);
+			$('html, body').animate({ scrollTop: $progressWrap.offset().top - 30 }, 400);
+
+			self.log('آغاز عملیات تغییر و تولید گروهی متغیرها برای ' + params.product_ids.length + ' محصول…', 'info');
+
+			// ۱) ایجاد نشست
+			$.ajax({
+				url: tcbvmData.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'tcbvm_start_run',
+					nonce: tcbvmData.nonce,
+					product_ids: params.product_ids,
+					attr_name: params.attr_name,
+					new_values: params.new_values,
+					price: params.price,
+					sale_price: params.sale_price,
+					stock_status: params.stock_status,
+					combine_other: params.combine_other
+				},
+				success: function(resp) {
+					if (!resp.success || !resp.data || !resp.data.batches) {
+						alert(resp.data && resp.data.message ? resp.data.message : 'خطا در ایجاد نشست.');
+						self.isExecuting = false;
+						$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
+						return;
+					}
+
+					const runId = resp.data.run_id;
+					const batches = resp.data.batches;
+					const totalProducts = resp.data.total_items;
+
+					$('#tcbvm-stat-total').text(self.toPersianDigits(totalProducts));
+					$('#tcbvm-stat-processed').text('۰');
+					$('#tcbvm-stat-success').text('۰');
+					$('#tcbvm-stat-failed').text('۰');
+
+					self.log('نشست با موفقیت ثبت شد (Run ID: ' + runId + '). پردازش در ' + batches.length + ' بسته آغاز می‌شود.', 'info');
+
+					let currentBatchIndex = 0;
+					let processedCount = 0;
+					let successCount = 0;
+					let failedCount = 0;
+					let totalCreated = 0;
+					let totalDeleted = 0;
+					const allItems = [];
+
+					const runNextBatch = function() {
+						if (currentBatchIndex >= batches.length) {
+							// پایان تمام بسته‌ها
+							self.finishRun(runId, totalCreated, totalDeleted, allItems, function() {
+								$bar.css('width', '100%');
+								$pPercent.text('۱۰۰٪');
+								$pText.text('تولید و بازسازی تمام متغیرها با موفقیت تکمیل و ثبت شد.');
+								self.log('پایان تمام بسته‌ها! ' + totalCreated + ' متغیر تازه ساخته و ' + totalDeleted + ' متغیر قدیمی پاکسازی شد.', 'success');
+								self.isExecuting = false;
+								$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
+								alert(tcbvmData.i18n.completedText);
+							});
+							return;
+						}
+
+						const batchIds = batches[currentBatchIndex];
+						const batchNum = currentBatchIndex + 1;
+						const batchDesc = batchIds.map(function(id) { return '#' + id; }).join('، ');
+						$pText.text('در حال پردازش بسته ' + self.toPersianDigits(batchNum) + ' از ' + self.toPersianDigits(batches.length) + ' (' + batchDesc + ')…');
+						self.log('⏳ شروع بسته ' + self.toPersianDigits(batchNum) + ' شامل ' + self.toPersianDigits(batchIds.length) + ' محصول (' + batchDesc + ')…', 'info');
+
+						$.ajax({
+							url: tcbvmData.ajaxUrl,
+							type: 'POST',
+							data: {
+								action: 'tcbvm_execute_batch',
+								nonce: tcbvmData.nonce,
+								run_id: runId,
+								batch_ids: batchIds,
+								attr_name: params.attr_name,
+								new_values: params.new_values,
+								price: params.price,
+								sale_price: params.sale_price,
+								stock_status: params.stock_status,
+								combine_other: params.combine_other
+							},
+							success: function(bResp) {
+								if (bResp.success && bResp.data && bResp.data.items) {
+									bResp.data.items.forEach(function(it) {
+										processedCount++;
+										allItems.push(it);
+										if (it.status === 'success') {
+											successCount++;
+											totalCreated += (it.created || 0);
+											totalDeleted += (it.deleted || 0);
+											self.log('[#' + it.id + '] ' + it.title + ' ➔ ' + it.message, 'success');
+										} else {
+											failedCount++;
+											self.log('[#' + it.id + '] ' + it.title + ' ➔ خطا: ' + it.message, 'error');
+										}
+									});
+								} else {
+									batchIds.forEach(function(pid) {
+										processedCount++;
+										failedCount++;
+										const errItem = { id: pid, status: 'error', title: 'محصول #' + pid, message: (bResp.data && bResp.data.message ? bResp.data.message : 'خطا در پردازش بسته') };
+										allItems.push(errItem);
+										self.log('محصول #' + pid + ': خطا در بسته ' + (bResp.data && bResp.data.message ? bResp.data.message : ''), 'error');
+									});
+								}
+
+								// به‌روزرسانی نوار پیشرفت و آمار
+								const pct = Math.round((processedCount / totalProducts) * 100);
+								$bar.css('width', pct + '%');
+								$pPercent.text(self.toPersianDigits(pct) + '٪');
+								$pText.text('پردازش‌شده: ' + self.toPersianDigits(processedCount) + ' از ' + self.toPersianDigits(totalProducts) + ' محصول (' + self.toPersianDigits(pct) + '٪)');
+								$('#tcbvm-stat-processed').text(self.toPersianDigits(processedCount));
+								$('#tcbvm-stat-success').text(self.toPersianDigits(successCount));
+								$('#tcbvm-stat-failed').text(self.toPersianDigits(failedCount));
+
+								currentBatchIndex++;
+								setTimeout(runNextBatch, 50);
+							},
+							error: function(xhr, status, err) {
+								self.log('خطای شبکه در بسته ' + batchNum + ': ' + err + '. تلاش برای ادامه بسته بعدی…', 'error');
+								batchIds.forEach(function(pid) {
+									processedCount++;
+									failedCount++;
+									allItems.push({ id: pid, status: 'error', title: 'محصول #' + pid, message: 'خطای شبکه در ارتباط با سرور' });
+								});
+								currentBatchIndex++;
+								setTimeout(runNextBatch, 100);
+							}
+						});
+					};
+
+					runNextBatch();
+				},
+				error: function() {
+					alert('خطا در شروع نشست با سرور.');
+					self.isExecuting = false;
+					$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
+				}
+			});
+		},
+
+		/**
+		 * اتمام نشست
+		 */
+		finishRun: function(runId, createdCount, deletedCount, items, callback) {
+			$.ajax({
+				url: tcbvmData.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'tcbvm_finish_run',
+					nonce: tcbvmData.nonce,
+					run_id: runId,
+					status: 'completed',
+					created_count: createdCount,
+					deleted_count: deletedCount,
+					items: items
+				},
+				complete: function() {
+					if (typeof callback === 'function') callback();
+				}
+			});
+		},
+
+		/**
+		 * مدیریت ذخیره و حذف الگوهای سفارشی
+		 */
+		bindPresets: function() {
+			$('#tcbvm-form-new-preset').on('submit', function(e) {
+				e.preventDefault();
+				const name = $('#preset_name').val().trim();
+				const desc = $('#preset_desc').val().trim();
+				const models = $('#preset_models').val();
+
+				if (!name || !models.trim()) {
+					alert('نام الگو و حداقل یک مدل الزامی است.');
+					return;
+				}
+
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_save_preset',
+						nonce: tcbvmData.nonce,
+						name: name,
+						description: desc,
+						models: models
+					},
+					success: function(resp) {
+						if (resp.success) {
+							alert('الگو با موفقیت ذخیره شد.');
+							window.location.reload();
+						} else {
+							alert(resp.data && resp.data.message ? resp.data.message : 'خطا در ذخیره الگو.');
+						}
+					}
+				});
+			});
+
+			$('.tc-btn-delete-preset').on('click', function(e) {
+				e.preventDefault();
+				if (!confirm(tcbvmData.i18n.confirmDeletePreset)) return;
+
+				const pId = $(this).data('preset-id');
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_delete_preset',
+						nonce: tcbvmData.nonce,
+						id: pId
+					},
+					success: function(resp) {
+						if (resp.success) {
+							window.location.reload();
+						} else {
+							alert(resp.data && resp.data.message ? resp.data.message : 'خطا در حذف الگو.');
+						}
+					}
+				});
+			});
+		},
+
+		/**
+		 * بازگردانی (Rollback) و مشاهده جزئیات لاگ
+		 */
+		bindRollback: function() {
+			// باز کردن / بستن کشوی جزئیات گزارش
+			$(document).on('click', '.tc-btn-toggle-run-details', function(e) {
+				e.preventDefault();
+				const runId = $(this).data('run-id');
+				$('#run-details-' + runId).toggleClass('tcbvm-hidden');
+			});
+
+			$('.tc-btn-rollback').on('click', function(e) {
+				e.preventDefault();
+				if (!confirm(tcbvmData.i18n.confirmRollback)) return;
+
+				const $btn = $(this);
+				const runId = $btn.data('run-id');
+				$btn.prop('disabled', true).text('در حال بازگردانی…');
+
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_rollback',
+						nonce: tcbvmData.nonce,
+						run_id: runId
+					},
+					success: function(resp) {
+						if (resp.success) {
+							alert('عملیات با موفقیت بازگردانده شد و وضعیت متغیرها به حالت قبل برگشت.');
+							window.location.reload();
+						} else {
+							alert(resp.data && resp.data.message ? resp.data.message : 'خطا در بازگردانی.');
+							$btn.prop('disabled', false).text('بازگردانی (Rollback)');
+						}
+					},
+					error: function() {
+						alert('خطا در ارتباط با سرور.');
+						$btn.prop('disabled', false).text('بازگردانی (Rollback)');
+					}
+				});
+			});
+		},
+
+		/**
+		 * پاکسازی ترنزینت‌ها و کش قیمت ووکامرس
+		 */
+		bindCacheFlush: function() {
+			$('#tcbvm-btn-flush-cache').on('click', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+				$btn.prop('disabled', true).text('در حال نوسازی…');
+
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_flush_cache',
+						nonce: tcbvmData.nonce
+					},
+					success: function(resp) {
+						$btn.prop('disabled', false).text('نوسازی کش قیمت‌های متغیر ووکامرس');
+						alert(resp.data && resp.data.message ? resp.data.message : 'کش نوسازی شد.');
+					},
+					error: function() {
+						$btn.prop('disabled', false).text('نوسازی کش قیمت‌های متغیر ووکامرس');
+						alert('خطا در نوسازی کش.');
+					}
+				});
+			});
 		}
+	};
 
-		var currentBatch = batches[batchIndex];
-		$('#tcbvm-progress-text').text('در حال پردازش بسته ' + (batchIndex + 1) + ' از ' + batches.length + ' (' + state.processedCount + '/' + state.selectedIds.length + ')…');
-		updateProgressUi();
-
-		runBatchWithRetry(currentBatch, op, params, 0, function () {
-			setTimeout(function () {
-				executeNextBatch(batchIndex + 1, batches, op, params);
-			}, 200);
-		});
-	}
-
-	function finishBatchProcess() {
-		state.isRunning = false;
-		$('#tcbvm-btn-run').prop('disabled', false);
-
-		$('#tcbvm-bar-fill').css('width', '100%');
-		$('#tcbvm-progress-percent').text('100%');
-		$('#tcbvm-progress-text').text('عملیات کامل شد.');
-		updateProgressUi();
-
-		logMessage('--- All batches finished! Success: ' + state.successCount + ' | Failed: ' + state.failedCount + ' ---');
-
-		if (state.failedCount > 0) {
-			logMessage('[HINT] برای برگرداندن تغییرات همین اجرا، از تب «گزارش و بازگردانی (Rollback)» استفاده کن.');
-		}
-
-		$.ajax({
-			url: tcbvmData.ajaxUrl,
-			type: 'POST',
-			dataType: 'json',
-			timeout: 120000,
-			data: {
-				action: 'tcbvm_finish_run',
-				nonce: tcbvmData.nonce,
-				run_id: state.currentRunId,
-				status: (state.failedCount === 0) ? 'completed' : 'completed_with_errors'
-			},
-			success: function () {
-				alert(tcbvmData.i18n.completedText);
-			}
-		});
-	}
-
-	function logMessage(msg) {
-		var $console = $('#tcbvm-log-console');
-		var time = new Date().toLocaleTimeString();
-		$console.append('[' + time + '] ' + escapeHtml(msg) + '\n');
-		$console.scrollTop($console[0].scrollHeight);
-	}
-
-	function collectParams(op) {
-		var attrName = $.trim($('#tcbvm-attr-name').val()) || 'مدل گوشی';
-		var models = $.trim($('#tcbvm-models-input').val());
-		var cloneCheck = $('#tcbvm-clone-price-check').is(':checked') ? 1 : 0;
-		var cloneRef = $.trim($('#tcbvm-clone-ref-model').val());
-		var regPrice = $('#tcbvm-regular-price').val();
-		var salePrice = $('#tcbvm-sale-price').val();
-		var stockStatus = $('#tcbvm-stock-status').val();
-		var deleteMode = $('input[name="tcbvm_delete_mode"]:checked').val() || 'soft';
-
-		var oldModel = $.trim($('#tcbvm-old-model').val());
-		var newModel = $.trim($('#tcbvm-new-model').val());
-
-		return {
-			attr_name: attrName,
-			models: models,
-			clone_from_model: cloneCheck ? cloneRef : '',
-			regular_price: regPrice,
-			sale_price: salePrice,
-			stock_status: stockStatus,
-			delete_mode: deleteMode,
-			old_model: oldModel,
-			new_model: newModel
-		};
-	}
-
-	/* -------------------------------------------------------------
-	 * ۸. بازگردانی (Rollback)
-	 * ----------------------------------------------------------- */
-	function initRollback() {
-		$(document).on('click', '.tc-btn-rollback', function () {
-			var $btn = $(this);
-			var runId = $btn.data('run-id');
-
-			if (!confirm(tcbvmData.i18n.confirmRollback)) {
-				return;
-			}
-
-			$btn.prop('disabled', true).text('در حال بازگردانی…');
-
-			$.ajax({
-				url: tcbvmData.ajaxUrl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'tcbvm_rollback',
-					nonce: tcbvmData.nonce,
-					run_id: runId
-				},
-				success: function (res) {
-					if (res.success) {
-						alert(res.data.message);
-						location.reload();
-					} else {
-						$btn.prop('disabled', false).text('بازگردانی');
-						alert(res.data.message || 'خطا در بازگردانی');
-					}
-				},
-				error: function () {
-					$btn.prop('disabled', false).text('بازگردانی');
-					alert('خطا در برقراری ارتباط با سرور.');
-				}
-			});
-		});
-	}
-
-	/* -------------------------------------------------------------
-	 * ۹. ذخیره و حذف الگوها
-	 * ----------------------------------------------------------- */
-	function initPresetSave() {
-		$('#tcbvm-btn-save-preset').on('click', function () {
-			var name = $.trim($('#tcbvm-new-preset-name').val());
-			var desc = $.trim($('#tcbvm-new-preset-desc').val());
-			var models = $.trim($('#tcbvm-new-preset-models').val());
-
-			if (!name || !models) {
-				alert('عنوان الگو و مدل‌ها الزامی هستند.');
-				return;
-			}
-
-			var $btn = $(this);
-			$btn.prop('disabled', true);
-
-			$.ajax({
-				url: tcbvmData.ajaxUrl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'tcbvm_save_preset',
-					nonce: tcbvmData.nonce,
-					name: name,
-					description: desc,
-					models: models
-				},
-				success: function (res) {
-					$btn.prop('disabled', false);
-					if (res.success) {
-						alert(res.data.message);
-						location.reload();
-					} else {
-						alert(res.data.message || 'خطا');
-					}
-				},
-				error: function () {
-					$btn.prop('disabled', false);
-					alert('خطا در ثبت الگو.');
-				}
-			});
-		});
-
-		$(document).on('click', '.tc-btn-delete-preset', function (e) {
-			e.stopPropagation();
-			var id = $(this).data('id');
-			if (!confirm(tcbvmData.i18n.confirmDeletePreset)) {
-				return;
-			}
-
-			$.ajax({
-				url: tcbvmData.ajaxUrl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'tcbvm_delete_preset',
-					nonce: tcbvmData.nonce,
-					id: id
-				},
-				success: function (res) {
-					if (res.success) {
-						location.reload();
-					} else {
-						alert(res.data.message || 'خطا');
-					}
-				}
-			});
-		});
-	}
-
-	/* -------------------------------------------------------------
-	 * ۱۰. نوسازی کش قیمت‌ها
-	 * ----------------------------------------------------------- */
-	function initCacheFlush() {
-		$('#tcbvm-btn-flush-cache').on('click', function () {
-			var $btn = $(this);
-			$btn.prop('disabled', true).text('در حال نوسازی…');
-
-			$.ajax({
-				url: tcbvmData.ajaxUrl,
-				type: 'POST',
-				dataType: 'json',
-				data: {
-					action: 'tcbvm_flush_cache',
-					nonce: tcbvmData.nonce
-				},
-				success: function (res) {
-					$btn.prop('disabled', false).text('نوسازی کش قیمت‌های ووکامرس');
-					alert(res.data.message);
-				},
-				error: function () {
-					$btn.prop('disabled', false).text('نوسازی کش قیمت‌های ووکامرس');
-					alert('خطا در پاکسازی کش.');
-				}
-			});
-		});
-	}
-
-	function escapeHtml(text) {
-		if (!text) return '';
-		return $('<div>').text(text).html();
-	}
+	$(document).ready(function() {
+		TCBVM.init();
+	});
 
 })(jQuery);
