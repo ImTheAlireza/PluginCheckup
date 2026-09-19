@@ -24,7 +24,10 @@
 		selectedIds: [],
 		isRunning: false,
 		shouldStop: false,
-		currentRunId: null
+		currentRunId: null,
+		processedCount: 0,
+		successCount: 0,
+		failedCount: 0
 	};
 
 	$(document).ready(function () {
@@ -431,6 +434,9 @@
 	function startBatchProcess(op, params) {
 		state.isRunning = true;
 		state.shouldStop = false;
+		state.processedCount = 0;
+		state.successCount = 0;
+		state.failedCount = 0;
 
 		var $btn = $('#tcbvm-btn-run');
 		$btn.prop('disabled', true);
@@ -464,98 +470,199 @@
 					$('#tcbvm-stat-failed').text('0');
 
 					logMessage('Run session created: ' + state.currentRunId + ' (' + batches.length + ' batches total)');
-					executeNextBatch(0, batches, op, params, 0, 0);
+					executeNextBatch(0, batches, op, params);
 				} else {
 					state.isRunning = false;
 					$btn.prop('disabled', false);
 					alert(res.data.message || 'خطا در شروع نشست');
 				}
 			},
-			error: function () {
+			error: function (xhr, status, errorThrown) {
 				state.isRunning = false;
 				$btn.prop('disabled', false);
-				alert('خطای ارتباط در ایجاد نشست.');
+				var detail = describeAjaxError(xhr, status, errorThrown);
+				logMessage('[ERROR] ایجاد نشست اجرا ناموفق بود: ' + detail);
+				alert('ایجاد نشست اجرا ناموفق بود.\n' + detail);
 			}
 		});
 	}
 
-	function executeNextBatch(batchIndex, batches, op, params, totalSuccess, totalFailed) {
-		if (state.shouldStop || batchIndex >= batches.length) {
-			finishBatchProcess(totalSuccess, totalFailed);
-			return;
+	function describeAjaxError(xhr, status, errorThrown) {
+		var parts = [];
+
+		if (xhr && xhr.status) {
+			parts.push('HTTP ' + xhr.status + (xhr.statusText ? ' ' + xhr.statusText : ''));
+		} else if (status === 'timeout') {
+			parts.push('تایم‌اوت سرور (بدون پاسخ)');
+		} else {
+			parts.push('بدون پاسخ سرور');
 		}
 
-		var currentBatch = batches[batchIndex];
-		var totalItems = state.selectedIds.length;
-		var currentProcessed = (batchIndex * batches[0].length) + currentBatch.length;
-		if (currentProcessed > totalItems) currentProcessed = totalItems;
+		if (status && status !== 'error') { parts.push('(' + status + ')'); }
+		if (errorThrown && errorThrown !== 'error') { parts.push(errorThrown); }
 
-		var percent = Math.round((currentProcessed / totalItems) * 100);
+		var body = (xhr && typeof xhr.responseText === 'string') ? xhr.responseText : '';
+		if (body) {
+			var snippet = body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+			if (snippet.length > 240) { snippet = snippet.slice(0, 240) + '…'; }
+			if (snippet) { parts.push('— ' + snippet); }
+		}
+
+		return parts.join(' ');
+	}
+
+	function batchHint(description) {
+		if (/HTTP (500|502|503|504)/.test(description) || /fatal|memory|خطای مهلک|حافظه/i.test(description)) {
+			return 'سرور در میانهٔ پردازش بسته خطا داد. «اندازهٔ هر بسته (Batch Size)» را در تب تنظیمات کمتر کن (مثلاً ۲) و دوباره اجرا کن؛ اگر تکرار شد، پیام خطای همین لاگ را برای پشتیبانی بفرست.';
+		}
+		if (/HTTP 403|nonce|توکن امنیتی/i.test(description)) {
+			return 'توکن امنیتی صفحه منقضی شده است؛ صفحه را رفرش کن و دوباره اجرا کن.';
+		}
+		return '';
+	}
+
+	function updateProgressUi() {
+		var total = state.selectedIds.length || 1;
+		var percent = Math.round((state.processedCount / total) * 100);
+		if (percent > 100) { percent = 100; }
 		$('#tcbvm-bar-fill').css('width', percent + '%');
 		$('#tcbvm-progress-percent').text(percent + '%');
-		$('#tcbvm-progress-text').text('در حال پردازش بسته ' + (batchIndex + 1) + ' از ' + batches.length + ' (' + currentProcessed + '/' + totalItems + ')…');
+		$('#tcbvm-stat-processed').text(state.processedCount);
+		$('#tcbvm-stat-success').text(state.successCount);
+		$('#tcbvm-stat-failed').text(state.failedCount);
+	}
 
+	function sendBatch(ids, op, params, callback) {
 		$.ajax({
 			url: tcbvmData.ajaxUrl,
 			type: 'POST',
 			dataType: 'json',
+			timeout: 240000, // سقف ۴ دقیقه؛ عملیات متغیرها می‌تواند طولانی باشد.
 			data: {
 				action: 'tcbvm_execute_batch',
 				nonce: tcbvmData.nonce,
 				run_id: state.currentRunId,
-				batch_ids: currentBatch,
+				batch_ids: ids,
 				operation: op,
 				params: params
 			},
 			success: function (res) {
-				if (res.success) {
-					totalSuccess += res.data.success || 0;
-					totalFailed += res.data.failed || 0;
-
-					$('#tcbvm-stat-processed').text(currentProcessed);
-					$('#tcbvm-stat-success').text(totalSuccess);
-					$('#tcbvm-stat-failed').text(totalFailed);
-
-					if (res.data.details) {
-						$.each(res.data.details, function (i, d) {
-							logMessage((d.success ? '[OK] ' : '[ERR] ') + 'Product #' + d.id + ': ' + d.message);
-						});
-					}
-
-					setTimeout(function () {
-						executeNextBatch(batchIndex + 1, batches, op, params, totalSuccess, totalFailed);
-					}, 200);
-				} else {
-					logMessage('[FAIL] Batch ' + (batchIndex + 1) + ' failed');
-					executeNextBatch(batchIndex + 1, batches, op, params, totalSuccess, totalFailed + currentBatch.length);
+				if (res && res.success) {
+					callback(null, res.data);
+					return;
 				}
+
+				// پاسخ JSON معتبر ولی «ناموفق» (مثلاً خطای اعتبارسنجی یا خطای مهلک سرور).
+				var message = (res && res.data && res.data.message) ? res.data.message : 'پاسخ نامعتبر از سرور.';
+				if (res && res.data && res.data.fatal) { message = '[FATAL] ' + message; }
+				callback(new Error(message), null);
 			},
-			error: function () {
-				logMessage('[ERROR] Network timeout on batch ' + (batchIndex + 1));
-				executeNextBatch(batchIndex + 1, batches, op, params, totalSuccess, totalFailed + currentBatch.length);
+			error: function (xhr, status, errorThrown) {
+				callback(new Error(describeAjaxError(xhr, status, errorThrown)), null);
 			}
 		});
 	}
 
-	function finishBatchProcess(totalSuccess, totalFailed) {
+	/**
+	 * اجرای یک بسته با تلاش مجدد هوشمند.
+	 *
+	 * اگر بسته به‌خاطر خطای سرور/شبکه شکست بخورد، به دو نیم تقسیم و دوباره تلاش
+	 * می‌شود (تا تک‌محصولی) تا یک محصول مشکل‌دار کل اجرا را از کار نیندازد.
+	 */
+	function runBatchWithRetry(ids, op, params, depth, callback) {
+		if (!ids.length) {
+			callback(0, 0);
+			return;
+		}
+
+		sendBatch(ids, op, params, function (err, data) {
+			if (!err) {
+				var okCount = (data && typeof data.success === 'number') ? data.success : ids.length;
+				var failCount = (data && typeof data.failed === 'number') ? data.failed : 0;
+
+				state.processedCount += ids.length;
+				state.successCount += okCount;
+				state.failedCount += failCount;
+				updateProgressUi();
+
+				if (data && data.details) {
+					$.each(data.details, function (i, d) {
+						logMessage((d.success ? '[OK] ' : '[ERR] ') + 'Product #' + d.id + ': ' + d.message);
+					});
+				}
+
+				callback(0, 0);
+				return;
+			}
+
+			// بسته را نصف کن و دوباره تلاش کن.
+			if (ids.length > 1 && depth < 4) {
+				logMessage('[WARN] بستهٔ ' + ids.length + ' محصولی خطا داد؛ تلاش دوباره با دو بستهٔ کوچک‌تر… (' + err.message + ')');
+				var half = Math.ceil(ids.length / 2);
+
+				runBatchWithRetry(ids.slice(0, half), op, params, depth + 1, function () {
+					runBatchWithRetry(ids.slice(half), op, params, depth + 1, function () {
+						callback(0, 0);
+					});
+				});
+				return;
+			}
+
+			// تک‌محصولی هم شکست خورد: ثبت خطا و ادامه دادن با بقیهٔ محصولات.
+			state.processedCount += ids.length;
+			state.failedCount += ids.length;
+			updateProgressUi();
+
+			logMessage('[ERROR] ' + (ids.length === 1 ? 'Product #' + ids[0] : ids.length + ' محصول') + ': ' + err.message);
+			var hint = batchHint(err.message);
+			if (hint) { logMessage('[HINT] ' + hint); }
+
+			callback(0, 0);
+		});
+	}
+
+	function executeNextBatch(batchIndex, batches, op, params) {
+		if (state.shouldStop || batchIndex >= batches.length) {
+			finishBatchProcess();
+			return;
+		}
+
+		var currentBatch = batches[batchIndex];
+		$('#tcbvm-progress-text').text('در حال پردازش بسته ' + (batchIndex + 1) + ' از ' + batches.length + ' (' + state.processedCount + '/' + state.selectedIds.length + ')…');
+		updateProgressUi();
+
+		runBatchWithRetry(currentBatch, op, params, 0, function () {
+			setTimeout(function () {
+				executeNextBatch(batchIndex + 1, batches, op, params);
+			}, 200);
+		});
+	}
+
+	function finishBatchProcess() {
 		state.isRunning = false;
 		$('#tcbvm-btn-run').prop('disabled', false);
 
 		$('#tcbvm-bar-fill').css('width', '100%');
 		$('#tcbvm-progress-percent').text('100%');
 		$('#tcbvm-progress-text').text('عملیات کامل شد.');
+		updateProgressUi();
 
-		logMessage('--- All batches finished! Success: ' + totalSuccess + ' | Failed: ' + totalFailed + ' ---');
+		logMessage('--- All batches finished! Success: ' + state.successCount + ' | Failed: ' + state.failedCount + ' ---');
+
+		if (state.failedCount > 0) {
+			logMessage('[HINT] برای برگرداندن تغییرات همین اجرا، از تب «گزارش و بازگردانی (Rollback)» استفاده کن.');
+		}
 
 		$.ajax({
 			url: tcbvmData.ajaxUrl,
 			type: 'POST',
 			dataType: 'json',
+			timeout: 120000,
 			data: {
 				action: 'tcbvm_finish_run',
 				nonce: tcbvmData.nonce,
 				run_id: state.currentRunId,
-				status: (totalFailed === 0) ? 'completed' : 'completed_with_errors'
+				status: (state.failedCount === 0) ? 'completed' : 'completed_with_errors'
 			},
 			success: function () {
 				alert(tcbvmData.i18n.completedText);

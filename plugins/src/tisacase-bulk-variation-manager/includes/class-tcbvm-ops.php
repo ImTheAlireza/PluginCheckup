@@ -118,6 +118,54 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		}
 
 		/**
+		 * کش درون‌درخواستی نقشهٔ متغیرها: [ product_id => [ term_slug => variation_id ] ].
+		 *
+		 * قبلاً برای هر مدل، همهٔ فرزندان محصول با wc_get_product و get_attributes بارگذاری
+		 * می‌شدند (O(مدل × متغیر))؛ حالا یک‌بار ساخته و در ادامهٔ همان درخواست استفاده می‌شود.
+		 *
+		 * @var array
+		 */
+		private static $variation_map = array();
+
+		/**
+		 * ساخت/دریافت نقشهٔ اسلاگ مدل ← شناسهٔ متغیر برای یک محصول.
+		 *
+		 * @param WC_Product_Variable $product محصول.
+		 * @return array
+		 */
+		public static function get_variation_map( WC_Product_Variable $product ) {
+			$pid = $product->get_id();
+			if ( isset( self::$variation_map[ $pid ] ) ) {
+				return self::$variation_map[ $pid ];
+			}
+
+			$map = array();
+			foreach ( $product->get_children() as $vid ) {
+				$var = wc_get_product( $vid );
+				if ( ! $var ) {
+					continue;
+				}
+				foreach ( (array) $var->get_attributes() as $slug ) {
+					if ( is_string( $slug ) && '' !== $slug ) {
+						$map[ $slug ] = $vid;
+					}
+				}
+			}
+
+			self::$variation_map[ $pid ] = $map;
+			return $map;
+		}
+
+		/**
+		 * باطل‌کردن نقشهٔ کش‌شدهٔ یک محصول پس از تغییر متغیرهایش.
+		 *
+		 * @param int $product_id شناسهٔ محصول.
+		 */
+		public static function forget_variation_map( $product_id ) {
+			unset( self::$variation_map[ absint( $product_id ) ] );
+		}
+
+		/**
 		 * اجرای یک بسته (Batch) از عملیات روی محصولات مشخص‌شده.
 		 */
 		public static function execute_batch( $run_id, array $batch_ids, $operation, array $params ) {
@@ -126,26 +174,39 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			$details       = array();
 
 			foreach ( $batch_ids as $pid ) {
-				// ۱. تهیه اسنپ‌شات قبل از تغییر محصول
-				TCBVM_Backup::snapshot_product( $run_id, $pid );
+				try {
+					// ۱. تهیه اسنپ‌شات قبل از تغییر محصول
+					TCBVM_Backup::snapshot_product( $run_id, $pid );
 
-				$res = self::process_single_product( $run_id, $pid, $operation, $params );
-				if ( $res['success'] ) {
-					$success_count++;
-					$details[] = array(
-						'id'      => $pid,
-						'success' => true,
-						'message' => $res['message'],
-					);
-				} else {
-					$failed_count++;
-					$details[] = array(
-						'id'      => $pid,
+					$res = self::process_single_product( $run_id, $pid, $operation, $params );
+				} catch ( \Throwable $e ) {
+					// خطای یک محصول نباید کل بسته (و کل اجرا) را از کار بیندازد.
+					$res = array(
 						'success' => false,
-						'message' => $res['message'],
+						'message' => 'خطای غیرمنتظره: ' . $e->getMessage(),
+					);
+				} catch ( \Exception $e ) { // سازگاری با PHP 5/7 بدون Throwable.
+					$res = array(
+						'success' => false,
+						'message' => 'خطای غیرمنتظره: ' . $e->getMessage(),
 					);
 				}
+
+				if ( ! empty( $res['success'] ) ) {
+					$success_count++;
+				} else {
+					$failed_count++;
+				}
+
+				$details[] = array(
+					'id'      => $pid,
+					'success' => ! empty( $res['success'] ),
+					'message' => isset( $res['message'] ) ? $res['message'] : '',
+				);
 			}
+
+			// یک‌بار در پایان بسته اسنپ‌شات‌ها/متغیرهای ساخته‌شده ذخیره می‌شوند.
+			TCBVM_Backup::flush();
 
 			return array(
 				'processed' => count( $batch_ids ),
@@ -273,6 +334,7 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				$new_var_id = $variation->save();
 				if ( $new_var_id ) {
 					TCBVM_Backup::track_created_variation( $run_id, $product_id, $new_var_id );
+					self::$variation_map[ $product_id ][ $term_obj->slug ] = $new_var_id;
 					$added_count++;
 				}
 			}
@@ -283,6 +345,7 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			// همگام‌سازی نهایی ووکامرس
 			WC_Product_Variable::sync( $product_id );
 			wc_delete_product_transients( $product_id );
+			self::forget_variation_map( $product_id );
 
 			return array(
 				'success' => true,
@@ -338,6 +401,7 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 
 			WC_Product_Variable::sync( $product_id );
 			wc_delete_product_transients( $product_id );
+			self::forget_variation_map( $product_id );
 
 			return array(
 				'success' => true,
@@ -420,9 +484,16 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				self::do_remove_models( $product, $taxonomy, $rem_params );
 			}
 
+			self::forget_variation_map( $product->get_id() );
+
 			return array(
 				'success' => true,
-				'message' => 'همگام‌سازی با الگو با موفقیت انجام شد.',
+				'message' => sprintf(
+					'همگام‌سازی با الگو انجام شد (%d مدل افزوده/موجود، %d مدل خارج از الگو %s).',
+					count( $preset_models ),
+					count( $obsolete_models ),
+					( 'hard' === $mode ) ? 'حذف شد' : 'ناموجود شد'
+				),
 			);
 		}
 
@@ -556,20 +627,8 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		}
 
 		public static function find_variation_by_term( WC_Product_Variable $product, $taxonomy, $term_slug ) {
-			$children = $product->get_children();
-			foreach ( $children as $vid ) {
-				$var = wc_get_product( $vid );
-				if ( ! $var ) {
-					continue;
-				}
-				$attrs = $var->get_attributes();
-				foreach ( $attrs as $key => $val ) {
-					if ( $val === $term_slug ) {
-						return $vid;
-					}
-				}
-			}
-			return null;
+			$map = self::get_variation_map( $product );
+			return isset( $map[ $term_slug ] ) ? $map[ $term_slug ] : null;
 		}
 
 		public static function get_reference_variation_prices( WC_Product_Variable $product, $taxonomy, $ref_model_name ) {

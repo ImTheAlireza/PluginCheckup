@@ -355,8 +355,8 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									<div class="tcbvm-grid-2">
 										<div class="tcbvm-field">
 											<label class="tcbvm-label" for="tcbvm_opt_batch_size">اندازه هر بسته پردازش (Batch Size)</label>
-											<input type="number" id="tcbvm_opt_batch_size" name="tcbvm_settings[batch_size]" class="tcbvm-input" value="<?php echo esc_attr( $settings['batch_size'] ); ?>" min="1" max="100">
-											<p class="tcbvm-muted">پیش‌فرض: ۱۰. در صورت استفاده از هاست اشتراکی، اعداد کمتر مانع تایم‌اوت می‌شوند.</p>
+										<input type="number" id="tcbvm_opt_batch_size" name="tcbvm_settings[batch_size]" class="tcbvm-input" value="<?php echo esc_attr( $settings['batch_size'] ); ?>" min="1" max="100">
+										<p class="tcbvm-muted">پیش‌فرض: ۵. برای عملیات «افزودن مدل» و «همگام‌سازی با الگو» که هر محصول صدها متغیر دارد، مقدار ۲ تا ۵ امن‌ترین انتخاب است؛ عدد بزرگ‌تر ریسک تایم‌اوت سرور در میانهٔ کار را بالا می‌برد. اگر خطای سرور دیدی، همین عدد را کمتر کن.</p>
 										</div>
 
 										<div class="tcbvm-field">

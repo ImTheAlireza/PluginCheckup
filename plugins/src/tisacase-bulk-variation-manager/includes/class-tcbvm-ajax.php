@@ -34,6 +34,114 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 		}
 
 		/**
+		 * آیا پاسخ JSON همین حالا ارسال شده است؟ (برای محافظ خطای مهلک)
+		 *
+		 * @var bool
+		 */
+		private static $responded = false;
+
+		/**
+		 * بافر خروجیِ خودمان (برای دور ریختن notice/warning قبل از پاسخ JSON).
+		 *
+		 * @var bool
+		 */
+		private static $own_buffer = false;
+
+		/**
+		 * آماده‌سازی محیط درخواست‌های سنگین (اجرای بسته‌ها و تهیه پشتیبان).
+		 *
+		 * بدون این‌ها، روی هاست‌های معمولی، درخواست در میانهٔ کار با خطای
+		 * «تایم‌اوت شبکه»/۵۰۰ قطع می‌شد و کاربر فقط «Network timeout» می‌دید.
+		 */
+		private static function prepare_runtime() {
+			if ( function_exists( 'wp_raise_memory_limit' ) ) {
+				wp_raise_memory_limit( 'admin' );
+			}
+			if ( function_exists( 'set_time_limit' ) ) {
+				@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+			}
+			@ini_set( 'max_execution_time', '0' ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged, WordPress.PHP.IniSet.max_execution_time_Blacklist
+			if ( function_exists( 'ignore_user_abort' ) ) {
+				ignore_user_abort( true );
+			}
+
+			// هر خروجی سرگردان (notice/warning افزونه‌های دیگر) JSON را خراب می‌کند؛
+			// بافر می‌گیریم تا در صورت نیاز دور ریخته شود.
+			if ( ! ob_get_level() ) {
+				ob_start();
+				self::$own_buffer = true;
+			}
+
+			register_shutdown_function( array( __CLASS__, 'shutdown_guard' ) );
+		}
+
+		/**
+		 * دور ریختن بافر خروجیِ خودمان قبل از ارسال JSON.
+		 */
+		private static function clean_output() {
+			if ( self::$own_buffer && ob_get_level() ) {
+				@ob_end_clean(); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				self::$own_buffer = false;
+			}
+		}
+
+		/**
+		 * ارسال پاسخ JSON و علامت‌گذاری آن (تا محافظ مهلک دوباره پاسخ ندهد).
+		 *
+		 * @param array $payload دادهٔ پاسخ.
+		 */
+		private static function send_error_json( array $payload ) {
+			self::clean_output();
+			self::$responded = true;
+			wp_send_json_error( $payload, 500 );
+		}
+
+		/**
+		 * محافظ خطای مهلک: اگر PHP در میانهٔ پردازش از کار افتاد (کمبود حافظه،
+		 * خطای کشنده، تایم‌اوت سرور)، به‌جای صفحهٔ سفید/۵۰۰، پیام واقعی به مرورگر
+		 * برگردانده می‌شود تا کاربر و توسعه‌دهنده بدانند دقیقاً چه شد.
+		 * همچنین اسنپ‌شات‌های در حافظه در همین لحظه ذخیره می‌شوند.
+		 */
+		public static function shutdown_guard() {
+			$error      = error_get_last();
+			$fatal_types = array( E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR );
+			$is_fatal    = ( $error && in_array( $error['type'], $fatal_types, true ) );
+
+			// هر چه از اسنپ‌شات‌ها/متغیرها در حافظه مانده، قبل از هر چیز ذخیره شود.
+			if ( class_exists( 'TCBVM_Backup' ) ) {
+				TCBVM_Backup::flush();
+			}
+
+			if ( self::$responded || ! $is_fatal ) {
+				return;
+			}
+
+			$can_see_details = function_exists( 'current_user_can' ) && current_user_can( 'manage_woocommerce' );
+			$message         = $can_see_details
+				? sprintf( 'خطای مهلک PHP در میانهٔ اجرا: %s — %s خط %d', $error['message'], basename( (string) $error['file'] ), (int) $error['line'] )
+				: 'سرور در میانهٔ اجرا با خطای مهلک متوقف شد.';
+
+			self::clean_output();
+
+			$payload = wp_json_encode(
+				array(
+					'success' => false,
+					'data'    => array(
+						'message' => $message,
+						'fatal'   => true,
+					),
+				)
+			);
+
+			if ( ! headers_sent() ) {
+				status_header( 500 );
+				header( 'Content-Type: application/json; charset=' . get_option( 'blog_charset' ) );
+			}
+			echo $payload; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON ساخته‌شده.
+			self::$responded = true;
+		}
+
+		/**
 		 * جستجوی زنده و فیلتر کردن محصولات.
 		 */
 		public static function ajax_search_products() {
@@ -82,6 +190,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 		 */
 		public static function ajax_start_run() {
 			self::check_auth();
+			self::prepare_runtime(); // ساخت نشست + پشتیبان اولیه سنگین است.
 
 			$product_ids = isset( $_POST['product_ids'] ) ? array_map( 'absint', (array) $_POST['product_ids'] ) : array();
 			$operation   = isset( $_POST['operation'] ) ? sanitize_key( $_POST['operation'] ) : '';
@@ -117,6 +226,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 		 */
 		public static function ajax_execute_batch() {
 			self::check_auth();
+			self::prepare_runtime();
 
 			$run_id    = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
 			$batch_ids = isset( $_POST['batch_ids'] ) ? array_map( 'absint', (array) $_POST['batch_ids'] ) : array();
@@ -127,7 +237,28 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 				wp_send_json_error( array( 'message' => 'پارامترهای ارسالی دسته ناقص است.' ) );
 			}
 
-			$batch_result = TCBVM_OPS::execute_batch( $run_id, $batch_ids, $operation, $params );
+			try {
+				$batch_result = TCBVM_OPS::execute_batch( $run_id, $batch_ids, $operation, $params );
+			} catch ( \Throwable $e ) {
+				TCBVM_Backup::flush();
+				self::send_error_json(
+					array(
+						'message' => 'خطا در اجرای بسته: ' . $e->getMessage(),
+						'fatal'   => true,
+					)
+				);
+			} catch ( \Exception $e ) { // سازگاری با PHP قدیمی‌تر.
+				TCBVM_Backup::flush();
+				self::send_error_json(
+					array(
+						'message' => 'خطا در اجرای بسته: ' . $e->getMessage(),
+						'fatal'   => true,
+					)
+				);
+			}
+
+			self::clean_output();
+			self::$responded = true;
 			wp_send_json_success( $batch_result );
 		}
 
