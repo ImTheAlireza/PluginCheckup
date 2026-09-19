@@ -84,6 +84,7 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 
 					case 'sync_preset':
 						$preset_models = self::sanitize_model_list( $params['models'] ?? '' );
+
 						if ( self::is_sync_rebuild() ) {
 							// بازسازی کامل: همهٔ متغیرهای فعلی حذف و فهرست جدید ساخته می‌شود.
 							$item_preview['to_remove'] = $current_models;
@@ -93,12 +94,44 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 								count( $current_models ),
 								count( $preset_models )
 							);
-						} else {
-							$to_add = array_diff( $preset_models, $current_models );
-							$to_rem = array_diff( $current_models, $preset_models );
-							$item_preview['to_add']    = array_values( $to_add );
-							$item_preview['to_remove'] = array_values( $to_rem );
+							break;
 						}
+
+						// همگام‌سازی تفاوتی: فقط اختلاف فهرست با وضعیت فعلی نشان داده می‌شود.
+						$current_keys = array();
+						foreach ( $current_models as $current_model ) {
+							$current_keys[ self::model_key( $current_model ) ] = $current_model;
+						}
+
+						$desired_keys = array();
+						foreach ( $preset_models as $model_name ) {
+							$desired_keys[ self::model_key( $model_name ) ] = $model_name;
+						}
+
+						$to_add = array();
+						foreach ( $preset_models as $model_name ) {
+							if ( ! isset( $current_keys[ self::model_key( $model_name ) ] ) ) {
+								$to_add[] = $model_name;
+							}
+						}
+
+						$to_remove = array();
+						foreach ( $current_models as $current_model ) {
+							if ( ! isset( $desired_keys[ self::model_key( $current_model ) ] ) ) {
+								$to_remove[] = $current_model;
+							}
+						}
+
+						$unchanged = count( $current_models ) - count( $to_remove );
+
+						$item_preview['to_add']    = $to_add;
+						$item_preview['to_remove'] = $to_remove;
+						$item_preview['notes'][]   = sprintf(
+							'همگام‌سازی تفاوتی: %d مدل موجود دست‌نخورده می‌ماند، %d مدل جدید ساخته و %d مدل خارج از فهرست حذف می‌شود.',
+							max( 0, $unchanged ),
+							count( $to_add ),
+							count( $to_remove )
+						);
 						break;
 
 					case 'bulk_price_stock':
@@ -137,6 +170,13 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		 * @var array
 		 */
 		private static $variation_map = array();
+
+		/**
+		 * کش کلیدهای نرمال‌شدهٔ نام مدل‌ها (برای فهرست‌های چندصدتایی).
+		 *
+		 * @var array
+		 */
+		private static $key_cache = array();
 
 		/**
 		 * ساخت/دریافت نقشهٔ اسلاگ مدل ← شناسهٔ متغیر برای یک محصول.
@@ -246,11 +286,19 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		 */
 		public static function model_key( $text ) {
 			$text = (string) $text;
-			$text = function_exists( 'mb_strtolower' ) ? mb_strtolower( $text, 'UTF-8' ) : strtolower( $text );
-			if ( class_exists( 'TCBVM_DB' ) ) {
-				$text = TCBVM_DB::normalize_persian( $text );
+
+			if ( isset( self::$key_cache[ $text ] ) ) {
+				return self::$key_cache[ $text ];
 			}
-			return trim( $text );
+
+			$key = function_exists( 'mb_strtolower' ) ? mb_strtolower( $text, 'UTF-8' ) : strtolower( $text );
+			if ( class_exists( 'TCBVM_DB' ) ) {
+				$key = TCBVM_DB::normalize_persian( $key );
+			}
+			$key = trim( $key );
+
+			self::$key_cache[ $text ] = $key;
+			return $key;
 		}
 
 		/**
@@ -851,9 +899,16 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		/**
 		 * عملیات ۴: همگام‌سازی کامل با یک الگو (افزودن ناموجودها و حذف اضافه‌ها).
 		 */
+		/**
+		 * عملیات ۴: همگام‌سازی محصول با فهرست الگو.
+		 *
+		 * دو حالت دارد (تنظیمات → «بازسازی کامل از صفر»):
+		 *   • خاموش (پیش‌فرض): همگام‌سازی تفاوتی — مدل‌های موجود در فهرست دست‌نخورده
+		 *     می‌مانند، فقط مدل‌های جدید ساخته و مدل‌های خارج از فهرست حذف می‌شوند.
+		 *   • روشن: بازسازی کامل — همهٔ متغیرها حذف و از صفر ساخته می‌شوند.
+		 */
 		private static function do_sync_preset( $run_id, WC_Product_Variable $product, $taxonomy, array $params ) {
-			$product_id = $product->get_id();
-			$models     = self::sanitize_model_list( $params['models'] ?? '' );
+			$models = self::sanitize_model_list( $params['models'] ?? '' );
 
 			if ( empty( $models ) ) {
 				return array( 'success' => false, 'message' => 'لیست مدل‌های الگو خالی است.' );
@@ -863,28 +918,278 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				return array( 'success' => false, 'message' => 'ویژگی مدل روی این محصول پیدا نشد.' );
 			}
 
-			// حالت قدیمی (ادغام) — فقط اگر بازسازی کامل در تنظیمات خاموش باشد.
-			if ( ! self::is_sync_rebuild() ) {
-				self::do_add_models( $run_id, $product, $taxonomy, $params );
+			if ( self::is_sync_rebuild() ) {
+				return self::sync_rebuild_full( $run_id, $product, $taxonomy, $params, $models );
+			}
 
-				$current_models  = self::get_product_model_names( $product );
-				$obsolete_models = array_diff( $current_models, $models );
-				if ( ! empty( $obsolete_models ) ) {
-					self::do_remove_models(
-						$product,
-						$taxonomy,
-						array(
-							'models'      => $obsolete_models,
-							'delete_mode' => $params['delete_mode'] ?? 'soft',
-						)
+			return self::sync_diff( $run_id, $product, $taxonomy, $params, $models );
+		}
+
+		/**
+		 * همگام‌سازی تفاوتی: حداقل تغییر لازم.
+		 *
+		 * مدل‌هایی که هم‌اکنون روی محصول وجود دارند و در فهرست هم هستند، دست‌نخورده
+		 * می‌مانند (قیمت، موجودی و تنظیماتشان حفظ می‌شود). فقط مدل‌های تازه ساخته و
+		 * مدل‌های خارج از فهرست حذف می‌شوند.
+		 */
+		private static function sync_diff( $run_id, WC_Product_Variable $product, $taxonomy, array $params, array $models ) {
+			$product_id = $product->get_id();
+
+			// قیمت/موجودی مقصد (اگر کاربر تعیین کرده باشد، روی مدل‌های موجود هم اعمال می‌شود).
+			$clone_ref  = ! empty( $params['clone_from_model'] ) ? trim( $params['clone_from_model'] ) : '';
+			$ref_prices = $clone_ref ? self::get_reference_variation_prices( $product, $taxonomy, $clone_ref ) : null;
+
+			$default_reg_price  = isset( $params['regular_price'] ) && '' !== $params['regular_price'] ? (float) $params['regular_price'] : '';
+			$default_sale_price = isset( $params['sale_price'] ) && '' !== $params['sale_price'] ? (float) $params['sale_price'] : '';
+			$stock_status       = ! empty( $params['stock_status'] ) ? sanitize_key( $params['stock_status'] ) : '';
+
+			$has_price_job = ( $ref_prices && '' !== (string) $ref_prices['regular_price'] )
+				|| '' !== $default_reg_price
+				|| '' !== $default_sale_price
+				|| '' !== $stock_status;
+
+			// ---------- ۱) دسته‌بندی مدل‌ها: باید بماند / باید ساخته شود ----------
+			$keep      = array(); // slug => شناسهٔ متغیر موجود
+			$add       = array(); // slug => نام مدل تازه
+			$warnings  = array();
+
+			foreach ( $models as $model_name ) {
+				$term = self::ensure_term_exists( $model_name, $taxonomy, true );
+				if ( ! $term || is_wp_error( $term ) ) {
+					$warnings[] = $model_name . ': ساخت ترم مدل ممکن نشد';
+					continue;
+				}
+
+				$existing_vid = self::existing_variation_for_model( $product, $taxonomy, $model_name, $term );
+				if ( $existing_vid ) {
+					$keep[ $term->slug ] = $existing_vid;
+				} else {
+					$add[ $term->slug ] = $model_name;
+				}
+			}
+
+			// ---------- ۲) مدل‌های خارج از فهرست (حذف) ----------
+			$desired_keys = array();
+			foreach ( $models as $model_name ) {
+				$desired_keys[ self::model_key( $model_name ) ] = true;
+			}
+
+			$remove = array();
+			foreach ( $product->get_children() as $vid ) {
+				$variation = wc_get_product( $vid );
+				if ( ! $variation ) {
+					continue;
+				}
+
+				$attrs = (array) $variation->get_attributes();
+				$value = isset( $attrs[ $taxonomy ] ) ? (string) $attrs[ $taxonomy ] : '';
+
+				$keys = array( self::model_key( $value ) );
+				$term = get_term_by( 'slug', $value, $taxonomy );
+				if ( $term && ! is_wp_error( $term ) ) {
+					$keys[] = self::model_key( $term->name );
+				}
+
+				$matched = false;
+				foreach ( $keys as $key ) {
+					if ( '' !== $key && isset( $desired_keys[ $key ] ) ) {
+						$matched = true;
+						break;
+					}
+				}
+
+				if ( ! $matched ) {
+					$remove[] = array(
+						'vid'   => $vid,
+						'label' => $term && ! is_wp_error( $term ) ? $term->name : $value,
 					);
 				}
-				self::forget_variation_map( $product_id );
+			}
 
+			// ---------- ۳) محافظ ایمنی پیش از هر تغییری ----------
+			// ترکیب سایر ویژگی‌ها از متغیرهای موجود برداشته می‌شود (اگر همه یکسان باشند).
+			$other_maps = self::existing_other_attr_maps( $product, $taxonomy );
+			$total_new  = count( $add ) * max( 1, count( $other_maps ) );
+
+			if ( $total_new > 3000 || count( $models ) > 2000 ) {
 				return array(
-					'success' => true,
-					'message' => sprintf( 'همگام‌سازی (ادغام) انجام شد: %d مدل در الگو.', count( $models ) ),
+					'success' => false,
+					'message' => sprintf(
+						'ایمنی: این عملیات %d متغیر جدید می‌ساخت و هیچ تغییری اعمال نشد. ترکیب سایر ویژگی‌های متغیر را کم کن (تنظیمات → «حفظ سایر ویژگی‌های متغیر») یا فهرست را کوتاه‌تر کن.',
+						$total_new
+					),
 				);
+			}
+
+			// ---------- ۴) حذف فقط مدل‌های خارج از فهرست ----------
+			$deleted = 0;
+			foreach ( $remove as $item ) {
+				$variation = wc_get_product( $item['vid'] );
+				if ( $variation && $variation->is_type( 'variation' ) ) {
+					$variation->delete( true );
+					$deleted++;
+				}
+			}
+			self::forget_variation_map( $product_id );
+
+			// ---------- ۵) ساخت فقط مدل‌های تازه ----------
+			$created = 0;
+			foreach ( $add as $slug => $model_name ) {
+				foreach ( $other_maps as $other ) {
+					$variation = new WC_Product_Variation();
+					$variation->set_parent_id( $product_id );
+					$variation->set_status( 'publish' );
+					$variation->set_attributes( array_merge( $other, array( $taxonomy => $slug ) ) );
+
+					if ( '' !== $stock_status ) {
+						$variation->set_stock_status( $stock_status );
+					}
+					if ( $ref_prices && '' !== (string) $ref_prices['regular_price'] ) {
+						$variation->set_regular_price( $ref_prices['regular_price'] );
+						if ( '' !== (string) $ref_prices['sale_price'] ) {
+							$variation->set_sale_price( $ref_prices['sale_price'] );
+						}
+					} else {
+						if ( '' !== $default_reg_price ) {
+							$variation->set_regular_price( $default_reg_price );
+						}
+						if ( '' !== $default_sale_price ) {
+							$variation->set_sale_price( $default_sale_price );
+						}
+					}
+
+					$saved = self::save_variation_safely( $variation );
+					if ( ! empty( $saved['id'] ) ) {
+						TCBVM_Backup::track_created_variation( $run_id, $product_id, $saved['id'] );
+						$created++;
+					} else {
+						$warnings[] = $model_name . ': ' . $saved['warning'];
+					}
+				}
+			}
+			self::forget_variation_map( $product_id );
+
+			// ---------- ۶) به‌روزرسانی قیمت/موجودی مدل‌های موجود (فقط اگر کاربر خواسته باشد) ----------
+			$updated = 0;
+			if ( $has_price_job && ! empty( $keep ) ) {
+				foreach ( $keep as $slug => $vid ) {
+					$variation = wc_get_product( $vid );
+					if ( ! $variation ) {
+						continue;
+					}
+
+					if ( $ref_prices && '' !== (string) $ref_prices['regular_price'] ) {
+						$variation->set_regular_price( $ref_prices['regular_price'] );
+						if ( '' !== (string) $ref_prices['sale_price'] ) {
+							$variation->set_sale_price( $ref_prices['sale_price'] );
+						}
+					} else {
+						if ( '' !== $default_reg_price ) {
+							$variation->set_regular_price( $default_reg_price );
+						}
+						if ( '' !== $default_sale_price ) {
+							$variation->set_sale_price( $default_sale_price );
+						}
+					}
+					if ( '' !== $stock_status ) {
+						$variation->set_stock_status( $stock_status );
+					}
+
+					$saved = self::save_variation_safely( $variation );
+					if ( ! empty( $saved['id'] ) ) {
+						$updated++;
+					} else {
+						$warnings[] = $slug . ': ' . $saved['warning'];
+					}
+				}
+			}
+
+			// ---------- ۷) ویژگی روی والد: همان نام، با فهرست مرتب‌شدهٔ مدل‌ها ----------
+			$final_slugs = array();
+			foreach ( $models as $model_name ) {
+				$term = get_term_by( 'name', $model_name, $taxonomy );
+				if ( ! $term ) {
+					$term = get_term_by( 'slug', sanitize_title( $model_name ), $taxonomy );
+				}
+				if ( $term && ! is_wp_error( $term ) ) {
+					$final_slugs[ $term->slug ] = true;
+				}
+			}
+
+			$attributes = $product->get_attributes();
+			$prev_attr  = isset( $attributes[ $taxonomy ] ) ? $attributes[ $taxonomy ] : null;
+			$product    = wc_get_product( $product_id );
+
+			if ( $product instanceof WC_Product_Variable && ! empty( $final_slugs ) ) {
+				self::sync_product_attribute( $product, $taxonomy, array_keys( $final_slugs ), $prev_attr );
+			}
+
+			WC_Product_Variable::sync( $product_id );
+			wc_delete_product_transients( $product_id );
+			self::forget_variation_map( $product_id );
+
+			// ---------- پیام گویا ----------
+			$parts   = array();
+			$parts[] = sprintf( '%d مدل موجود دست‌نخورده ماند', count( $keep ) );
+			if ( $created ) {
+				$parts[] = sprintf( '%d متغیر جدید ساخته شد', $created );
+			}
+			if ( $deleted ) {
+				$parts[] = sprintf( '%d متغیر خارج از فهرست حذف شد', $deleted );
+			}
+			if ( $updated ) {
+				$parts[] = sprintf( '%d متغیر موجود به‌روزرسانی شد (قیمت/موجودی)', $updated );
+			}
+			if ( ! empty( $warnings ) ) {
+				$parts[] = 'هشدار: ' . implode( ' | ', array_slice( array_unique( $warnings ), 0, 2 ) );
+			}
+
+			return array(
+				'success' => empty( $warnings ),
+				'message' => sprintf( 'همگام‌سازی ویژگی «%s»: ', self::attribute_label( $taxonomy ) ) . implode( '، ', $parts ) . '.',
+			);
+		}
+
+		/**
+		 * الگوهای «سایر ویژگی‌ها» از متغیرهای موجود همان محصول.
+		 *
+		 * اگر همهٔ متغیرهای فعلی در بخش سایر ویژگی‌ها یکسان باشند، همان الگو برای
+		 * متغیرهای جدید استفاده می‌شود (بدون ضرب‌کردن و بدون حذف آن ویژگی‌ها).
+		 * اگر هیچ ویژگی متغیر دیگری وجود نداشته باشد، آرایهٔ خالی برمی‌گردد.
+		 *
+		 * @param WC_Product_Variable $product  محصول.
+		 * @param string              $taxonomy تاکسونومی مدل.
+		 * @return array فهرست الگوها (خالی = تک‌ویژگی).
+		 */
+		private static function existing_other_attr_maps( WC_Product_Variable $product, $taxonomy ) {
+			$maps = array();
+
+			foreach ( $product->get_children() as $vid ) {
+				$variation = wc_get_product( $vid );
+				if ( ! $variation ) {
+					continue;
+				}
+				$other = (array) $variation->get_attributes();
+				unset( $other[ $taxonomy ] );
+				if ( ! empty( $other ) ) {
+					$maps[ wp_json_encode( $other ) ] = $other;
+				}
+			}
+
+			// اگر بیش از ۸ الگوی متفاوت وجود داشت (محصول چندویژگی واقعی)، برای جلوگیری
+			// از انفجار، فقط الگوی اول استفاده می‌شود.
+			if ( count( $maps ) > 8 ) {
+				$maps = array_slice( $maps, 0, 1, true );
+			}
+
+			return array_values( $maps );
+		}
+
+		private static function sync_rebuild_full( $run_id, WC_Product_Variable $product, $taxonomy, array $params, array $models ) {
+			$product_id = $product->get_id();
+
+			if ( '' === $taxonomy ) {
+				return array( 'success' => false, 'message' => 'ویژگی مدل روی این محصول پیدا نشد.' );
 			}
 
 			// ==================== بازسازی کامل ====================

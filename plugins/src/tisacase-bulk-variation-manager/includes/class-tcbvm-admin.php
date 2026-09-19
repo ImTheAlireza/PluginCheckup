@@ -379,9 +379,9 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 										<label class="tisa-switch tcbvm-toggle">
 											<input type="checkbox" name="tcbvm_settings[sync_rebuild]" value="1" <?php checked( ! empty( $settings['sync_rebuild'] ) ); ?>>
 											<span class="tisa-switch__track" aria-hidden="true"></span>
-											<span>بازسازی کامل در «همگام‌سازی با الگو» <span class="tcbvm-muted">— همهٔ متغیرهای آن ویژگی حذف و دقیقاً از فهرست واردشده از نو ساخته می‌شوند (پیشنهاد: روشن)</span></span>
+											<span>بازسازی کامل از صفر در «همگام‌سازی با الگو» <span class="tcbvm-muted">— پیش‌فرض: خاموش</span></span>
 										</label>
-										<p class="tcbvm-muted" style="margin-top: 8px;">در این حالت ترتیب و تعداد متغیرها دقیقاً برابر فهرست شماست (۱۱۲ مدل = ۱۱۲ متغیر): همهٔ متغیرهای قبلی حذف و از صفر ساخته می‌شوند، و ویژگی انتخاب‌شده (مثل «مدل») با همان نام بازسازی می‌شود. برای بازگردانی، از تب «گزارش و بازگردانی» استفاده کن.</p>
+										<p class="tcbvm-muted" style="margin-top: 8px;"><strong>خاموش (پیشنهاد):</strong> همگام‌سازی تفاوتی — مدل‌هایی که از قبل روی محصول هستند و در فهرست هم هستند، دست‌نخورده می‌مانند (قیمت و موجودی‌شان حفظ می‌شود)؛ فقط مدل‌های جدید ساخته و مدل‌های خارج از فهرست حذف می‌شوند. <strong>روشن:</strong> همهٔ متغیرهای آن ویژگی حذف و دقیقاً از فهرست واردشده از نو ساخته می‌شوند (قیمت‌ها از صفر تنظیم می‌شوند).</p>
 									</div>
 
 									<div class="tcbvm-field" style="margin-top: 18px;">

@@ -3,7 +3,7 @@
  * Plugin Name:       TisaCase — مدیریت گروهی متغیرها و مدل‌ها
  * Plugin URI:        https://tisacase.com
  * Description:       افزونه پیشرفته مدیریت، افزودن، حذف، تغییر نام و همگام‌سازی انبوه متغیرها و مدل‌های گوشی برای قاب‌های اسپیس، چاپی و محصولات متغیر ووکامرس.
- * Version:           1.1.1
+ * Version:           1.2.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * WC requires at least: 5.0
@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TCBVM_VERSION', '1.1.1' );
+define( 'TCBVM_VERSION', '1.2.0' );
 define( 'TCBVM_FILE', __FILE__ );
 define( 'TCBVM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TCBVM_URL', plugin_dir_url( __FILE__ ) );
