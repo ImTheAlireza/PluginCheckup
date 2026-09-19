@@ -27,7 +27,7 @@ if ( ! class_exists( 'TCBVM_DB' ) ) {
 		/**
 		 * جستجو و استخراج شناسه‌های محصولات بر اساس فیلترهای مشخص‌شده.
 		 *
-		 * @param array $filters آرایه فیلترها (دسته‌بندی، کلمه کلیدی، استثناها، شناسه‌ها، نوع محصول).
+		 * @param array $filters آرایه فیلترها (دسته‌بندی، کلمه کلیدی، استثناها، شناسه‌ها، نوع محصول، پیشوند SKU).
 		 * @return array لیست شناسه‌های یکتا و مرتب‌شده محصولات.
 		 */
 		public static function query_product_ids( array $filters ) {
@@ -42,6 +42,16 @@ if ( ! class_exists( 'TCBVM_DB' ) ) {
 				if ( ! empty( $ids ) ) {
 					return self::filter_valid_products( $ids, $filters );
 				}
+			}
+
+			// اگر فیلتر اختصاصی بر اساس شناسه / کد محصول (SKU) باشد
+			if ( 'sku' === $mode && ! empty( $filters['sku'] ) ) {
+				$sku_mode = isset( $filters['sku_mode'] ) ? sanitize_key( $filters['sku_mode'] ) : 'starts_with';
+				$sku_ids  = self::query_product_ids_by_sku( $filters['sku'], $sku_mode );
+				if ( empty( $sku_ids ) ) {
+					return array();
+				}
+				return self::filter_valid_products( $sku_ids, $filters );
 			}
 
 			$post_types = array( 'product' );
@@ -66,10 +76,10 @@ if ( ! class_exists( 'TCBVM_DB' ) ) {
 				}
 			}
 
-			// فیلتر نوع محصول (به طور پیش‌فرض فقط محصولات متغیر)
+			// فیلتر نوع محصول (به طور پیش‌فرض متغیر و ساده)
 			$product_types = isset( $filters['product_types'] ) && is_array( $filters['product_types'] )
 				? array_map( 'sanitize_key', $filters['product_types'] )
-				: array( 'variable' );
+				: array( 'variable', 'simple' );
 
 			if ( ! empty( $product_types ) && ! in_array( 'all', $product_types, true ) ) {
 				$tax_query[] = array(
@@ -104,8 +114,57 @@ if ( ! class_exists( 'TCBVM_DB' ) ) {
 				return array();
 			}
 
+			// اگر فیلتر SKU در کنار سایر فیلترها تعیین شده بود
+			if ( ! empty( $filters['sku'] ) ) {
+				$sku_mode = isset( $filters['sku_mode'] ) ? sanitize_key( $filters['sku_mode'] ) : 'starts_with';
+				$sku_ids  = self::query_product_ids_by_sku( $filters['sku'], $sku_mode );
+				$raw_ids  = array_values( array_intersect( $raw_ids, $sku_ids ) );
+				if ( empty( $raw_ids ) ) {
+					return array();
+				}
+			}
+
 			// اعمال فیلترهای کلمات کلیدی، استثناها و ویژگی‌ها
 			return self::refine_product_ids( $raw_ids, $filters );
+		}
+
+		/**
+		 * استخراج محصولات بر اساس پیشوند یا تطبیق شناسه (SKU).
+		 * چه SKU روی خود محصول والد تنظیم شده باشد چه روی متغیرهای آن.
+		 *
+		 * @param string $sku_text متن یا پیشوند SKU (مثلاً CH).
+		 * @param string $mode     حالت تطبیق: starts_with یا contains یا exact.
+		 * @return array لیست شناسه‌های یکتا.
+		 */
+		public static function query_product_ids_by_sku( $sku_text, $mode = 'starts_with' ) {
+			global $wpdb;
+			$sku_text = trim( (string) $sku_text );
+			if ( '' === $sku_text ) {
+				return array();
+			}
+
+			if ( 'exact' === $mode ) {
+				$sku_pattern = $sku_text;
+				$operator    = '=';
+			} elseif ( 'contains' === $mode ) {
+				$sku_pattern = '%' . $wpdb->esc_like( $sku_text ) . '%';
+				$operator    = 'LIKE';
+			} else { // starts_with
+				$sku_pattern = $wpdb->esc_like( $sku_text ) . '%';
+				$operator    = 'LIKE';
+			}
+
+			$sql = "SELECT DISTINCT IF(p.post_type = 'product_variation', p.post_parent, p.ID) AS pid
+					FROM {$wpdb->postmeta} pm
+					INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+					WHERE p.post_type IN ('product', 'product_variation')
+					  AND p.post_status NOT IN ('trash', 'auto-draft')
+					  AND pm.meta_key = '_sku'
+					  AND pm.meta_value {$operator} %s";
+
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			$ids = $wpdb->get_col( $wpdb->prepare( $sql, $sku_pattern ) );
+			return array_values( array_filter( array_map( 'absint', (array) $ids ) ) );
 		}
 
 		/**

@@ -413,6 +413,10 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 										<span>انتخاب بر اساس دسته‌بندی</span>
 									</label>
 									<label class="tcbvm-seg-item">
+										<input type="radio" name="tcbvm_target_mode" value="sku">
+										<span>انتخاب بر اساس شناسه / کد محصول (SKU)</span>
+									</label>
+									<label class="tcbvm-seg-item">
 										<input type="radio" name="tcbvm_target_mode" value="direct">
 										<span>جستجو و انتخاب مستقیم محصول</span>
 									</label>
@@ -448,14 +452,18 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 										</label>
 									</div>
 
-									<div class="tcbvm-grid-2">
+									<div class="tcbvm-grid-3">
 										<div class="tcbvm-field">
-											<label class="tcbvm-label" for="tcbvm-keywords">فیلتر کلمه کلیدی در عنوان (اختیاری)</label>
+											<label class="tcbvm-label" for="tcbvm-keywords">فیلتر کلمه کلیدی عنوان (اختیاری)</label>
 											<input type="text" id="tcbvm-keywords" class="tcbvm-input" placeholder="مثلاً: اسپیس، چاپی، مگ سیف">
 										</div>
 										<div class="tcbvm-field">
 											<label class="tcbvm-label" for="tcbvm-exclude-keywords">استثنا کردن عنوان‌ها (Exclude)</label>
 											<input type="text" id="tcbvm-exclude-keywords" class="tcbvm-input" placeholder="مثلاً: محافظ لنز، شیشه‌ای">
+										</div>
+										<div class="tcbvm-field">
+											<label class="tcbvm-label" for="tcbvm-cat-sku">پیشوند شناسه SKU در دسته (اختیاری)</label>
+											<input type="text" id="tcbvm-cat-sku" class="tcbvm-input" placeholder="مثلاً: CH یا CH-">
 										</div>
 									</div>
 
@@ -465,6 +473,33 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 											<span>استخراج و افزودن محصولات به لیست</span>
 										</button>
 										<span id="tcbvm-search-counter" class="tcbvm-counter-text"></span>
+									</div>
+								</div>
+
+								<!-- باکس حالت ۲: انتخاب بر اساس شناسه / کد محصول (SKU) -->
+								<div id="tcbvm-sku-box" class="tcbvm-tab-pane tcbvm-hidden">
+									<div class="tcbvm-grid-2">
+										<div class="tcbvm-field">
+											<label class="tcbvm-label" for="tcbvm-sku-input">پیشوند یا مقدار شناسه محصول (SKU)</label>
+											<input type="text" id="tcbvm-sku-input" class="tcbvm-input" placeholder="مثلاً: CH یا CH- یا SP">
+											<p class="tcbvm-muted">تمامی محصولاتی که شناسه (SKU) آن‌ها با این عبارت شروع می‌شود (مثل CH) استخراج خواهند شد.</p>
+										</div>
+										<div class="tcbvm-field">
+											<label class="tcbvm-label" for="tcbvm-sku-mode">نحوه تطبیق شناسه (SKU)</label>
+											<select id="tcbvm-sku-mode" class="tcbvm-select">
+												<option value="starts_with" selected>شروع شناسه با این عبارت (Starts With) — مثلاً CH</option>
+												<option value="contains">شامل این عبارت باشد (Contains)</option>
+												<option value="exact">دقیقاً برابر با این عبارت (Exact Match)</option>
+											</select>
+											<p class="tcbvm-muted">حالت «شروع با این عبارت» تمامی شناسه‌هایی نظیر CH-101 و CH-A20 را پیدا می‌کند.</p>
+										</div>
+									</div>
+									<div class="tcbvm-actions">
+										<button type="button" class="tisa-btn tisa-btn--soft" id="tcbvm-btn-sku-search">
+											<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+											<span>استخراج محصولات دارای این شناسه (SKU)</span>
+										</button>
+										<span id="tcbvm-sku-counter" class="tcbvm-counter-text"></span>
 									</div>
 								</div>
 

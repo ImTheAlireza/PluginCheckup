@@ -79,7 +79,7 @@
 		},
 
 		/**
-		 * سوییچ بین شیوه‌های انتخاب محصول (دسته‌بندی، مستقیم، شناسه)
+		 * سوییچ بین شیوه‌های انتخاب محصول (دسته‌بندی، شناسه SKU، مستقیم، شناسه عددی)
 		 */
 		bindTargetMode: function() {
 			$('input[name="tcbvm_target_mode"]').on('change', function() {
@@ -90,6 +90,8 @@
 				$('.tcbvm-tab-pane').addClass('tcbvm-hidden');
 				if (mode === 'category') {
 					$('#tcbvm-cat-box').removeClass('tcbvm-hidden');
+				} else if (mode === 'sku') {
+					$('#tcbvm-sku-box').removeClass('tcbvm-hidden');
 				} else if (mode === 'direct') {
 					$('#tcbvm-direct-box').removeClass('tcbvm-hidden');
 				} else if (mode === 'manual') {
@@ -104,7 +106,7 @@
 		bindProductSearch: function() {
 			const self = this;
 
-			// جستجو بر اساس دسته‌بندی و فیلترها
+			// جستجو بر اساس دسته‌بندی و فیلترها (شامل فیلتر SKU اختیاری)
 			$('#tcbvm-btn-search').on('click', function(e) {
 				e.preventDefault();
 				const $btn = $(this);
@@ -112,6 +114,7 @@
 				const includeChildren = $('#tcbvm-cat-children').is(':checked') ? 1 : 0;
 				const keywords = $('#tcbvm-keywords').val();
 				const excludeKeywords = $('#tcbvm-exclude-keywords').val();
+				const catSku = $('#tcbvm-cat-sku').val();
 
 				$btn.prop('disabled', true).addClass('is-busy');
 				$('#tcbvm-search-counter').text('در حال واکشی محصولات…');
@@ -126,7 +129,8 @@
 							category_ids: catIds,
 							include_children: includeChildren,
 							keywords: keywords,
-							exclude_keywords: excludeKeywords
+							exclude_keywords: excludeKeywords,
+							sku: catSku
 						}
 					},
 					success: function(resp) {
@@ -144,6 +148,52 @@
 					error: function() {
 						$btn.prop('disabled', false).removeClass('is-busy');
 						$('#tcbvm-search-counter').text('خطا در برقراری ارتباط با سرور.');
+					}
+				});
+			});
+
+			// جستجو اختصاصی بر اساس شناسه / کد محصول (SKU)
+			$('#tcbvm-btn-sku-search').on('click', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+				const skuVal = $('#tcbvm-sku-input').val().trim();
+				const skuMode = $('#tcbvm-sku-mode').val();
+
+				if (!skuVal) {
+					alert('لطفاً پیشوند یا مقدار شناسه (SKU) مورد نظر را وارد نمایید (مثلاً: CH).');
+					return;
+				}
+
+				$btn.prop('disabled', true).addClass('is-busy');
+				$('#tcbvm-sku-counter').text('در حال استخراج محصولات با شناسه ' + skuVal + '…');
+
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_search_products',
+						nonce: tcbvmData.nonce,
+						filters: {
+							mode: 'sku',
+							sku: skuVal,
+							sku_mode: skuMode
+						}
+					},
+					success: function(resp) {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						if (resp.success && resp.data && resp.data.items) {
+							resp.data.items.forEach(function(item) {
+								self.selectedProducts[item.id] = item;
+							});
+							self.renderProductTable();
+							$('#tcbvm-sku-counter').text(resp.data.message || (resp.data.items.length + ' محصول یافت شد.'));
+						} else {
+							$('#tcbvm-sku-counter').text(resp.data && resp.data.message ? resp.data.message : 'هیچ محصولی با این شناسه یافت نشد.');
+						}
+					},
+					error: function() {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						$('#tcbvm-sku-counter').text('خطا در برقراری ارتباط با سرور.');
 					}
 				});
 			});
