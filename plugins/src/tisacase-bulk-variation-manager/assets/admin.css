@@ -939,3 +939,18 @@ html[dir="ltr"] .tisa-switch input:checked + .tisa-switch__track::after {
 	color: var(--tisa-muted, #64748B) !important;
 	font-size: 14px !important;
 }
+
+/* ---------- نمایش شرطی فیلدها (تضمین‌شده) ----------
+   تمام استایل‌های این فایل با display: … !important نوشته شده‌اند؛ همین !important
+   باعث می‌شد display:none اینلاین در مارکاپ و hide()/slideUp() جی‌کوئری بی‌اثر شوند و
+   مثلاً کادر «شناسه‌های محصول» همیشه باز بماند. این کلاس با اولویت بالاتر (آخر فایل و
+   دو‌سطحی) نمایش/پنهان‌سازی را تضمین می‌کند. */
+.tcbvm-hidden,
+.tcbvm-wrap .tcbvm-hidden,
+.tcbvm-wrap .tcbvm-field.tcbvm-hidden,
+.tcbvm-wrap .tcbvm-grid-2.tcbvm-hidden,
+.tcbvm-wrap .tcbvm-grid-3.tcbvm-hidden,
+.tcbvm-wrap .tcbvm-subcard.tcbvm-hidden,
+.tcbvm-wrap .tcbvm-progress-wrap.tcbvm-hidden {
+	display: none !important;
+}

@@ -453,7 +453,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 								</div>
 
 								<!-- باکس شناسه دستی -->
-								<div id="tcbvm-manual-box" class="tcbvm-field" style="display:none; margin-top: 20px;">
+								<div id="tcbvm-manual-box" class="tcbvm-field tcbvm-hidden" style="margin-top: 20px;">
 									<label class="tcbvm-label" for="tcbvm-manual-ids">شناسه‌های محصول (IDs)</label>
 									<textarea id="tcbvm-manual-ids" class="tcbvm-textarea" rows="3" placeholder="شناسه‌ها را با کاما یا در خطوط جداگانه وارد کنید (مثال: 1205, 1206, 1432)"></textarea>
 								</div>
@@ -483,7 +483,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 								</div>
 
 								<!-- جدول نتایج جستجو -->
-								<div id="tcbvm-products-box" style="display:none; margin-top: 24px;">
+								<div id="tcbvm-products-box" class="tcbvm-hidden" style="margin-top: 24px;">
 									<div class="tcbvm-products-header">
 										<h4 class="tcbvm-products-title">محصولات انتخاب‌شده جهت اعمال عملیات:</h4>
 										<span id="tcbvm-selected-badge" class="tcbvm-badge tcbvm-badge--success">۰ محصول انتخاب‌شده</span>
@@ -555,7 +555,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 								</div>
 
 								<!-- باکس جایگزینی مدل -->
-								<div id="tcbvm-replace-input-wrap" class="tcbvm-grid-2" style="display:none; margin-top: 20px;">
+								<div id="tcbvm-replace-input-wrap" class="tcbvm-grid-2 tcbvm-hidden" style="margin-top: 20px;">
 									<div class="tcbvm-field">
 										<label class="tcbvm-label" for="tcbvm-old-model">نام مدل قدیمی (جهت جایگزینی)</label>
 										<input type="text" id="tcbvm-old-model" class="tcbvm-input" placeholder="مثلاً: iPhone 11 Pro">
@@ -612,7 +612,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 								</div>
 
 								<!-- حالت حذف مدل -->
-								<div id="tcbvm-delete-mode-wrap" class="tcbvm-field" style="display:none; margin-top: 20px;">
+								<div id="tcbvm-delete-mode-wrap" class="tcbvm-field tcbvm-hidden" style="margin-top: 20px;">
 									<label class="tcbvm-label">نحوه برخورد با مدل‌های حذفی:</label>
 									<div class="tcbvm-seg-bar">
 										<label class="tcbvm-seg-item is-active">
@@ -650,7 +650,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 								</div>
 
 								<!-- خروجی پیش‌نمایش -->
-								<div id="tcbvm-preview-output" style="display:none; margin-top: 22px;">
+								<div id="tcbvm-preview-output" class="tcbvm-hidden" style="margin-top: 22px;">
 									<div class="tcbvm-preview-card">
 										<div class="tcbvm-preview-head">
 											<span class="tcbvm-preview-badge">نتیجه بررسی آزمایشی</span>
@@ -661,7 +661,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 								</div>
 
 								<!-- نوار پیشرفت و آمار زنده -->
-								<div id="tcbvm-progress-wrap" class="tcbvm-progress-wrap" style="display:none; margin-top: 24px;">
+								<div id="tcbvm-progress-wrap" class="tcbvm-progress-wrap tcbvm-hidden" style="margin-top: 24px;">
 									<div class="tcbvm-progress-header">
 										<span id="tcbvm-progress-text" class="tcbvm-progress-text">در حال آماده‌سازی…</span>
 										<span id="tcbvm-progress-percent" class="tcbvm-progress-percent">0%</span>

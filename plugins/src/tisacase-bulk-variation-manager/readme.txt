@@ -6,7 +6,7 @@ Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 5.0
 WC tested up to: 9.2
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,10 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 3. Access the plugin via WooCommerce -> Products -> TisaCase Variation Manager, or via TisaCase Hub menu.
 
 == Changelog ==
+
+= 1.0.2 =
+* رفع باگ نمایش شرطی فیلدها: در حالت «انتخاب بر اساس دسته‌بندی» هر دو کادر دسته‌بندی و شناسه‌های دستی باز می‌ماندند. علت: استایل‌های !important این افزونه روی hide()/slideUp() و display:none اینلاین غلبه می‌کردند. اکنون نمایش/پنهان‌سازی با کلاس tcbvm-hidden تضمین شده و وضعیت اولیهٔ هر کادر بر اساس گزینهٔ فعال همان لحظهٔ بارگذاری تنظیم می‌شود.
+* همین اصلاح برای کادرهای شرطی دیگر هم اعمال شد: کادرهای افزودن/حذف مدل، جایگزینی مدل، قیمت و موجودی، کپی قیمت از مدل مرجع، جدول نتایج، پیش‌نمایش و نوار پیشرفت.
 
 = 1.0.1 =
 * رفع باگ منوی انتخاب دسته‌بندی: گزینه‌ها با مقدار و نام خالی رندر می‌شدند (دسترسی شیءوار به آرایهٔ دسته‌ها) و کشویی عملاً بدون آیتم بود؛ اکنون شناسه، نام و تعداد محصول هر دسته درست نمایش داده می‌شود.

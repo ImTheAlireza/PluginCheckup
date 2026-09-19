@@ -5,6 +5,20 @@
 (function ($) {
 	'use strict';
 
+	/**
+	 * نمایش/پنهان‌سازی مطمئن کادرها.
+	 * استایل‌های این افزونه با display: … !important نوشته شده‌اند و همین باعث می‌شد
+	 * hide()/slideUp() جی‌کوئری و display:none اینلاین بی‌اثر بمانند (همهٔ کادرها باز می‌ماندند).
+	 * پس همه‌جا با کلاس tcbvm-hidden (!important و اولویت بالاتر) کار می‌کنیم.
+	 */
+	function setVisible(selector, show) {
+		$(selector).toggleClass('tcbvm-hidden', !show);
+	}
+
+	function isChecked(selector) {
+		return !!(selector && $(selector).length && $(selector).is(':checked'));
+	}
+
 	var state = {
 		matchedIds: [],
 		selectedIds: [],
@@ -69,74 +83,66 @@
 	/* -------------------------------------------------------------
 	 * ۱. انتخاب حالت هدف (دسته‌بندی یا دستی)
 	 * ----------------------------------------------------------- */
+	function applyTargetMode(mode) {
+		var manual = (mode === 'manual');
+		// فقط کادرِ حالت فعال باز می‌ماند: دسته‌بندی یا شناسه‌های دستی.
+		setVisible('#tcbvm-cat-box', !manual);
+		setVisible('#tcbvm-manual-box', manual);
+	}
+
 	function initTargetModeToggle() {
-		$('input[name="tcbvm_target_mode"]').on('change', function () {
-			var mode = $(this).val();
-			if (mode === 'manual') {
-				$('#tcbvm-cat-box').slideUp(180);
-				$('#tcbvm-manual-box').slideDown(180);
-			} else {
-				$('#tcbvm-manual-box').slideUp(180);
-				$('#tcbvm-cat-box').slideDown(180);
-			}
+		// وضعیت اولیه بر اساس گزینهٔ انتخاب‌شده (قبلاً استایل اینلاین به‌خاطر !important بی‌اثر بود).
+		applyTargetMode($('input[name="tcbvm_target_mode"]:checked').val() || 'category');
+
+		$(document).on('change', 'input[name="tcbvm_target_mode"]', function () {
+			applyTargetMode($(this).val());
 		});
 
+		setVisible('#tcbvm-clone-ref-wrap', isChecked('#tcbvm-clone-price-check'));
 		$('#tcbvm-clone-price-check').on('change', function () {
-			if ($(this).is(':checked')) {
-				$('#tcbvm-clone-ref-wrap').slideDown(160);
-			} else {
-				$('#tcbvm-clone-ref-wrap').slideUp(160);
-			}
+			setVisible('#tcbvm-clone-ref-wrap', $(this).is(':checked'));
 		});
 	}
 
 	/* -------------------------------------------------------------
 	 * ۲. تغییر نوع عملیات در دراپ‌داون
 	 * ----------------------------------------------------------- */
+	function applyOpVisibility(op) {
+		var show = {
+			models: true,
+			replace: false,
+			pricing: true,
+			deleteMode: false
+		};
+
+		switch (op) {
+			case 'remove_models':
+				show.deleteMode = true;
+				break;
+			case 'replace_model':
+				show.models = false;
+				show.replace = true;
+				show.pricing = false;
+				break;
+			case 'sync_preset':
+				show.deleteMode = true;
+				break;
+			case 'bulk_price_stock':
+			case 'add_models':
+			default:
+				break;
+		}
+
+		setVisible('#tcbvm-models-input-wrap', show.models);
+		setVisible('#tcbvm-replace-input-wrap', show.replace);
+		setVisible('#tcbvm-pricing-options-wrap', show.pricing);
+		setVisible('#tcbvm-delete-mode-wrap', show.deleteMode);
+	}
+
 	function initOpChange() {
+		applyOpVisibility($('#tcbvm-op').val());
 		$('#tcbvm-op').on('change', function () {
-			var op = $(this).val();
-			var $modelsWrap = $('#tcbvm-models-input-wrap');
-			var $replaceWrap = $('#tcbvm-replace-input-wrap');
-			var $pricingWrap = $('#tcbvm-pricing-options-wrap');
-			var $deleteModeWrap = $('#tcbvm-delete-mode-wrap');
-
-			switch (op) {
-				case 'add_models':
-					$modelsWrap.show();
-					$replaceWrap.hide();
-					$pricingWrap.show();
-					$deleteModeWrap.hide();
-					break;
-
-				case 'remove_models':
-					$modelsWrap.show();
-					$replaceWrap.hide();
-					$pricingWrap.hide();
-					$deleteModeWrap.show();
-					break;
-
-				case 'replace_model':
-					$modelsWrap.hide();
-					$replaceWrap.show();
-					$pricingWrap.hide();
-					$deleteModeWrap.hide();
-					break;
-
-				case 'sync_preset':
-					$modelsWrap.show();
-					$replaceWrap.hide();
-					$pricingWrap.show();
-					$deleteModeWrap.show();
-					break;
-
-				case 'bulk_price_stock':
-					$modelsWrap.show();
-					$replaceWrap.hide();
-					$pricingWrap.show();
-					$deleteModeWrap.hide();
-					break;
-			}
+			applyOpVisibility($(this).val());
 		});
 	}
 
@@ -233,7 +239,7 @@
 
 		if (!items || items.length === 0) {
 			$tbody.html('<tr><td colspan="8" style="text-align:center; padding:24px; color:#64748B;">هیچ محصولی با فیلترهای انتخابی یافت نشد.</td></tr>');
-			$box.show();
+			setVisible('#tcbvm-products-box', true);
 			updateSelectionBadge();
 			return;
 		}
@@ -265,7 +271,7 @@
 			$tbody.append(row);
 		});
 
-		$box.show();
+		setVisible('#tcbvm-products-box', true);
 		$('#tcbvm-select-all').prop('checked', true);
 		updateSelectionBadge();
 	}
@@ -357,7 +363,7 @@
 
 		if (!data.samples || data.samples.length === 0) {
 			$content.html('<p>تغییری برای محصولات نمونه لازم نیست یا مدلی یافت نشد.</p>');
-			$box.show();
+			setVisible('#tcbvm-preview-output', true);
 			return;
 		}
 
@@ -378,7 +384,7 @@
 			$content.append(itemHtml);
 		});
 
-		$box.show();
+		setVisible('#tcbvm-preview-output', true);
 		$('html, body').animate({
 			scrollTop: $box.offset().top - 30
 		}, 300);
@@ -429,7 +435,7 @@
 		var $btn = $('#tcbvm-btn-run');
 		$btn.prop('disabled', true);
 
-		$('#tcbvm-progress-wrap').show();
+		setVisible('#tcbvm-progress-wrap', true);
 		$('#tcbvm-bar-fill').css('width', '0%');
 		$('#tcbvm-progress-percent').text('0%');
 		$('#tcbvm-progress-text').text('در حال ثبت نشست و تهیه پشتیبان خودکار…');
