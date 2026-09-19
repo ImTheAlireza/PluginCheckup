@@ -16,8 +16,43 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 
 		public static function init() {
 			add_action( 'admin_menu', array( __CLASS__, 'register_menus' ), 30 );
+			add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 			add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ), 20 );
 			add_action( 'admin_notices', array( __CLASS__, 'woocommerce_check_notice' ) );
+		}
+
+		/**
+		 * ثبت گروه تنظیمات در لیست مجاز گزینه‌های وردپرس.
+		 */
+		public static function register_settings() {
+			register_setting(
+				'tcbvm_settings_group',
+				TCBVM_Core::OPTION_SETTINGS,
+				array(
+					'type'              => 'array',
+					'sanitize_callback' => array( __CLASS__, 'sanitize_settings' ),
+					'default'           => TCBVM_Core::default_settings(),
+				)
+			);
+		}
+
+		/**
+		 * اعتبارسنجی مقادیر فرم تنظیمات.
+		 */
+		public static function sanitize_settings( $input ) {
+			$clean = TCBVM_Core::default_settings();
+			if ( is_array( $input ) ) {
+				if ( isset( $input['batch_size'] ) ) {
+					$clean['batch_size'] = max( 1, min( 50, absint( $input['batch_size'] ) ) );
+				}
+				if ( isset( $input['target_attr_name'] ) ) {
+					$clean['target_attr_name'] = sanitize_text_field( $input['target_attr_name'] );
+				}
+				if ( isset( $input['backup_retention_days'] ) ) {
+					$clean['backup_retention_days'] = max( 7, min( 365, absint( $input['backup_retention_days'] ) ) );
+				}
+			}
+			return $clean;
 		}
 
 		public static function is_our_screen() {
@@ -402,6 +437,11 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 
 					<?php elseif ( 'settings' === $tab ) : ?>
 						<!-- تب ۴: تنظیمات -->
+						<?php if ( isset( $_GET['settings-updated'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+							<div class="notice notice-success is-dismissible">
+								<p>تنظیمات با موفقیت ذخیره شد.</p>
+							</div>
+						<?php endif; ?>
 						<form method="post" action="options.php">
 							<?php settings_fields( 'tcbvm_settings_group' ); ?>
 							<section class="tcbvm-card">
