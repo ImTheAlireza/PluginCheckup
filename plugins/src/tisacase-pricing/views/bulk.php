@@ -104,7 +104,7 @@ $tcp_currency = function_exists( 'get_woocommerce_currency_symbol' ) ? get_wooco
 		<div class="tcp-grid-4">
 			<div>
 				<label class="tcp-label" for="tcp-filter-types">نوع محصول</label>
-				<select id="tcp-filter-types" multiple="multiple" data-tcp-w="full">
+				<select id="tcp-filter-types" class="wc-enhanced-select" multiple="multiple" data-tcp-w="full">
 					<?php foreach ( TCP_Admin::product_types() as $k => $v ) : ?>
 						<option value="<?php echo esc_attr( $k ); ?>"><?php echo esc_html( $v ); ?></option>
 					<?php endforeach; ?>
@@ -112,7 +112,7 @@ $tcp_currency = function_exists( 'get_woocommerce_currency_symbol' ) ? get_wooco
 			</div>
 			<div>
 				<label class="tcp-label" for="tcp-filter-statuses">وضعیت انتشار</label>
-				<select id="tcp-filter-statuses" multiple="multiple" data-tcp-w="full">
+				<select id="tcp-filter-statuses" class="wc-enhanced-select" multiple="multiple" data-tcp-w="full">
 					<?php foreach ( TCP_Admin::post_statuses() as $k => $v ) : ?>
 						<option value="<?php echo esc_attr( $k ); ?>" <?php selected( 'future' !== $k ); ?>><?php echo esc_html( $v ); ?></option>
 					<?php endforeach; ?>
