@@ -6,7 +6,7 @@ Tested up to: 6.6
 Requires PHP: 7.4
 WC requires at least: 5.0
 WC tested up to: 9.2
-Stable tag: 1.0.3
+Stable tag: 1.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,13 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 3. Access the plugin via WooCommerce -> Products -> TisaCase Variation Manager, or via TisaCase Hub menu.
 
 == Changelog ==
+
+= 1.0.4 =
+* رفع خطای «SKU نامعتبر یا تکراری است» در افزودن مدل و همگام‌سازی با الگو:
+  • SKU متغیر قبل از ثبت بررسی می‌شود و در صورت تکراری بودن، پسوند عددی می‌گیرد (base-2، base-3 و…)؛ اگر باز هم ممکن نبود، متغیر بدون SKU ساخته می‌شود.
+  • اگر ووکامرس هنگام ذخیره به هر دلیلی استثنا بدهد، یک‌بار بدون SKU تلاش مجدد می‌شود و در صورت شکست، فقط همان مدل ناموفق ثبت می‌شود (نه کل محصول).
+  • تنظیم «تولید خودکار SKU متغیرها» حالا واقعاً خوانده می‌شود (قبلاً در فرم بود ولی هیچ‌جا استفاده نمی‌شد) و پیش‌فرض فعال است.
+  • پیام نتیجهٔ هر محصول حالا تعداد متغیرهای ساخته‌شده و هشدارهای مدل‌های ناموفق را نشان می‌دهد.
 
 = 1.0.3 =
 * رفع خطای «Network timeout on batch» در اجرای عملیات گروهی:

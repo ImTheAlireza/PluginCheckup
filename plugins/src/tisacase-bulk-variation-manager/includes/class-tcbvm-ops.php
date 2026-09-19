@@ -263,6 +263,72 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		}
 
 		/**
+		 * ساخت SKU یکتا برای متغیر.
+		 *
+		 * ریشهٔ خطای «SKU نامعتبر یا تکراری است»: کد قبلی بدون بررسی، SKU را
+		 * «SKU والد + اسلاگ مدل» می‌ساخت؛ اگر همان SKU از قبل در فروشگاه وجود داشت
+		 * (متغیر باقی‌ماندهٔ اجرای قبلی، حذف نرم، یا SKU مشابه در محصول دیگر)
+		 * ووکامرس در save() استثنا می‌داد و کل محصول (و در عمل کل بسته) شکست می‌خورد.
+		 *
+		 * @param string $base SKU پیشنهادی.
+		 * @return string SKU یکتا یا رشتهٔ خالی اگر امکان ساخت نبود.
+		 */
+		public static function unique_variation_sku( $base ) {
+			$base = trim( (string) $base );
+			if ( '' === $base ) {
+				return '';
+			}
+			if ( ! function_exists( 'wc_get_product_id_by_sku' ) ) {
+				return $base;
+			}
+
+			$candidate = $base;
+			$suffix    = 2;
+			while ( wc_get_product_id_by_sku( $candidate ) ) {
+				$candidate = $base . '-' . $suffix;
+				$suffix++;
+				if ( $suffix > 50 ) {
+					return ''; // به‌جای شکست عملیات، بدون SKU ذخیره می‌شود.
+				}
+			}
+			return $candidate;
+		}
+
+		/**
+		 * ذخیرهٔ ایمن یک متغیر: اگر ووکامرس به‌خاطر SKU استثنا داد، بدون SKU
+		 * دوباره تلاش می‌شود (یک مدل مشکل‌دار نباید کل محصول را شکست بدهد).
+		 *
+		 * @param WC_Product_Variation $variation متغیر.
+		 * @return array{id:int, warning:string} شناسهٔ متغیر (۰ = ناموفق) و هشدار.
+		 */
+		private static function save_variation_safely( $variation ) {
+			try {
+				$var_id = $variation->save();
+				return array( 'id' => (int) $var_id, 'warning' => '' );
+			} catch ( \Exception $e ) {
+				$message   = $e->getMessage();
+				$is_sku    = ( false !== mb_stripos( $message, 'SKU' ) );
+				$had_sku   = '' !== (string) $variation->get_sku();
+
+				if ( $is_sku && $had_sku ) {
+					// تلاش دوباره بدون SKU (SKU دستی بعداً قابل ثبت است).
+					try {
+						$variation->set_sku( '' );
+						$var_id = $variation->save();
+						return array(
+							'id'      => (int) $var_id,
+							'warning' => 'SKU خودکار ثبت نشد (تکراری بود)؛ متغیر بدون SKU ساخته شد.',
+						);
+					} catch ( \Exception $e2 ) {
+						return array( 'id' => 0, 'warning' => $e2->getMessage() );
+					}
+				}
+
+				return array( 'id' => 0, 'warning' => $message );
+			}
+		}
+
+		/**
 		 * عملیات ۱: افزودن مدل‌های جدید به محصول.
 		 */
 		private static function do_add_models( $run_id, WC_Product_Variable $product, $taxonomy, array $params ) {
@@ -275,6 +341,12 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			$existing_terms = self::get_product_attribute_terms( $product_id, $taxonomy );
 			$terms_to_assign = $existing_terms;
 			$added_count     = 0;
+			$warnings        = array();
+
+			// تولید SKU خودکار فقط اگر در تنظیمات فعال باشد (پیش‌فرض: فعال).
+			$settings  = TCBVM_Core::get_settings();
+			$auto_sku  = ! isset( $settings['auto_sku'] ) || ! empty( $settings['auto_sku'] );
+			$parent_sku = $auto_sku ? (string) $product->get_sku() : '';
 
 			// پیدا کردن قیمت مرجع در صورت انتخاب شبیه‌سازی قیمت
 			$clone_price_ref = ! empty( $params['clone_from_model'] ) ? trim( $params['clone_from_model'] ) : '';
@@ -325,17 +397,24 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 					}
 				}
 
-				// الگوی SKU خودکار
-				$parent_sku = $product->get_sku();
-				if ( ! empty( $parent_sku ) ) {
-					$variation->set_sku( $parent_sku . '-' . $term_obj->slug );
+				// الگوی SKU خودکار (با تضمین یکتا بودن تا ووکامرس استثنا ندهد).
+				if ( '' !== $parent_sku ) {
+					$sku = self::unique_variation_sku( $parent_sku . '-' . $term_obj->slug );
+					if ( '' !== $sku ) {
+						$variation->set_sku( $sku );
+					}
 				}
 
-				$new_var_id = $variation->save();
-				if ( $new_var_id ) {
-					TCBVM_Backup::track_created_variation( $run_id, $product_id, $new_var_id );
-					self::$variation_map[ $product_id ][ $term_obj->slug ] = $new_var_id;
+				$saved = self::save_variation_safely( $variation );
+				if ( ! empty( $saved['warning'] ) ) {
+					$warnings[] = $term_obj->name . ': ' . $saved['warning'];
+				}
+				if ( ! empty( $saved['id'] ) ) {
+					TCBVM_Backup::track_created_variation( $run_id, $product_id, $saved['id'] );
+					self::$variation_map[ $product_id ][ $term_obj->slug ] = $saved['id'];
 					$added_count++;
+				} else {
+					$warnings[] = $term_obj->name . ': ساخت متغیر ناموفق بود.';
 				}
 			}
 
@@ -347,9 +426,15 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			wc_delete_product_transients( $product_id );
 			self::forget_variation_map( $product_id );
 
+			$message = sprintf( '%d متغیر جدید اضافه شد.', $added_count );
+			if ( ! empty( $warnings ) ) {
+				$message .= ' — هشدارها: ' . implode( ' | ', array_slice( array_unique( $warnings ), 0, 3 ) );
+			}
+
 			return array(
-				'success' => true,
-				'message' => sprintf( '%d متغیر جدید اضافه شد.', $added_count ),
+				// فقط وقتی شکست کامل است که هیچ متغیری ساخته نشده ولی خطا داشته‌ایم.
+				'success' => ( $added_count > 0 || empty( $warnings ) ),
+				'message' => $message,
 			);
 		}
 
@@ -434,14 +519,16 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				return array( 'success' => false, 'message' => 'امکان ساخت مدل جدید وجود ندارد.' );
 			}
 
-			$var_id = self::find_variation_by_term( $product, $taxonomy, $old_term->slug );
+			$var_id   = self::find_variation_by_term( $product, $taxonomy, $old_term->slug );
+			$warning  = '';
 			if ( $var_id ) {
 				$variation = wc_get_product( $var_id );
 				if ( $variation ) {
 					$variation->set_attributes( array(
 						$taxonomy => $new_term->slug,
 					) );
-					$variation->save();
+					$saved   = self::save_variation_safely( $variation );
+					$warning = empty( $saved['id'] ) ? ( ' — هشدار: ' . $saved['warning'] ) : '';
 				}
 			}
 
@@ -455,7 +542,7 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 
 			return array(
 				'success' => true,
-				'message' => sprintf( 'مدل «%s» با «%s» جایگزین شد.', $old_name, $new_name ),
+				'message' => sprintf( 'مدل «%s» با «%s» جایگزین شد.%s', $old_name, $new_name, $warning ),
 			);
 		}
 
@@ -508,6 +595,7 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			$new_reg_price  = isset( $params['regular_price'] ) && '' !== $params['regular_price'] ? (float) $params['regular_price'] : null;
 			$new_sale_price = isset( $params['sale_price'] ) && '' !== $params['sale_price'] ? (float) $params['sale_price'] : null;
 			$stock_status   = ! empty( $params['stock_status'] ) ? sanitize_key( $params['stock_status'] ) : '';
+			$warnings       = array();
 
 			foreach ( $models as $model_name ) {
 				$term = get_term_by( 'name', $model_name, $taxonomy );
@@ -531,8 +619,12 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 						if ( '' !== $stock_status ) {
 							$variation->set_stock_status( $stock_status );
 						}
-						$variation->save();
-						$updated++;
+						$saved = self::save_variation_safely( $variation );
+						if ( ! empty( $saved['id'] ) ) {
+							$updated++;
+						} else {
+							$warnings[] = $model_name . ': ' . $saved['warning'];
+						}
 					}
 				}
 			}
@@ -540,9 +632,14 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			WC_Product_Variable::sync( $product_id );
 			wc_delete_product_transients( $product_id );
 
+			$message = sprintf( '%d متغیر به‌روزرسانی شد.', $updated );
+			if ( ! empty( $warnings ) ) {
+				$message .= ' — هشدارها: ' . implode( ' | ', array_slice( array_unique( $warnings ), 0, 3 ) );
+			}
+
 			return array(
-				'success' => true,
-				'message' => sprintf( '%d متغیر به‌روزرسانی شد.', $updated ),
+				'success' => ( $updated > 0 || empty( $warnings ) ),
+				'message' => $message,
 			);
 		}
 

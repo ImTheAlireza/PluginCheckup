@@ -64,6 +64,7 @@ if ( ! class_exists( 'TCBVM_Core' ) ) {
 				'default_regular_price'  => '',
 				'enable_soft_delete'     => 1,
 				'hpos_enabled'           => 1,
+				'auto_sku'               => 1, // تولید خودکار SKU متغیرها (SKU والد + اسلاگ مدل، با تضمین یکتا بودن).
 			);
 		}
 
