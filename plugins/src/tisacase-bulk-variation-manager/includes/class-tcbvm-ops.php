@@ -494,6 +494,8 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		 * @return array نتیجه عملیات روی این محصول.
 		 */
 		private static function generate_product_variations( $product_id, $run_id, $attr_name, array $clean_values, $regular_price, $sale_price, $stock_status, $combine_other ) {
+			$start_time = microtime( true );
+
 			// ۱) تهیه پشتیبان کامل (Snapshot) قبل از هرگونه تغییر
 			TCBVM_Backup::snapshot_product( $run_id, $product_id );
 
@@ -531,7 +533,6 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 					continue;
 				}
 
-				// اگر تاکسونومی هدف است، ورودی‌های محلی با نام مشابه را نادیده بگیر تا تکرار نشود
 				if ( $is_taxonomy && ( $ekey === $attr_name || sanitize_title( $ekey ) === sanitize_title( $attr_name ) ) && $ekey !== $target_key ) {
 					continue;
 				}
@@ -626,53 +627,92 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			// محاسبه تمام ترکیب‌های دکارتی
 			$combinations = self::cartesian_product( $combo_matrix );
 
-			if ( count( $combinations ) > 2500 ) {
+			if ( count( $combinations ) > 3000 ) {
 				return array(
 					'success' => false,
 					'title'   => $title,
-					'message' => sprintf( 'تعداد ترکیب‌های این محصول (%d متغیر) بیش از حد مجاز سرور است؛ جهت ایمنی رد شد.', count( $combinations ) ),
+					'message' => sprintf( 'تعداد ترکیب‌های این محصول (%d متغیر) بیش از سقف مجاز است؛ جهت حفظ سرعت و امنیت رد شد.', count( $combinations ) ),
 				);
 			}
 
-			// ۶) حذف قطعی تمام متغیرهای قبلی محصول از دیتابیس
-			$old_children  = $product->get_children();
-			$deleted_count = 0;
-			foreach ( $old_children as $old_id ) {
-				wp_delete_post( $old_id, true );
-				$deleted_count++;
+			// ۶) حذف سریع و یکباره تمام متغیرهای قبلی محصول از دیتابیس
+			global $wpdb;
+			$old_children  = (array) $product->get_children();
+			$deleted_count = count( $old_children );
+
+			if ( $deleted_count > 0 ) {
+				$ids_in = implode( ',', array_map( 'absint', $old_children ) );
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE post_id IN ({$ids_in})" );
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->query( "DELETE FROM {$wpdb->posts} WHERE ID IN ({$ids_in}) AND post_type = 'product_variation'" );
+
+				foreach ( $old_children as $old_id ) {
+					clean_post_cache( $old_id );
+				}
 			}
 
-			// ۷) تولید تمام متغیرها از صفر با ترکیب درست و اعمال قیمت واردشده
+			// ۷) تولید پرسرعت متغیرها از صفر و درج بهینه در دیتابیس
 			$created_count = 0;
 			$price_str     = (string) $regular_price;
 			$sale_str      = '' !== (string) $sale_price ? (string) $sale_price : '';
+			$final_price   = '' !== $sale_str && (float) $sale_str > 0 ? $sale_str : $price_str;
+			$now_mysql     = current_time( 'mysql' );
+			$now_gmt       = current_time( 'mysql', 1 );
+			$author_id     = get_current_user_id() ? get_current_user_id() : 1;
 
-			foreach ( $combinations as $combination_attrs ) {
-				$variation = new WC_Product_Variation();
-				$variation->set_parent_id( $product_id );
-				$variation->set_status( 'publish' );
-				$variation->set_attributes( $combination_attrs );
+			foreach ( $combinations as $idx => $combination_attrs ) {
+				$wpdb->insert(
+					$wpdb->posts,
+					array(
+						'post_author'           => $author_id,
+						'post_date'             => $now_mysql,
+						'post_date_gmt'         => $now_gmt,
+						'post_content'          => '',
+						'post_title'            => sprintf( 'متغیر شماره #%d برای محصول #%d', $idx + 1, $product_id ),
+						'post_status'           => 'publish',
+						'comment_status'        => 'closed',
+						'ping_status'           => 'closed',
+						'post_name'             => 'product-' . $product_id . '-variation-' . ( $idx + 1 ),
+						'post_modified'         => $now_mysql,
+						'post_modified_gmt'     => $now_gmt,
+						'post_parent'           => $product_id,
+						'guid'                  => home_url( '/?product_variation=' . $product_id . '-' . ( $idx + 1 ) ),
+						'menu_order'            => $idx,
+						'post_type'             => 'product_variation',
+					),
+					array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%d', '%s' )
+				);
 
-				$variation->set_regular_price( $price_str );
-				if ( '' !== $sale_str && (float) $sale_str > 0 ) {
-					$variation->set_sale_price( $sale_str );
-					$variation->set_price( $sale_str );
-				} else {
-					$variation->set_price( $price_str );
-				}
-
-				$variation->set_stock_status( $stock_status );
-				$variation->set_manage_stock( false );
-
-				$var_id = $variation->save();
-
+				$var_id = (int) $wpdb->insert_id;
 				if ( $var_id ) {
+					$meta_data = array(
+						'_price'         => $final_price,
+						'_regular_price' => $price_str,
+						'_sale_price'    => $sale_str,
+						'_stock_status'  => $stock_status,
+						'_manage_stock'  => 'no',
+					);
+
 					foreach ( $combination_attrs as $attr_slug => $val_slug ) {
-						update_post_meta( $var_id, 'attribute_' . sanitize_title( $attr_slug ), $val_slug );
+						$meta_data[ 'attribute_' . sanitize_title( $attr_slug ) ] = (string) $val_slug;
+					}
+
+					foreach ( $meta_data as $m_key => $m_val ) {
+						$wpdb->insert(
+							$wpdb->postmeta,
+							array(
+								'post_id'    => $var_id,
+								'meta_key'   => $m_key,
+								'meta_value' => $m_val,
+							),
+							array( '%d', '%s', '%s' )
+						);
 					}
 
 					TCBVM_Backup::track_created_variation( $run_id, $product_id, $var_id );
 					$created_count++;
+					clean_post_cache( $var_id );
 				}
 			}
 
@@ -680,20 +720,28 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			WC_Product_Variable::sync( $product_id );
 			wc_delete_product_transients( $product_id );
 			delete_transient( 'wc_var_prices_' . $product_id );
+			clean_post_cache( $product_id );
+
+			$elapsed = round( microtime( true ) - $start_time, 2 );
 
 			$message = sprintf(
-				'ویژگی قبلی پاکسازی شد؛ %d متغیر قدیمی حذف و %d متغیر جدید با قیمت %s تومان ثبت گردید.',
+				'ویژگی «%s» بروز شد؛ %d متغیر قبلی حذف و %d متغیر جدید با قیمت %s تومان ثبت گردید (زمان: %s ثانیه).',
+				esc_html( $target_key ),
 				$deleted_count,
 				$created_count,
-				number_format_i18n( $regular_price )
+				number_format_i18n( $regular_price ),
+				number_format_i18n( $elapsed, 2 )
 			);
 
 			return array(
-				'success' => true,
-				'title'   => $title,
-				'created' => $created_count,
-				'deleted' => $deleted_count,
-				'message' => $message,
+				'success'      => true,
+				'title'        => $title,
+				'created'      => $created_count,
+				'deleted'      => $deleted_count,
+				'message'      => $message,
+				'elapsed'      => $elapsed,
+				'target_attr'  => $target_key,
+				'models_count' => count( $clean_values ),
 			);
 		}
 	}

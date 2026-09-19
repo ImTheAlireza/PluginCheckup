@@ -57,7 +57,7 @@ if ( ! class_exists( 'TCBVM_Core' ) ) {
 		 */
 		public static function default_settings() {
 			return array(
-				'batch_size'            => 5,
+				'batch_size'            => 2,
 				'target_attr_name'      => 'مدل گوشی',
 				'backup_retention_days' => 90,
 				'combine_other_default' => 1,

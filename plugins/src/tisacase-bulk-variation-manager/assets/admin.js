@@ -680,7 +680,9 @@
 
 						const batchIds = batches[currentBatchIndex];
 						const batchNum = currentBatchIndex + 1;
-						$pText.text('در حال پردازش بسته ' + self.toPersianDigits(batchNum) + ' از ' + self.toPersianDigits(batches.length) + '…');
+						const batchDesc = batchIds.map(function(id) { return '#' + id; }).join('، ');
+						$pText.text('در حال پردازش بسته ' + self.toPersianDigits(batchNum) + ' از ' + self.toPersianDigits(batches.length) + ' (' + batchDesc + ')…');
+						self.log('⏳ شروع بسته ' + self.toPersianDigits(batchNum) + ' شامل ' + self.toPersianDigits(batchIds.length) + ' محصول (' + batchDesc + ')…', 'info');
 
 						$.ajax({
 							url: tcbvmData.ajaxUrl,
@@ -706,10 +708,10 @@
 											successCount++;
 											totalCreated += (it.created || 0);
 											totalDeleted += (it.deleted || 0);
-											self.log(it.title + ': ' + it.message, 'success');
+											self.log('[#' + it.id + '] ' + it.title + ' ➔ ' + it.message, 'success');
 										} else {
 											failedCount++;
-											self.log(it.title + ': ' + it.message, 'error');
+											self.log('[#' + it.id + '] ' + it.title + ' ➔ خطا: ' + it.message, 'error');
 										}
 									});
 								} else {
@@ -726,12 +728,13 @@
 								const pct = Math.round((processedCount / totalProducts) * 100);
 								$bar.css('width', pct + '%');
 								$pPercent.text(self.toPersianDigits(pct) + '٪');
+								$pText.text('پردازش‌شده: ' + self.toPersianDigits(processedCount) + ' از ' + self.toPersianDigits(totalProducts) + ' محصول (' + self.toPersianDigits(pct) + '٪)');
 								$('#tcbvm-stat-processed').text(self.toPersianDigits(processedCount));
 								$('#tcbvm-stat-success').text(self.toPersianDigits(successCount));
 								$('#tcbvm-stat-failed').text(self.toPersianDigits(failedCount));
 
 								currentBatchIndex++;
-								setTimeout(runNextBatch, 100);
+								setTimeout(runNextBatch, 50);
 							},
 							error: function(xhr, status, err) {
 								self.log('خطای شبکه در بسته ' + batchNum + ': ' + err + '. تلاش برای ادامه بسته بعدی…', 'error');
@@ -741,7 +744,7 @@
 									allItems.push({ id: pid, status: 'error', title: 'محصول #' + pid, message: 'خطای شبکه در ارتباط با سرور' });
 								});
 								currentBatchIndex++;
-								setTimeout(runNextBatch, 200);
+								setTimeout(runNextBatch, 100);
 							}
 						});
 					};
