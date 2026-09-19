@@ -659,15 +659,18 @@
 					let processedCount = 0;
 					let successCount = 0;
 					let failedCount = 0;
+					let totalCreated = 0;
+					let totalDeleted = 0;
+					const allItems = [];
 
 					const runNextBatch = function() {
 						if (currentBatchIndex >= batches.length) {
 							// پایان تمام بسته‌ها
-							self.finishRun(runId, function() {
+							self.finishRun(runId, totalCreated, totalDeleted, allItems, function() {
 								$bar.css('width', '100%');
 								$pPercent.text('۱۰۰٪');
-								$pText.text('تولید و بازسازی تمام متغیرها با موفقیت تکمیل شد.');
-								self.log('پایان تمام بسته‌ها! کش قیمت‌های ووکامرس نوسازی شد.', 'success');
+								$pText.text('تولید و بازسازی تمام متغیرها با موفقیت تکمیل و ثبت شد.');
+								self.log('پایان تمام بسته‌ها! ' + totalCreated + ' متغیر تازه ساخته و ' + totalDeleted + ' متغیر قدیمی پاکسازی شد.', 'success');
 								self.isExecuting = false;
 								$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
 								alert(tcbvmData.i18n.completedText);
@@ -698,8 +701,11 @@
 								if (bResp.success && bResp.data && bResp.data.items) {
 									bResp.data.items.forEach(function(it) {
 										processedCount++;
+										allItems.push(it);
 										if (it.status === 'success') {
 											successCount++;
+											totalCreated += (it.created || 0);
+											totalDeleted += (it.deleted || 0);
 											self.log(it.title + ': ' + it.message, 'success');
 										} else {
 											failedCount++;
@@ -710,6 +716,8 @@
 									batchIds.forEach(function(pid) {
 										processedCount++;
 										failedCount++;
+										const errItem = { id: pid, status: 'error', title: 'محصول #' + pid, message: (bResp.data && bResp.data.message ? bResp.data.message : 'خطا در پردازش بسته') };
+										allItems.push(errItem);
 										self.log('محصول #' + pid + ': خطا در بسته ' + (bResp.data && bResp.data.message ? bResp.data.message : ''), 'error');
 									});
 								}
@@ -730,6 +738,7 @@
 								batchIds.forEach(function(pid) {
 									processedCount++;
 									failedCount++;
+									allItems.push({ id: pid, status: 'error', title: 'محصول #' + pid, message: 'خطای شبکه در ارتباط با سرور' });
 								});
 								currentBatchIndex++;
 								setTimeout(runNextBatch, 200);
@@ -750,14 +759,18 @@
 		/**
 		 * اتمام نشست
 		 */
-		finishRun: function(runId, callback) {
+		finishRun: function(runId, createdCount, deletedCount, items, callback) {
 			$.ajax({
 				url: tcbvmData.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'tcbvm_finish_run',
 					nonce: tcbvmData.nonce,
-					run_id: runId
+					run_id: runId,
+					status: 'completed',
+					created_count: createdCount,
+					deleted_count: deletedCount,
+					items: items
 				},
 				complete: function() {
 					if (typeof callback === 'function') callback();
@@ -826,9 +839,16 @@
 		},
 
 		/**
-		 * بازگردانی (Rollback)
+		 * بازگردانی (Rollback) و مشاهده جزئیات لاگ
 		 */
 		bindRollback: function() {
+			// باز کردن / بستن کشوی جزئیات گزارش
+			$(document).on('click', '.tc-btn-toggle-run-details', function(e) {
+				e.preventDefault();
+				const runId = $(this).data('run-id');
+				$('#run-details-' + runId).toggleClass('tcbvm-hidden');
+			});
+
 			$('.tc-btn-rollback').on('click', function(e) {
 				e.preventDefault();
 				if (!confirm(tcbvmData.i18n.confirmRollback)) return;

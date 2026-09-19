@@ -34,6 +34,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 			add_action( 'wp_ajax_tcbvm_start_run', array( __CLASS__, 'ajax_start_run' ) );
 			add_action( 'wp_ajax_tcbvm_execute_batch', array( __CLASS__, 'ajax_execute_batch' ) );
 			add_action( 'wp_ajax_tcbvm_finish_run', array( __CLASS__, 'ajax_finish_run' ) );
+			add_action( 'wp_ajax_tcbvm_get_run_details', array( __CLASS__, 'ajax_get_run_details' ) );
 			add_action( 'wp_ajax_tcbvm_rollback', array( __CLASS__, 'ajax_rollback' ) );
 			add_action( 'wp_ajax_tcbvm_save_preset', array( __CLASS__, 'ajax_save_preset' ) );
 			add_action( 'wp_ajax_tcbvm_delete_preset', array( __CLASS__, 'ajax_delete_preset' ) );
@@ -357,21 +358,49 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 		public static function ajax_finish_run() {
 			self::check_auth();
 
-			$run_id = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
-			$status = isset( $_POST['status'] ) ? sanitize_key( $_POST['status'] ) : 'completed';
+			$run_id        = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
+			$status        = isset( $_POST['status'] ) ? sanitize_key( $_POST['status'] ) : 'completed';
+			$created_count = isset( $_POST['created_count'] ) ? absint( $_POST['created_count'] ) : 0;
+			$deleted_count = isset( $_POST['deleted_count'] ) ? absint( $_POST['deleted_count'] ) : 0;
+			$items         = isset( $_POST['items'] ) && is_array( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 			if ( empty( $run_id ) ) {
 				wp_send_json_error( array( 'message' => 'شناسه اجرا ارسال نشده است.' ) );
 			}
 
-			TCBVM_Backup::finish_run_session( $run_id, $status );
+			TCBVM_Backup::finish_run_session( $run_id, $status, array(
+				'created_count' => $created_count,
+				'deleted_count' => $deleted_count,
+				'items'         => $items,
+			) );
 
 			// پاکسازی ترنزینت‌های سراسری قیمت ووکامرس
 			wc_delete_product_transients();
 			delete_transient( 'wc_var_prices' );
 
 			wp_send_json_success( array(
-				'message' => 'عملیات با موفقیت پایان یافت، متغیرها بازسازی شدند و قیمت‌ها ثبت گردید.',
+				'message' => 'عملیات با موفقیت پایان یافت، گزارش در تاریخچه ثبت شد و متغیرها نوسازی گردیدند.',
+			) );
+		}
+
+		/**
+		 * دریافت جزئیات لاگ و گزارش کامل یک اجرا.
+		 */
+		public static function ajax_get_run_details() {
+			self::check_auth();
+
+			$run_id = isset( $_GET['run_id'] ) ? sanitize_text_field( wp_unslash( $_GET['run_id'] ) ) : '';
+			if ( empty( $run_id ) ) {
+				wp_send_json_error( array( 'message' => 'شناسه اجرا مشخص نشده است.' ) );
+			}
+
+			$run = TCBVM_Backup::get_run( $run_id );
+			if ( ! $run ) {
+				wp_send_json_error( array( 'message' => 'گزارش این اجرا یافت نشد.' ) );
+			}
+
+			wp_send_json_success( array(
+				'run' => $run,
 			) );
 		}
 

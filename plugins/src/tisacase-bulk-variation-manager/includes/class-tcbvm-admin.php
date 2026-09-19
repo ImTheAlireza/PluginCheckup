@@ -301,39 +301,97 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 													<th>کاربر</th>
 													<th>عملیات</th>
 													<th>تعداد محصولات</th>
+													<th>تغییرات متغیرها</th>
 													<th>وضعیت</th>
 													<th class="tcbvm-col-w140 tcbvm-center">اقدام</th>
 												</tr>
 											</thead>
 											<tbody>
-												<?php foreach ( $runs as $r ) : ?>
-													<tr>
-														<td><span class="tisa-code"><?php echo esc_html( $r->run_id ); ?></span></td>
-														<td><?php echo esc_html( $r->created_at ); ?></td>
-														<td><?php echo esc_html( $r->user_login ? $r->user_login : 'سیستم' ); ?></td>
-														<td><strong><?php echo esc_html( $r->operation ); ?></strong></td>
-														<td><?php echo number_format_i18n( (int) $r->total_products ); ?> محصول</td>
+												<?php
+												foreach ( $runs as $r ) :
+													$r_id      = is_array( $r ) ? (string) $r['run_id'] : (string) $r->run_id;
+													$r_time    = is_array( $r ) ? (string) $r['created_at'] : (string) $r->created_at;
+													$r_user    = is_array( $r ) ? ( ! empty( $r['user_login'] ) ? (string) $r['user_login'] : 'مدیر سیستم' ) : ( ! empty( $r->user_login ) ? (string) $r->user_login : 'مدیر سیستم' );
+													$r_op      = is_array( $r ) ? (string) $r['operation'] : (string) $r->operation;
+													$r_total   = is_array( $r ) ? (int) $r['total_products'] : (int) $r->total_products;
+													$r_status  = is_array( $r ) ? (string) $r['status'] : (string) $r->status;
+													$r_created = is_array( $r ) && isset( $r['created_count'] ) ? (int) $r['created_count'] : 0;
+													$r_deleted = is_array( $r ) && isset( $r['deleted_count'] ) ? (int) $r['deleted_count'] : 0;
+													$r_items   = is_array( $r ) && ! empty( $r['items'] ) ? (array) $r['items'] : array();
+													?>
+													<tr class="tcbvm-run-row" data-run-id="<?php echo esc_attr( $r_id ); ?>">
+														<td><span class="tisa-code"><?php echo esc_html( $r_id ); ?></span></td>
+														<td><?php echo esc_html( $r_time ); ?></td>
+														<td><?php echo esc_html( $r_user ); ?></td>
+														<td><strong><?php echo esc_html( $r_op ); ?></strong></td>
+														<td><?php echo number_format_i18n( $r_total ); ?> محصول</td>
 														<td>
-															<?php if ( 'rolled_back' === $r->status ) : ?>
+															<span class="tcbvm-badge tcbvm-badge--success">+<?php echo number_format_i18n( $r_created ); ?> متغیر</span>
+															<?php if ( $r_deleted > 0 ) : ?>
+																<span class="tcbvm-badge tcbvm-badge--danger">-<?php echo number_format_i18n( $r_deleted ); ?> قبلی</span>
+															<?php endif; ?>
+														</td>
+														<td>
+															<?php if ( 'rolled_back' === $r_status ) : ?>
 																<span class="tcbvm-badge tcbvm-badge--muted">بازگردانی شده</span>
-															<?php elseif ( 'completed' === $r->status ) : ?>
+															<?php elseif ( 'completed' === $r_status ) : ?>
 																<span class="tcbvm-badge tcbvm-badge--success">تکمیل شده</span>
-															<?php elseif ( 'completed_with_errors' === $r->status ) : ?>
+															<?php elseif ( 'completed_with_errors' === $r_status ) : ?>
 																<span class="tcbvm-badge tcbvm-badge--warn">با خطا</span>
 															<?php else : ?>
-																<span class="tcbvm-badge"><?php echo esc_html( $r->status ); ?></span>
+																<span class="tcbvm-badge tcbvm-badge--info"><?php echo esc_html( $r_status ); ?></span>
 															<?php endif; ?>
 														</td>
 														<td class="tcbvm-center">
-															<?php if ( 'rolled_back' === $r->status ) : ?>
+															<?php if ( 'rolled_back' === $r_status ) : ?>
 																<span class="tcbvm-muted">—</span>
 															<?php else : ?>
-																<button type="button" class="tisa-btn tisa-btn--danger tisa-btn--sm tc-btn-rollback" data-run-id="<?php echo esc_attr( $r->run_id ); ?>">
+																<button type="button" class="tisa-btn tisa-btn--danger tisa-btn--sm tc-btn-rollback" data-run-id="<?php echo esc_attr( $r_id ); ?>">
 																	بازگردانی (Rollback)
+																</button>
+															<?php endif; ?>
+															<?php if ( ! empty( $r_items ) ) : ?>
+																<button type="button" class="tisa-btn tisa-btn--soft tisa-btn--sm tc-btn-toggle-run-details" data-run-id="<?php echo esc_attr( $r_id ); ?>" title="مشاهده جزئیات لاگ">
+																	جزئیات
 																</button>
 															<?php endif; ?>
 														</td>
 													</tr>
+													<?php if ( ! empty( $r_items ) ) : ?>
+														<tr id="run-details-<?php echo esc_attr( $r_id ); ?>" class="tcbvm-run-details-row tcbvm-hidden">
+															<td colspan="8">
+																<div class="tcbvm-run-details-box">
+																	<h4 class="tcbvm-run-details-title">گزارش پردازش محصولات در این اجرا:</h4>
+																	<div class="tcbvm-table-scroll" style="max-height: 200px;">
+																		<table class="tisa-table">
+																			<thead>
+																				<tr>
+																					<th>محصول</th>
+																					<th>وضعیت</th>
+																					<th>پیام و نتیجه</th>
+																				</tr>
+																			</thead>
+																			<tbody>
+																				<?php foreach ( $r_items as $it ) : ?>
+																					<tr>
+																						<td><strong><?php echo esc_html( isset( $it['title'] ) ? $it['title'] : "محصول #{$it['id']}" ); ?></strong></td>
+																						<td>
+																							<?php if ( isset( $it['status'] ) && 'success' === $it['status'] ) : ?>
+																								<span class="tcbvm-badge tcbvm-badge--success">موفق</span>
+																							<?php else : ?>
+																								<span class="tcbvm-badge tcbvm-badge--danger">خطا</span>
+																							<?php endif; ?>
+																						</td>
+																						<td><small class="tcbvm-muted"><?php echo esc_html( isset( $it['message'] ) ? $it['message'] : '' ); ?></small></td>
+																					</tr>
+																				<?php endforeach; ?>
+																			</tbody>
+																		</table>
+																	</div>
+																</div>
+															</td>
+														</tr>
+													<?php endif; ?>
 												<?php endforeach; ?>
 											</tbody>
 										</table>
