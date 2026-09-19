@@ -372,7 +372,16 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 											<span class="tisa-switch__track" aria-hidden="true"></span>
 											<span>فقط به‌روزرسانی <span class="tcbvm-muted">— هیچ مدل، متغیر، محصول یا ویژگی جدیدی ساخته نمی‌شود؛ فقط رکوردهای موجود به‌روزرسانی می‌شوند (پیشنهاد: روشن)</span></span>
 										</label>
-										<p class="tcbvm-muted" style="margin-top: 8px;">این افزونه هیچ‌وقت SKU نمی‌سازد و SKUهای موجود را تغییر نمی‌دهد؛ SKUها متعلق به خود فروشگاه است. برای ساخت مدل‌های جدید، این گزینه را خاموش کن.</p>
+										<p class="tcbvm-muted" style="margin-top: 8px;">این افزونه هیچ‌وقت SKU نمی‌سازد و SKUهای موجود را تغییر نمی‌دهد؛ SKUها متعلق به خود فروشگاه است. برای ساخت مدل‌های جدید در عملیات «افزودن مدل»، این گزینه را خاموش کن.</p>
+									</div>
+
+									<div class="tcbvm-field" style="margin-top: 18px;">
+										<label class="tisa-switch tcbvm-toggle">
+											<input type="checkbox" name="tcbvm_settings[sync_rebuild]" value="1" <?php checked( ! empty( $settings['sync_rebuild'] ) ); ?>>
+											<span class="tisa-switch__track" aria-hidden="true"></span>
+											<span>بازسازی کامل در «همگام‌سازی با الگو» <span class="tcbvm-muted">— همهٔ متغیرهای آن ویژگی حذف و دقیقاً از فهرست واردشده از نو ساخته می‌شوند (پیشنهاد: روشن)</span></span>
+										</label>
+										<p class="tcbvm-muted" style="margin-top: 8px;">در این حالت ترتیب و تعداد متغیرها دقیقاً برابر فهرست شماست؛ متغیرهای خارج از فهرست حذف می‌شوند. فقط ویژگی انتخاب‌شده (مثل «مدل») بازسازی می‌شود و بقیهٔ ویژگی‌های محصول دست‌نخورده می‌مانند. برای بازگردانی، از تب «گزارش و بازگردانی» استفاده کن.</p>
 									</div>
 
 									<div style="margin-top: 24px;">
@@ -534,14 +543,14 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									<div class="tcbvm-field">
 										<label class="tcbvm-label" for="tcbvm-attr-name">نام صفت/ویژگی متغیر در ووکامرس</label>
 										<input type="text" id="tcbvm-attr-name" class="tcbvm-input" value="مدل گوشی" placeholder="مثال: مدل گوشی یا Model">
-										<p class="tcbvm-muted">نام صفتی که مدل‌ها روی آن تعریف شده‌اند (معمولاً «مدل گوشی»).</p>
+										<p class="tcbvm-muted">نام صفتی که مدل‌ها روی آن تعریف شده‌اند (مثلاً «مدل» یا «مدل گوشی»). افزونه خودش ویژگی موجود همنام را پیدا می‌کند.</p>
 									</div>
 								</div>
 
 								<!-- باکس مدل‌ها و الگوها -->
 								<div id="tcbvm-models-input-wrap" class="tcbvm-field" style="margin-top: 20px;">
 									<div class="tcbvm-field-header">
-										<label class="tcbvm-label" for="tcbvm-models-input" style="margin-bottom: 0;">لیست مدل‌های مورد نظر (در هر خط یک مدل بنویسید یا روی الگوهای زیر کلیک کنید)</label>
+										<label class="tcbvm-label" for="tcbvm-models-input" style="margin-bottom: 0;">لیست مدل‌های مورد نظر (با «|» یا در هر خط یک مدل — کاما داخل نام مدل حفظ می‌شود)</label>
 									</div>
 									<div class="tcbvm-chips-row">
 										<span class="tcbvm-chips-title">الگوهای آماده تیساکیس:</span>
@@ -552,7 +561,8 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 											</button>
 										<?php endforeach; ?>
 									</div>
-									<textarea id="tcbvm-models-input" class="tcbvm-textarea" rows="5" placeholder="iPhone 16 Pro&#10;iPhone 16 Pro Max&#10;Samsung S24 Ultra"></textarea>
+									<textarea id="tcbvm-models-input" class="tcbvm-textarea" rows="5" placeholder="iPhone 6s | iPhone 7,8,SE | iPhone X,Xs | iPhone 11 Pro Max | Redmi Note 9s,9 Pro | Samsung A54"></textarea>
+									<p class="tcbvm-muted">هر «|» یا هر خط، یک مدل است. کاما داخل نام مدل می‌ماند (مثل <span class="tisa-code">iPhone 7,8,SE</span>). <strong id="tcbvm-models-count">۰ مدل شناسایی شد</strong></p>
 								</div>
 
 								<!-- باکس جایگزینی مدل -->

@@ -36,6 +36,7 @@
 		initTargetModeToggle();
 		initOpChange();
 		initPresetChips();
+		initModelsCounter();
 		initSearch();
 		initSelection();
 		initPreview();
@@ -176,6 +177,68 @@
 			setTimeout(function () {
 				$textarea.css('border-color', '');
 			}, 400);
+		});
+	}
+
+	/* -------------------------------------------------------------
+	 * ۳.۱ شمارندهٔ مدل‌های ورودی (با همان قواعد سرور)
+	 * ----------------------------------------------------------- */
+	function normalizePersian(text) {
+		return (text || '')
+			.replace(/ي/g, 'ی')
+			.replace(/ك/g, 'ک')
+			.replace(/ة|ۀ/g, 'ه')
+			.replace(/\u00a0|\u200c/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
+	}
+
+	/**
+	 * همان منطق TCBVM_OPS::sanitize_model_list — جداکننده «|» و خط جدید؛
+	 * کاما داخل نام مدل حفظ می‌شود (iPhone 7,8,SE یک مدل است).
+	 */
+	function parseModelList(raw) {
+		var text = (raw || '').replace(/\r\n|\r/g, '\n').trim();
+		if (!text) { return []; }
+
+		var parts = text.split(/[|\n]+/);
+
+		if (parts.length < 2) {
+			if (/[,،]\s+/.test(text)) {
+				parts = text.split(/\s*[,،]\s*/);
+			} else if (text.indexOf('،') !== -1) {
+				parts = text.split(/\s*،\s*/);
+			} else {
+				parts = [text];
+			}
+		}
+
+		var seen = {};
+		var out = [];
+		for (var i = 0; i < parts.length; i++) {
+			var item = $.trim(parts[i]);
+			if (!item) { continue; }
+			var key = normalizePersian(item).toLowerCase();
+			if (!key || seen[key]) { continue; }
+			seen[key] = true;
+			out.push(item);
+		}
+		return out;
+	}
+
+	function updateModelsCount() {
+		var $counter = $('#tcbvm-models-count');
+		if (!$counter.length) { return; }
+		var count = parseModelList($('#tcbvm-models-input').val()).length;
+		$counter.text(count + ' مدل شناسایی شد');
+	}
+
+	function initModelsCounter() {
+		updateModelsCount();
+		$(document).on('input change', '#tcbvm-models-input', updateModelsCount);
+		// درج الگو با کلیک انجام می‌شود؛ بعد از آن هم شمارنده تازه شود.
+		$(document).on('click', '.tcbvm-chip-btn', function () {
+			setTimeout(updateModelsCount, 10);
 		});
 	}
 

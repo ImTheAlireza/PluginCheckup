@@ -201,6 +201,47 @@ if ( ! class_exists( 'TCBVM_Backup' ) ) {
 		}
 
 		/**
+		 * بازسازی یک متغیر حذف‌شده از روی اسنپ‌شات (برای بازگردانی بازسازی کامل ویژگی).
+		 *
+		 * @param int   $product_id شناسهٔ والد.
+		 * @param array $vdata      دادهٔ اسنپ‌شات متغیر.
+		 * @return WC_Product_Variation|null
+		 */
+		private static function recreate_variation( $product_id, array $vdata ) {
+			if ( ! class_exists( 'WC_Product_Variation' ) ) {
+				return null;
+			}
+
+			$variation = new WC_Product_Variation();
+			$variation->set_parent_id( absint( $product_id ) );
+			$variation->set_status( isset( $vdata['status'] ) ? $vdata['status'] : 'publish' );
+
+			if ( ! empty( $vdata['attributes'] ) && is_array( $vdata['attributes'] ) ) {
+				$variation->set_attributes( $vdata['attributes'] );
+			}
+
+			// SKU اصلی فقط اگر جای دیگری اشغال نشده باشد بازگردانده می‌شود.
+			if ( ! empty( $vdata['sku'] ) && function_exists( 'wc_get_product_id_by_sku' ) ) {
+				$owner = wc_get_product_id_by_sku( $vdata['sku'] );
+				if ( ! $owner ) {
+					try {
+						$variation->set_sku( $vdata['sku'] );
+					} catch ( \Exception $e ) {
+						// SKU تکراری است؛ بدون SKU بازگردانی می‌شود.
+					}
+				}
+			}
+
+			try {
+				$new_id = $variation->save();
+			} catch ( \Exception $e ) {
+				return null;
+			}
+
+			return $new_id ? wc_get_product( $new_id ) : null;
+		}
+
+		/**
 		 * بازگردانی کامل (Rollback) یک اجرا.
 		 *
 		 * @param string $run_id شناسه نشست اجرا
@@ -261,16 +302,30 @@ if ( ! class_exists( 'TCBVM_Backup' ) ) {
 				if ( ! empty( $snap['variations'] ) ) {
 					foreach ( $snap['variations'] as $vid => $vdata ) {
 						$var = wc_get_product( $vid );
-						if ( $var ) {
-							$var->set_regular_price( $vdata['regular_price'] );
-							$var->set_sale_price( $vdata['sale_price'] );
-							$var->set_stock_status( $vdata['stock_status'] );
-							$var->set_status( $vdata['status'] );
-							if ( isset( $vdata['attributes'] ) && is_array( $vdata['attributes'] ) ) {
-								$var->set_attributes( $vdata['attributes'] );
+
+						// اگر متغیر در این اجرا حذف شده باشد (مثل بازسازی کامل ویژگی)،
+						// از روی اسنپ‌شات دوباره ساخته می‌شود.
+						if ( ! $var ) {
+							$var = self::recreate_variation( $product_id, $vdata );
+							if ( ! $var ) {
+								continue;
 							}
-							$var->save();
 						}
+
+						$var->set_regular_price( $vdata['regular_price'] );
+						$var->set_sale_price( $vdata['sale_price'] );
+						$var->set_stock_status( $vdata['stock_status'] );
+						$var->set_status( $vdata['status'] );
+						if ( isset( $vdata['attributes'] ) && is_array( $vdata['attributes'] ) ) {
+							$var->set_attributes( $vdata['attributes'] );
+						}
+						if ( ! empty( $vdata['manage_stock'] ) ) {
+							$var->set_manage_stock( true );
+							if ( null !== $vdata['stock_qty'] && '' !== $vdata['stock_qty'] ) {
+								$var->set_stock_quantity( $vdata['stock_qty'] );
+							}
+						}
+						$var->save();
 					}
 				}
 
