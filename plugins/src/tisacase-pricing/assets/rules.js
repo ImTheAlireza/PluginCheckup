@@ -46,7 +46,12 @@
         const minChars = parseInt(cfg.minChars || 2, 10);
 
         if (term.length < minChars) {
-            $results.empty().hide();
+            // به‌جای سکوت (که «منو باز نمی‌شود / چیزی نیست» به نظر می‌رسد) علت را نشان بده.
+            if (!term.length) {
+                $results.empty().hide();
+            } else {
+                $results.html('<div class="tcp-search-empty">' + escapeText('حداقل ' + minChars + ' حرف بنویس…') + '</div>').show();
+            }
             return;
         }
 
@@ -129,8 +134,18 @@
         $target.append(row);
     }
 
-    bindSearch('#tcp-product-search', '#tcp-product-results', cfg.productAct, 'product');
-    bindSearch('#tcp-category-search', '#tcp-category-results', cfg.catAct, 'category');
+    // اتصال پس از آماده‌شدن DOM: اگر افزونه‌های ادغام/بهینه‌سازی اسکریپت را جلوتر اجرا کنند،
+    // باکس جستجو بدون شنونده می‌ماند و «باز نمی‌شود». روی DOM-ready مطمئن است.
+    function bindAll() {
+        bindSearch('#tcp-product-search', '#tcp-product-results', cfg.productAct, 'product');
+        bindSearch('#tcp-category-search', '#tcp-category-results', cfg.catAct, 'category');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindAll);
+    } else {
+        bindAll();
+    }
 
     $(document).on('click', '.tcp-search-item', function () {
         const $item = $(this);

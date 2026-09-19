@@ -47,6 +47,9 @@ $tcp_cat_select = static function ( $name, $selected ) use ( $tcp_cats ) {
 			<option value="<?php echo esc_attr( $cat->term_id ); ?>" <?php selected( in_array( (int) $cat->term_id, (array) $selected, true ) ); ?>><?php echo esc_html( TCP_Admin::cat_label( $cat ) ); ?></option>
 		<?php endforeach; ?>
 	</select>
+	<?php if ( empty( $tcp_cats ) ) : ?>
+		<span class="tcp-muted">هیچ دستهٔ محصولی در فروشگاه نیست؛ این لیست خالی است چون دسته‌ای ساخته نشده.</span>
+	<?php endif; ?>
 	<?php
 };
 

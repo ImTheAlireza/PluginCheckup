@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پیش‌نمایش — کلمات منفی در پکیج ویژه قاب v1.5.0</title>
+
+<!-- همان دو فایل CSS واقعی افزونه: لایهٔ طراحی هاب + استایل ادمین افزونه -->
+<link rel="stylesheet" href="../../plugins/tisacase-hub/assets/tisacase-ui.css">
+<link rel="stylesheet" href="../../plugins/src/case-special-package/assets/admin.css">
+
+<style>
+/* فقط پوستهٔ شبیه‌سازی‌شدهٔ پیشخوان وردپرس برای این پیش‌نمایش */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+	background: #F4F2EC;
+	color: #1F2A2E;
+	font: 14px/1.8 "Vazirmatn", "IRANSans", -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
+}
+.demo-bar {
+	display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+	padding: 8px 20px; background: #06302B; color: #BFE3DC; font-size: 12.5px;
+}
+.demo-bar b { color: #fff; }
+.demo-bar span.note { margin-inline-start: auto; opacity: .85; }
+.demo-note {
+	max-width: 1120px; margin: 18px auto -8px; padding: 10px 16px;
+	border: 1px dashed #C9DCD7; border-radius: 14px; background: #fff;
+	font-size: 12.5px; color: #77828A;
+}
+.demo-note b { color: #0A5F52; }
+.tisa-input[multiple] { height: auto; padding: 6px; }
+</style>
+</head>
+<body class="woocommerce_page_wcsp-settings tisa-scope">
+
+<div class="demo-bar">
+	<b>پیش‌نمایش استاتیک</b>
+	<span>پکیج ویژه قاب — نسخهٔ ۱.۵.۰</span>
+	<span class="note">این صفحه همان مارک‌آپ PHP افزونه است، بدون وردپرس — برای دیدن ظاهر تب «تشخیص محصولات»</span>
+</div>
+
+<div class="demo-note">
+	<b>چه چیزی اضافه شد؟</b> فیلد «کلمات منفی (وتو)» + انتخاب حالت تطبیق + فهرست محصولات وتوشده.
+	کلمهٔ منفی بر دسته‌بندی و «اجباراً فعال» هم مقدم است؛ فقط لیست استثنای SKU بالاتر از آن قرار دارد.
+</div>
+
+<div class="wrap tisa-wrap wcsp-wrap" dir="rtl">
+	<header class="wcsp-hero">
+		<div class="wcsp-hero-row">
+			<div class="wcsp-hero-mark" aria-hidden="true">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><line x1="10.5" y1="5.5" x2="13.5" y2="5.5"/><path d="M4 9v6M20 9v6"/></svg>
+			</div>
+			<div class="wcsp-hero-text">
+				<h1 class="wcsp-hero-title">پکیج ویژه قاب</h1>
+				<p class="wcsp-hero-sub">قیمت ثابت پکیج روی محصولات قاب، به ازای هر عدد — با محاسبه در سبد و ثبت در فاکتور</p>
+			</div>
+			<span class="wcsp-hero-state is-on"><i></i>فعال</span>
+			<span class="wcsp-hero-ver" dir="ltr">v1.5.0</span>
+		</div>
+		<nav class="wcsp-tabs" role="tablist">
+			<button type="button" class="wcsp-tab" data-tab="dash">داشبورد</button>
+			<button type="button" class="wcsp-tab" data-tab="general">تنظیمات</button>
+			<button type="button" class="wcsp-tab active" data-tab="detect">تشخیص محصولات</button>
+			<button type="button" class="wcsp-tab" data-tab="exceptions">استثناها</button>
+			<button type="button" class="wcsp-tab" data-tab="texts">متن‌ها</button>
+			<button type="button" class="wcsp-tab" data-tab="help">راهنما</button>
+		</nav>
+	</header>
+
+	<!-- ================= تشخیص محصولات ================= -->
+	<section class="wcsp-panel active" data-panel="detect">
+		<section class="wcsp-card">
+			<div class="wcsp-card-head"><span class="wcsp-dot"></span><div><h2>تشخیص محصولات قاب</h2><p>محصولات قدیمی و جدید خودکار بررسی می‌شوند؛ نیازی به ویرایش تک‌تک نیست.</p></div></div>
+			<div class="wcsp-card-body">
+				<div class="wcsp-field">
+					<label class="wcsp-label" for="wcsp_keywords">کلمه / کلمات کلیدی عنوان</label>
+					<textarea class="tisa-input" id="wcsp_keywords" rows="3" placeholder="قاب">قاب</textarea>
+					<p class="wcsp-hint">هر خط یا با کاما یک کلمه. ی/ي، ک/ك و نیم‌فاصله یکسان‌سازی می‌شوند.</p>
+				</div>
+
+				<div class="wcsp-field wcsp-field--veto">
+					<label class="wcsp-label" for="wcsp_negative_keywords">کلمه / کلمات منفی (وتو) <span class="wcsp-opt">اختیاری</span></label>
+					<textarea class="tisa-input" id="wcsp_negative_keywords" rows="3" placeholder="تبلت&#10;لپ‌تاپ">تبلت
+لپ‌تاپ</textarea>
+					<p class="wcsp-hint">اگر یکی از این کلمات در عنوان محصول باشد، آن محصول <b>هیچ‌وقت</b> گزینهٔ پکیج را نمی‌گیرد — حتی اگر دسته‌بندی واجد شرایط باشد یا روی محصول «اجباراً فعال» گذاشته شده باشد. مثال: با کلمهٔ «تبلت»، محصول «قاب تبلت سامسونگ» نمایش داده نمی‌شود.</p>
+					<p class="wcsp-hint">در ویرایش هر محصول، باکس «وضعیت کنونی» نشان می‌دهد همین حالا کدام کلمهٔ منفی آن را وتو کرده است.</p>
+				</div>
+
+				<div class="wcsp-field">
+					<span class="wcsp-label">نحوهٔ تطبیق کلمات منفی</span>
+					<div class="wcsp-seg">
+						<label><input type="radio" name="negative_mode" value="contains" checked /><span>شامل کلمه</span></label>
+						<label><input type="radio" name="negative_mode" value="word" /><span>کلمهٔ کامل</span></label>
+					</div>
+					<p class="wcsp-hint">«شامل کلمه» مثل کلمات کلیدی کار می‌کند. «کلمهٔ کامل» مرز کلمه را رعایت می‌کند: «کیف» روی «کیفیت» اثر نمی‌گذارد، ولی «تبلت» باز هم «تبلت‌ها» و «تبلت‌های» را می‌گیرد.</p>
+				</div>
+
+				<div class="wcsp-field">
+					<label class="wcsp-label" for="wcsp_categories">دسته‌بندی‌های واجد شرایط <span class="wcsp-opt">اختیاری</span></label>
+					<select id="wcsp_categories" class="tisa-input" multiple>
+						<option selected>قاب و کاور</option>
+						<option>لوازم جانبی</option>
+					</select>
+					<p class="wcsp-hint">محصولِ این دسته‌ها حتی بدون کلمه کلیدی در عنوان واجد شرایط می‌شود.</p>
+				</div>
+				<p class="wcsp-hint">کنترل دستی: در ویرایش هر محصول، بخش «اطلاعات عمومی»، فیلد «پکیج ویژه قاب» (خودکار / اجباراً فعال / اجباراً غیرفعال). برای محصولات متغیر، عنوان والد ملاک است.</p>
+
+				<div class="wcsp-field">
+					<span class="wcsp-label">محصولاتی که کلمهٔ منفی وتو کرده <span class="wcsp-opt">در غیر این صورت واجد شرایط می‌شدند</span></span>
+					<ul class="wcsp-skus">
+						<li><span class="tisa-code">تبلت</span><a class="found" href="#">قاب تبلت سامسونگ Tab A8</a></li>
+						<li><span class="tisa-code">تبلت</span><a class="found" href="#">قاب تبلت اپل iPad 10.9</a></li>
+						<li><span class="tisa-code">لپ‌تاپ</span><a class="found" href="#">قاب لپ‌تاپ مک‌بوک ۱۳ اینچ</a></li>
+					</ul>
+					<p class="wcsp-hint">۳ محصول وتو شده است — برای تازه‌سازی، «بازمحاسبهٔ آمار» را در داشبورد بزنید.</p>
+				</div>
+			</div>
+		</section>
+	</section>
+</div>
+
+</body>
+</html>

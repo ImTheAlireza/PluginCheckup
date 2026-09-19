@@ -99,12 +99,61 @@ if ( ! class_exists( 'TCP_Admin' ) ) {
 		 * asset ها
 		 * --------------------------------------------------------------- */
 
+		/**
+		 * select2 / enhanced-select ووکامرس را برای فیلدهای جستجوی دسته و محصول تضمین می‌کند.
+		 *
+		 * نکته: در ووکامرس هندل «select2» فقط یک اسکریپت است (legacy alias → `wc-select2`) و
+		 * CSS سلکت۲ داخل فایل admin.css (هندل `woocommerce_admin_styles`) گنجانده شده است.
+		 * اگر جایی آن استایل حذف/جابه‌جا شود (افزونه‌های بهینه‌ساز ادمین این کار را می‌کنند)،
+		 * منوی کشویی بدون CSS می‌ماند: نه باز می‌شود و نه آیتمی نشان می‌دهد. پس همان فایل
+		 * select2.css خود ووکامرس را هم (در صورت نبود هندل اختصاصی) مستقیم صف می‌کنیم.
+		 *
+		 * @return string نام هندل استایلی که باید وابستگی استایل افزونه شود (یا '').
+		 */
+		private static function enhanced_select_assets() {
+			if ( ! TCP_Settings::wc_active() ) {
+				return '';
+			}
+
+			if ( wp_script_is( 'wc-enhanced-select', 'registered' ) ) {
+				wp_enqueue_style( 'woocommerce_admin_styles' ); // شامل CSS سلکت۲.
+				wp_enqueue_script( 'wc-enhanced-select' );
+			} elseif ( wp_script_is( 'select2', 'registered' ) ) {
+				wp_enqueue_script( 'select2' );
+			} else {
+				return '';
+			}
+
+			if ( wp_style_is( 'select2', 'registered' ) ) {
+				wp_enqueue_style( 'select2' );
+				return 'select2';
+			}
+
+			if ( function_exists( 'WC' ) && WC() ) {
+				$rel = '/assets/css/select2.css';
+				if ( file_exists( WC()->plugin_path() . $rel ) ) {
+					wp_enqueue_style( 'tcp-select2', WC()->plugin_url() . $rel, array(), '4.0.3' );
+					return 'tcp-select2';
+				}
+			}
+
+			return 'woocommerce_admin_styles';
+		}
+
 		public static function assets() {
 			if ( ! self::is_our_screen() ) {
 				return;
 			}
 			$tab  = self::current_tab();
 			$deps = wp_style_is( 'tisacase-ui', 'registered' ) ? array( 'tisacase-ui' ) : array();
+
+			// تب‌های «تغییر گروهی قیمت» و «کد تخفیف» فیلد دسته‌بندی/محصول دارند.
+			if ( 'bulk' === $tab || 'coupons' === $tab ) {
+				$select2_style = self::enhanced_select_assets();
+				if ( $select2_style ) {
+					$deps[] = $select2_style;
+				}
+			}
 
 			wp_enqueue_style( 'tcp-admin', TCP_URL . 'assets/admin.css', $deps, TCP_VERSION );
 
@@ -126,19 +175,11 @@ if ( ! class_exists( 'TCP_Admin' ) ) {
 			}
 
 			if ( 'coupons' === $tab ) {
-				if ( TCP_Settings::wc_active() ) {
-					wp_enqueue_style( 'woocommerce_admin_styles' );
-					wp_enqueue_script( 'wc-enhanced-select' );
-				}
 				wp_enqueue_script( 'tcp-coupons', TCP_URL . 'assets/coupons.js', array( 'jquery' ), TCP_VERSION, true );
 				wp_localize_script( 'tcp-coupons', 'TCP_COUPONS', array( 'currency' => function_exists( 'get_woocommerce_currency_symbol' ) ? get_woocommerce_currency_symbol() : '' ) );
 				return;
 			}
 
-			if ( 'bulk' === $tab && TCP_Settings::wc_active() ) {
-				wp_enqueue_style( 'woocommerce_admin_styles' );
-				wp_enqueue_script( 'wc-enhanced-select' );
-			}
 			wp_enqueue_script( 'tcp-bulk', TCP_URL . 'assets/bulk.js', array( 'jquery' ), TCP_VERSION, true );
 			wp_localize_script( 'tcp-bulk', 'TCP_BULK', self::bulk_data( $tab ) );
 		}

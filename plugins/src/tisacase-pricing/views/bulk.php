@@ -37,6 +37,9 @@ $tcp_currency = function_exists( 'get_woocommerce_currency_symbol' ) ? get_wooco
 					<option value="<?php echo esc_attr( $cat->term_id ); ?>"><?php echo esc_html( TCP_Admin::cat_label( $cat ) ); ?></option>
 				<?php endforeach; ?>
 			</select>
+			<?php if ( empty( $tcp_cats ) ) : ?>
+				<div class="tcp-alert tcp-alert--warn">هیچ دستهٔ محصولی در فروشگاه ساخته نشده است؛ این لیست خالی است چون دسته‌ای وجود ندارد. اول از «محصولات ← دسته‌ها» دسته بساز یا از گزینهٔ «انتخاب مستقیم محصول» استفاده کن.</div>
+			<?php endif; ?>
 			<label class="tisa-switch tcp-toggle"><input type="checkbox" id="tcp-children"><span class="tisa-switch__track" aria-hidden="true"></span><span>زیردسته‌ها هم شامل شوند <span class="tcp-muted">— پیش‌فرض خاموش</span></span></label>
 			<div id="tcp-children-warning" class="tcp-alert tcp-alert--danger" style="display:none"><strong>هشدار:</strong> محصولات تمام زیردسته‌های دسته‌های انتخاب‌شده هم وارد عملیات می‌شوند.</div>
 		</div>
@@ -101,7 +104,7 @@ $tcp_currency = function_exists( 'get_woocommerce_currency_symbol' ) ? get_wooco
 		<div class="tcp-grid-4">
 			<div>
 				<label class="tcp-label" for="tcp-filter-types">نوع محصول</label>
-				<select id="tcp-filter-types" multiple="multiple" data-tcp-w="full">
+				<select id="tcp-filter-types" class="wc-enhanced-select" multiple="multiple" data-tcp-w="full">
 					<?php foreach ( TCP_Admin::product_types() as $k => $v ) : ?>
 						<option value="<?php echo esc_attr( $k ); ?>"><?php echo esc_html( $v ); ?></option>
 					<?php endforeach; ?>
@@ -109,7 +112,7 @@ $tcp_currency = function_exists( 'get_woocommerce_currency_symbol' ) ? get_wooco
 			</div>
 			<div>
 				<label class="tcp-label" for="tcp-filter-statuses">وضعیت انتشار</label>
-				<select id="tcp-filter-statuses" multiple="multiple" data-tcp-w="full">
+				<select id="tcp-filter-statuses" class="wc-enhanced-select" multiple="multiple" data-tcp-w="full">
 					<?php foreach ( TCP_Admin::post_statuses() as $k => $v ) : ?>
 						<option value="<?php echo esc_attr( $k ); ?>" <?php selected( 'future' !== $k ); ?>><?php echo esc_html( $v ); ?></option>
 					<?php endforeach; ?>

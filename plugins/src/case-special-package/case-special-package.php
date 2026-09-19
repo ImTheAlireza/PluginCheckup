@@ -2,8 +2,8 @@
 /**
  * Plugin Name: پکیج ویژه قاب موبایل
  * Plugin URI:  https://example.com/wc-case-special-package
- * Description: افزودن گزینه «پکیج ویژه» با قیمت ثابت به محصولات قاب موبایل (تشخیص از روی عنوان/دسته‌بندی، با لیست استثنا بر اساس SKU). قیمت به ازای هر عدد محاسبه و در فاکتور، ایمیل و پیشخوان نمایش داده می‌شود.
- * Version:     1.4.2
+ * Description: افزودن گزینه «پکیج ویژه» با قیمت ثابت به محصولات قاب موبایل (تشخیص از روی عنوان/دسته‌بندی، با لیست استثنا بر اساس SKU و کلمات منفیِ وتوکننده). قیمت به ازای هر عدد محاسبه و در فاکتور، ایمیل و پیشخوان نمایش داده می‌شود.
+ * Version:     1.5.1
  * Author:      علیرضا شعبان زاده
  * Text Domain: case-special-package
  * WC requires at least: 5.0
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'WCSP_MAIN_FILE', __FILE__ );
-define( 'WCSP_VERSION', '1.4.2' );
+define( 'WCSP_VERSION', '1.5.1' );
 
 /**
  * کلاس اصلی پلاگین.
@@ -45,7 +45,8 @@ final class WC_Case_Special_Package {
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_post_wcsp_refresh_stats', array( __CLASS__, 'handle_refresh_stats' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		// اولویت ۲۰: بعد از ووکامرس تا هندل‌های select2/enhanced-select ثبت شده باشند.
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ), 20 );
 
 		// فیلد دستی روی صفحه ویرایش محصول.
 		add_action( 'woocommerce_product_options_general_product_data', array( $this, 'product_field' ) );
@@ -69,6 +70,8 @@ final class WC_Case_Special_Package {
 		add_action( 'save_post_product', array( __CLASS__, 'flush_stats' ) );
 		add_action( 'woocommerce_order_status_changed', array( __CLASS__, 'flush_stats' ) );
 		add_action( 'woocommerce_new_order_item', array( __CLASS__, 'flush_stats' ) );
+		// با ذخیرهٔ تنظیمات، آمار (و پیش‌نمایش کلمات منفی) بلافاصله تازه می‌شود.
+		add_action( 'update_option_' . self::OPTION_KEY, array( __CLASS__, 'flush_stats' ) );
 	}
 
 	public static function flush_stats() {
@@ -98,14 +101,16 @@ final class WC_Case_Special_Package {
 
 	public static function default_settings() {
 		return array(
-			'enabled'        => 'no',
-			'label'          => 'پکیج ویژه',
-			'checkbox_text'  => 'افزودن پکیج ویژه (به ازای هر عدد)',
-			'price'          => 0,
-			'keywords'       => 'قاب',
-			'match_mode'     => 'contains', // contains | starts_with
-			'categories'     => array(),
-			'sku_exceptions' => '',
+			'enabled'           => 'no',
+			'label'             => 'پکیج ویژه',
+			'checkbox_text'     => 'افزودن پکیج ویژه (به ازای هر عدد)',
+			'price'             => 0,
+			'keywords'          => 'قاب',
+			'match_mode'        => 'contains', // contains | starts_with
+			'negative_keywords' => '',
+			'negative_mode'     => 'contains', // contains | word
+			'categories'        => array(),
+			'sku_exceptions'    => '',
 		);
 	}
 
@@ -151,6 +156,9 @@ final class WC_Case_Special_Package {
 		$clean['match_mode']     = ( isset( $input['match_mode'] ) && 'starts_with' === $input['match_mode'] ) ? 'starts_with' : 'contains';
 		$clean['sku_exceptions'] = sanitize_textarea_field( isset( $input['sku_exceptions'] ) ? $input['sku_exceptions'] : '' );
 
+		$clean['negative_keywords'] = sanitize_textarea_field( isset( $input['negative_keywords'] ) ? $input['negative_keywords'] : '' );
+		$clean['negative_mode']     = ( isset( $input['negative_mode'] ) && 'word' === $input['negative_mode'] ) ? 'word' : 'contains';
+
 		$clean['categories'] = array();
 		if ( ! empty( $input['categories'] ) && is_array( $input['categories'] ) ) {
 			$clean['categories'] = array_values( array_filter( array_map( 'absint', $input['categories'] ) ) );
@@ -163,16 +171,64 @@ final class WC_Case_Special_Package {
 		return $clean;
 	}
 
+	/**
+	 * بارگذاری select2 به روش استاندارد ووکامرس.
+	 *
+	 * نکتهٔ مهم (رفع باگ ۱.۵.۱): در ووکامرس هندل «select2» فقط یک **اسکریپت** است
+	 * (legacy alias → `wc-select2`) و هیچ استایل هم‌نامی وجود ندارد؛ CSS سلکت۲ داخل
+	 * `woocommerce_admin_styles` (فایل admin.css) گنجانده شده است. بارگذاری قبلی
+	 * (`wp_enqueue_style('select2')`) عملاً هیچ استایلی لود نمی‌کرد و در نتیجه منوی
+	 * کشویی دسته‌بندی‌ها بدون CSS رندر می‌شد: نه باز می‌شد و نه آیتمی دیده می‌شد.
+	 *
+	 * @return array آرایهٔ هندل‌های استایل که باید وابستگی استایل افزونه شوند.
+	 */
+	private static function enqueue_enhanced_select() {
+		$style_deps = array();
+
+		if ( ! function_exists( 'WC' ) || ! WC() ) {
+			return $style_deps;
+		}
+
+		if ( wp_script_is( 'wc-enhanced-select', 'registered' ) ) {
+			// مسیر استاندارد: اسکریپت enhanced select ووکامرس + admin.css (شامل CSS سلکت۲).
+			wp_enqueue_style( 'woocommerce_admin_styles' );
+			wp_enqueue_script( 'wc-enhanced-select' );
+			$style_deps[] = 'woocommerce_admin_styles';
+		} elseif ( wp_script_is( 'select2', 'registered' ) ) {
+			// نسخه‌های قدیمی/جایگزین: فقط اسکریپت select2 موجود است.
+			wp_enqueue_script( 'select2' );
+		} else {
+			return $style_deps;
+		}
+
+		// کمربند ایمنی: اگر جایی استایل سلکت۲ را جدا ثبت کرده باشد، همان را می‌زنیم و
+		// اگر نبود، فایل خود ووکامرس را مستقیم صف می‌کنیم تا با حذف/جابه‌جایی
+		// `woocommerce_admin_styles` (بسیاری از افزونه‌های بهینه‌ساز این کار را می‌کنند)
+		// منوی دسته‌بندی‌ها بی‌استایل و عملاً غیرقابل‌استفاده نشود.
+		if ( wp_style_is( 'select2', 'registered' ) ) {
+			wp_enqueue_style( 'select2' );
+			$style_deps[] = 'select2';
+		} else {
+			$rel = '/assets/css/select2.css';
+			if ( file_exists( WC()->plugin_path() . $rel ) ) {
+				wp_enqueue_style( 'wcsp-select2', WC()->plugin_url() . $rel, array(), '4.0.3' );
+				$style_deps[] = 'wcsp-select2';
+			}
+		}
+
+		return $style_deps;
+	}
+
 	public function enqueue_admin_assets( $hook ) {
 		if ( false === strpos( $hook, 'wcsp-settings' ) ) {
 			return;
 		}
 		// قلم از لایهٔ طراحی مشترک (هاب) می‌آید؛ بارگیری از CDN خارجی حذف شد (F5).
-		wp_enqueue_style( 'select2' );
-		wp_enqueue_script( 'select2' );
-		$deps = wp_style_is( 'tisacase-ui', 'registered' ) ? array( 'tisacase-ui', 'select2' ) : array( 'select2' );
+		$deps = wp_style_is( 'tisacase-ui', 'registered' ) ? array( 'tisacase-ui' ) : array();
+		$deps = array_merge( $deps, self::enqueue_enhanced_select() );
+
 		wp_enqueue_style( 'wcsp-admin', plugins_url( 'assets/admin.css', WCSP_MAIN_FILE ), $deps, WCSP_VERSION );
-		wp_enqueue_script( 'wcsp-admin', plugins_url( 'assets/admin.js', WCSP_MAIN_FILE ), array(), WCSP_VERSION, true );
+		wp_enqueue_script( 'wcsp-admin', plugins_url( 'assets/admin.js', WCSP_MAIN_FILE ), array( 'jquery' ), WCSP_VERSION, true );
 	}
 
 	public function render_settings_page() {
@@ -323,6 +379,8 @@ final class WC_Case_Special_Package {
 									<div><dt>سفارش‌های دارای پکیج</dt><dd><?php echo esc_html( number_format_i18n( $stats['orders'] ) ); ?></dd></div>
 									<div><dt>سفارش امروز</dt><dd><?php echo esc_html( number_format_i18n( $stats['today'] ) ); ?></dd></div>
 									<div><dt>محصولات مستثنی (SKU)</dt><dd><?php echo esc_html( number_format_i18n( $stats['exceptions'] ) ); ?></dd></div>
+									<div><dt>کلمات منفی (وتو)</dt><dd><?php echo esc_html( number_format_i18n( $stats['negatives'] ) ); ?> — <?php echo 'word' === $s['negative_mode'] ? 'کلمهٔ کامل' : 'شامل کلمه'; ?></dd></div>
+									<div><dt>محصولات وتوشده</dt><dd><?php echo esc_html( number_format_i18n( $stats['vetoed_total'] ) ); ?></dd></div>
 									<div><dt>حالت تشخیص عنوان</dt><dd><?php echo 'starts_with' === $s['match_mode'] ? 'شروع با کلمه' : 'شامل کلمه'; ?></dd></div>
 									<div><dt>کش آمار</dt><dd>۱ ساعته</dd></div>
 								</dl>
@@ -402,16 +460,60 @@ final class WC_Case_Special_Package {
 								<textarea class="tisa-input" id="wcsp_keywords" rows="3" name="<?php echo esc_attr( $opt ); ?>[keywords]" placeholder="قاب"><?php echo esc_textarea( $s['keywords'] ); ?></textarea>
 								<p class="wcsp-hint">هر خط یا با کاما یک کلمه. ی/ي، ک/ك و نیم‌فاصله یکسان‌سازی می‌شوند.</p>
 							</div>
+
+							<div class="wcsp-field wcsp-field--veto">
+								<label class="wcsp-label" for="wcsp_negative_keywords">کلمه / کلمات منفی (وتو) <span class="wcsp-opt">اختیاری</span></label>
+								<textarea class="tisa-input" id="wcsp_negative_keywords" rows="3" name="<?php echo esc_attr( $opt ); ?>[negative_keywords]" placeholder="تبلت&#10;لپ‌تاپ"><?php echo esc_textarea( $s['negative_keywords'] ); ?></textarea>
+								<p class="wcsp-hint">اگر یکی از این کلمات در عنوان محصول باشد، آن محصول <b>هیچ‌وقت</b> گزینهٔ پکیج را نمی‌گیرد — حتی اگر دسته‌بندی واجد شرایط باشد یا روی محصول «اجباراً فعال» گذاشته شده باشد. مثال: با کلمهٔ «تبلت»، محصول «قاب تبلت سامسونگ» نمایش داده نمی‌شود.</p>
+								<p class="wcsp-hint">در ویرایش هر محصول، باکس «وضعیت کنونی» نشان می‌دهد همین حالا کدام کلمهٔ منفی آن را وتو کرده است.</p>
+							</div>
+
+							<div class="wcsp-field">
+								<span class="wcsp-label">نحوهٔ تطبیق کلمات منفی</span>
+								<div class="wcsp-seg">
+									<label><input type="radio" name="<?php echo esc_attr( $opt ); ?>[negative_mode]" value="contains" <?php checked( $s['negative_mode'], 'contains' ); ?> /><span>شامل کلمه</span></label>
+									<label><input type="radio" name="<?php echo esc_attr( $opt ); ?>[negative_mode]" value="word" <?php checked( $s['negative_mode'], 'word' ); ?> /><span>کلمهٔ کامل</span></label>
+								</div>
+								<p class="wcsp-hint">«شامل کلمه» مثل کلمات کلیدی کار می‌کند. «کلمهٔ کامل» مرز کلمه را رعایت می‌کند: «کیف» روی «کیفیت» اثر نمی‌گذارد، ولی «تبلت» باز هم «تبلت‌ها» و «تبلت‌های» را می‌گیرد.</p>
+							</div>
 							<div class="wcsp-field">
 								<label class="wcsp-label" for="wcsp_categories">دسته‌بندی‌های واجد شرایط <span class="wcsp-opt">اختیاری</span></label>
-								<select id="wcsp_categories" class="wcsp-select2" multiple="multiple" name="<?php echo esc_attr( $opt ); ?>[categories][]" data-placeholder="دسته‌ها…">
+								<select id="wcsp_categories" class="wcsp-select2 wc-enhanced-select" multiple="multiple" name="<?php echo esc_attr( $opt ); ?>[categories][]" data-placeholder="دسته‌ها…">
 									<?php foreach ( $terms as $term ) : ?>
 										<option value="<?php echo esc_attr( $term->term_id ); ?>" <?php selected( in_array( (int) $term->term_id, array_map( 'intval', (array) $s['categories'] ), true ) ); ?>><?php echo esc_html( $term->name ); ?></option>
 									<?php endforeach; ?>
 								</select>
 								<p class="wcsp-hint">محصولِ این دسته‌ها حتی بدون کلمه کلیدی در عنوان واجد شرایط می‌شود.</p>
+								<?php if ( empty( $terms ) ) : ?>
+									<div class="wcsp-flashbar wcsp-flashbar--warn" role="status">هیچ دستهٔ محصولی در فروشگاه ساخته نشده است؛ برای استفاده از این فیلد، اول در «محصولات ← دسته‌ها» دسته بساز.</div>
+								<?php endif; ?>
 							</div>
 							<p class="wcsp-hint">کنترل دستی: در ویرایش هر محصول، بخش «اطلاعات عمومی»، فیلد «پکیج ویژه قاب» (خودکار / اجباراً فعال / اجباراً غیرفعال). برای محصولات متغیر، عنوان والد ملاک است.</p>
+
+							<?php if ( $stats['negatives'] > 0 ) : ?>
+								<div class="wcsp-field">
+									<span class="wcsp-label">محصولاتی که کلمهٔ منفی وتو کرده <span class="wcsp-opt">در غیر این صورت واجد شرایط می‌شدند</span></span>
+									<?php if ( empty( $stats['vetoed'] ) ) : ?>
+										<p class="wcsp-hint">در حال حاضر هیچ محصول واجدشرطی با کلمات منفی وتو نشده است.</p>
+									<?php else : ?>
+										<ul class="wcsp-skus">
+											<?php foreach ( $stats['vetoed'] as $row ) : ?>
+												<li>
+													<span class="tisa-code"><?php echo esc_html( $row['word'] ); ?></span>
+													<a class="found" href="<?php echo esc_url( $row['url'] ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $row['title'] ); ?></a>
+												</li>
+											<?php endforeach; ?>
+										</ul>
+										<p class="wcsp-hint">
+											<?php echo esc_html( number_format_i18n( $stats['vetoed_total'] ) ); ?> محصول وتو شده است
+											<?php if ( $stats['vetoed_total'] > count( $stats['vetoed'] ) ) : ?>
+												(۱۰ مورد نخست نمایش داده می‌شود)
+											<?php endif; ?>
+											— برای تازه‌سازی، «بازمحاسبهٔ آمار» را در داشبورد بزنید.
+										</p>
+									<?php endif; ?>
+								</div>
+							<?php endif; ?>
 						</div>
 					</section>
 				</section>
@@ -473,6 +575,8 @@ final class WC_Case_Special_Package {
 						<div class="wcsp-card-body">
 							<ul class="wcsp-help">
 								<li><b>تشخیص خودکار:</b> عنوان محصول (والد در محصولات متغیر) با کلمه کلیدی یا دسته‌بندی انتخابی مطابقت کند.</li>
+								<li><b>ترتیب اولویت:</b> استثنای SKU ← کلمات منفی عنوان ← تیک دستی محصول ← دسته‌بندی ← کلمه کلیدی عنوان. یعنی کلمهٔ منفی، «اجباراً فعال» را هم باطل می‌کند.</li>
+								<li><b>کلمات منفی:</b> برای بیرون‌گذاشتن زیرگروه‌ها؛ مثلاً با کلمهٔ «تبلت» هیچ محصولی که «قاب تبلت» در عنوانش باشد گزینه نمی‌گیرد. حالت «کلمهٔ کامل» جلوی تطبیق‌های ناخواسته (کیف ↔ کیفیت) را می‌گیرد.</li>
 								<li><b>محاسبه:</b> مبلغ پکیج به قیمت هر واحد اضافه می‌شود و با تعداد ضرب می‌شود.</li>
 								<li><b>فاکتور و ایمیل:</b> زیر همان آیتم: «بله — X در هر عدد × N عدد = Y».</li>
 								<li><b>امنیت:</b> واجد شرایط بودن هنگام افزودن به سبد دوباره سمت سرور بررسی می‌شود.</li>
@@ -537,18 +641,83 @@ final class WC_Case_Special_Package {
 	}
 
 	/**
+	 * آیا متن شامل کلمه است؟ حالت «word» مرز کلمه را رعایت می‌کند.
+	 *
+	 * در حالت word، پسوندهای جمع فارسی مجاز شمرده می‌شوند تا «تبلت» هم «تبلت» و هم
+	 * «تبلت‌ها/تبلت‌های» را بگیرد، ولی «کیف» روی «کیفیت» اثر نگذارد («ی» حرف است، نه پسوند).
+	 *
+	 * ورودی هر دو طرف باید از قبل با normalize_text یکسان‌سازی شده باشد.
+	 *
+	 * @param string $text متن نرمال‌شده (مثلاً عنوان محصول).
+	 * @param string $word کلمه نرمال‌شده.
+	 * @param string $mode contains | word
+	 */
+	public static function text_has_word( $text, $word, $mode = 'contains' ) {
+		$text = (string) $text;
+		$word = (string) $word;
+		if ( '' === $text || '' === $word ) {
+			return false;
+		}
+
+		if ( 'word' !== $mode ) {
+			return false !== strpos( $text, $word );
+		}
+
+		$suffix  = '(?:(?:هایمان|هایتان|هایشان|هایم|هایت|هایش|های|هایی|هاست|ها))?';
+		$pattern = '/(?<![\p{L}\p{N}])' . preg_quote( $word, '/' ) . $suffix . '(?![\p{L}\p{N}])/u';
+
+		return (bool) preg_match( $pattern, $text );
+	}
+
+	/**
+	 * نخستین کلمهٔ منفی که در عنوان محصول پیدا می‌شود (برای نمایش در پنل).
+	 *
+	 * @param string $title   عنوان محصول.
+	 * @param array  $settings تنظیمات (اختیاری؛ برای جلوگیری از خواندن مکرر آپشن).
+	 * @return string کلمهٔ منطبق، یا رشتهٔ خالی اگر هیچ کلمهٔ منفی نبود.
+	 */
+	public static function find_negative_word( $title, $settings = null ) {
+		if ( null === $settings ) {
+			$settings = self::get_settings();
+		}
+
+		$words = self::parse_list( isset( $settings['negative_keywords'] ) ? $settings['negative_keywords'] : '' );
+		if ( empty( $words ) ) {
+			return '';
+		}
+
+		$title = self::normalize_text( $title );
+		$mode  = isset( $settings['negative_mode'] ) ? $settings['negative_mode'] : 'contains';
+
+		foreach ( $words as $word ) {
+			$word = self::normalize_text( $word );
+			if ( '' === $word ) {
+				continue;
+			}
+			if ( self::text_has_word( $title, $word, $mode ) ) {
+				return $word;
+			}
+		}
+
+		return '';
+	}
+
+	/**
 	 * آیا محصول واجد شرایط پکیج ویژه است؟
 	 *
 	 * ترتیب اولویت:
 	 * ۱) غیرفعال بودن کلی قابلیت
 	 * ۲) لیست استثنا بر اساس SKU (همیشه برنده است)
-	 * ۳) حالت دستی روی محصول (اجباراً فعال / اجباراً غیرفعال)
-	 * ۴) دسته‌بندی واجد شرایط
-	 * ۵) کلمه کلیدی در عنوان
+	 * ۳) کلمات منفیِ عنوان — وتوی کامل: بر دسته‌بندی و «اجباراً فعال» هم مقدم است
+	 * ۴) حالت دستی روی محصول (اجباراً فعال / اجباراً غیرفعال)
+	 * ۵) دسته‌بندی واجد شرایط
+	 * ۶) کلمه کلیدی در عنوان
 	 *
-	 * @param int|WC_Product $product محصول یا شناسه آن (می‌تواند واریاسیون باشد).
+	 * @param int|WC_Product $product    محصول یا شناسه آن (می‌تواند واریاسیون باشد).
+	 * @param bool           $skip_veto  اگر true باشد، کلمات منفی نادیده گرفته می‌شوند.
+	 *                                   فقط برای گزارش «چه چیزی وتو شد» در پنل استفاده می‌شود.
 	 */
-	public static function is_eligible( $product ) {
+	public static function is_eligible( $product, $skip_veto = false ) {
 		if ( ! function_exists( 'WC' ) || ! WC() ) {
 			return false;
 		}
@@ -587,7 +756,12 @@ final class WC_Case_Special_Package {
 			}
 		}
 
-		// ۳) حالت دستی روی محصول.
+		// ۳) کلمات منفی — وتوی کامل روی عنوان (حتی بر «اجباراً فعال» مقدم است).
+		if ( ! $skip_veto && '' !== self::find_negative_word( $parent->get_name(), $settings ) ) {
+			return false;
+		}
+
+		// ۴) حالت دستی روی محصول.
 		$mode = (string) $parent->get_meta( self::PRODUCT_META, true );
 		if ( 'force_off' === $mode ) {
 			return false;
@@ -596,7 +770,7 @@ final class WC_Case_Special_Package {
 			return true;
 		}
 
-		// ۴) دسته‌بندی واجد شرایط.
+		// ۵) دسته‌بندی واجد شرایط.
 		$cat_ids = array_map( 'intval', (array) $settings['categories'] );
 		if ( ! empty( $cat_ids ) ) {
 			$product_cats = wp_get_post_terms( $parent->get_id(), 'product_cat', array( 'fields' => 'ids' ) );
@@ -605,7 +779,7 @@ final class WC_Case_Special_Package {
 			}
 		}
 
-		// ۵) کلمه کلیدی در عنوان.
+		// ۶) کلمه کلیدی در عنوان.
 		$keywords = self::parse_list( $settings['keywords'] );
 		if ( ! empty( $keywords ) ) {
 			$title = self::normalize_text( $parent->get_name() );
@@ -632,21 +806,26 @@ final class WC_Case_Special_Package {
 	 * نتیجه یک ساعت کش می‌شود.
 	 */
 	public static function get_stats() {
-		$cached = get_transient( 'wcsp_stats_v1' );
-		if ( is_array( $cached ) ) {
-			return $cached;
-		}
-
+		// ساختار پیش‌فرض (هم برای محاسبهٔ تازه، هم برای پرکردن کلیدهای جدید
+		// در کشِ نسخه‌های قبلی که «negatives/vetoed» را ندارد).
 		$stats = array(
 			'eligible'       => 0,
 			'total_products' => 0,
 			'exceptions'     => 0,
+			'negatives'      => 0,
+			'vetoed_total'   => 0,
+			'vetoed'         => array(),
 			'orders'         => 0,
 			'revenue'        => 0.0,
 			'today'          => 0,
 			'series'         => array(),
 			'recent'         => array(),
 		);
+
+		$cached = get_transient( 'wcsp_stats_v1' );
+		if ( is_array( $cached ) ) {
+			return array_merge( $stats, $cached );
+		}
 
 		for ( $i = 13; $i >= 0; $i-- ) {
 			$ts             = strtotime( "-{$i} days" );
@@ -658,10 +837,12 @@ final class WC_Case_Special_Package {
 		}
 
 		if ( function_exists( 'WC' ) && WC() ) {
-			$settings           = self::get_settings();
+			$settings            = self::get_settings();
 			$stats['exceptions'] = count( self::parse_list( $settings['sku_exceptions'] ) );
+			$stats['negatives']  = count( self::parse_list( $settings['negative_keywords'] ) );
 
-			// شمارش محصولات واجد شرایط.
+			// شمارش محصولات واجد شرایط + گزارش محصولاتی که کلمهٔ منفی وتو کرده است
+			// (بدون کوئری اضافه: همین حلقه، هم شمارش و هم پیش‌نمایش را می‌سازد).
 			$ids = get_posts(
 				array(
 					'post_type'   => 'product',
@@ -672,8 +853,24 @@ final class WC_Case_Special_Package {
 			);
 			foreach ( $ids as $pid ) {
 				$p = wc_get_product( $pid );
-				if ( $p && self::is_eligible( $p ) ) {
+				if ( ! $p ) {
+					continue;
+				}
+				if ( self::is_eligible( $p ) ) {
 					$stats['eligible']++;
+					continue;
+				}
+				// اگر بدون کلمهٔ منفی واجد شرایط می‌بود، یعنی «وتو» شده است.
+				if ( $stats['negatives'] > 0 && self::is_eligible( $p, true ) ) {
+					$stats['vetoed_total']++;
+					if ( count( $stats['vetoed'] ) < 10 ) {
+						$stats['vetoed'][] = array(
+							'id'    => $pid,
+							'title' => $p->get_name(),
+							'word'  => self::find_negative_word( $p->get_name(), $settings ),
+							'url'   => admin_url( 'post.php?post=' . (int) $pid . '&action=edit' ),
+						);
+					}
 				}
 			}
 			$stats['total_products'] = count( $ids );
@@ -737,7 +934,7 @@ final class WC_Case_Special_Package {
 			array(
 				'id'          => self::PRODUCT_META,
 				'label'       => 'پکیج ویژه قاب',
-				'description' => 'روی «خودکار» تشخیص بر اساس عنوان/دسته‌بندی انجام می‌شود.',
+				'description' => 'روی «خودکار» تشخیص بر اساس عنوان/دسته‌بندی انجام می‌شود. کلمات منفی همیشه مقدم‌اند.',
 				'options'     => array(
 					'auto'      => 'خودکار (پیش‌فرض)',
 					'force_on'  => 'اجباراً فعال باشد',
@@ -745,6 +942,30 @@ final class WC_Case_Special_Package {
 				),
 			)
 		);
+
+		// وضعیت کنونی: اگر کلمهٔ منفی عنوان را وتو کرده باشد، همان‌جا در ویرایش محصول دیده می‌شود.
+		global $post;
+		if ( $post instanceof WP_Post ) {
+			$word = self::find_negative_word( get_the_title( $post ) );
+			?>
+			<p class="form-field">
+				<label><?php echo esc_html( 'وضعیت کنونی' ); ?></label>
+				<span class="description">
+					<?php if ( '' !== $word ) : ?>
+						<?php
+						printf(
+							/* translators: %s: negative keyword */
+							esc_html__( 'کلمهٔ منفی «%s» این محصول را وتو کرده است؛ گزینهٔ پکیج روی صفحهٔ محصول نمایش داده نمی‌شود.', 'case-special-package' ),
+							esc_html( $word )
+						);
+						?>
+					<?php else : ?>
+						<?php esc_html_e( 'هیچ کلمهٔ منفی روی این عنوان اثر نگذاشته است.', 'case-special-package' ); ?>
+					<?php endif; ?>
+				</span>
+			</p>
+			<?php
+		}
 	}
 
 	public function save_product_field( $post_id ) {
