@@ -57,24 +57,10 @@ if ( ! class_exists( 'TCBVM_Core' ) ) {
 		 */
 		public static function default_settings() {
 			return array(
-				'batch_size'             => 5,
-				'target_attr_name'       => 'مدل گوشی',
-				'auto_clean_transients'  => 1,
-				'default_stock_status'   => 'instock',
-				'default_regular_price'  => '',
-				'enable_soft_delete'     => 1,
-				'hpos_enabled'           => 1,
-				// پیش‌فرض: فقط به‌روزرسانی رکوردهای موجود. هیچ محصول/متغیر/مدل/ویژگی جدیدی
-				// ساخته نمی‌شود و SKUها هرگز تغییر نمی‌کنند.
-				'update_only'            => 1,
-				// در عملیات «همگام‌سازی کامل»، ویژگی مدل از صفر بازسازی شود
-				// (حذف همهٔ متغیرها و ساخت مجدد دقیقاً از فهرست واردشده).
-				// پیش‌فرض خاموش = «همگام‌سازی تفاوتی»: مدل‌های موجود دست‌نخورده می‌مانند و
-				// فقط مدل‌های جدید ساخته و مدل‌های خارج از فهرست حذف می‌شوند.
-				'sync_rebuild'           => 0,
-				// پیش‌فرض خاموش: فقط یک متغیر به‌ازای هر مدل ساخته شود (بدون ضرب در ترکیب
-				// سایر ویژگی‌ها). روشن‌کردن آن، حالت ترکیبی قبلی را فعال می‌کند.
-				'sync_keep_other_attrs'  => 0,
+				'batch_size'            => 5,
+				'target_attr_name'      => 'مدل گوشی',
+				'backup_retention_days' => 90,
+				'combine_other_default' => 1,
 			);
 		}
 

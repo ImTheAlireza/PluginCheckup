@@ -1,6 +1,7 @@
 <?php
 /**
- * مدیریت درخواست‌های ناهمگام (AJAX): جستجوی زنده، پیش‌نمایش، پردازش دسته‌ای و بازگردانی.
+ * مدیریت درخواست‌های ناهمگام (AJAX): جستجوی محصولات، پیش‌نمایش، پردازش دسته‌ای،
+ * نوسازی کش و بازگردانی خودکار (Rollback).
  *
  * @package TisaCase_Bulk_Variation_Manager
  */
@@ -11,8 +12,24 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 
 	final class TCBVM_Ajax {
 
+		/**
+		 * وضعیت ارسال پاسخ JSON (برای محافظ خطای مهلک).
+		 *
+		 * @var bool
+		 */
+		private static $responded = false;
+
+		/**
+		 * بافر خروجی مستقل.
+		 *
+		 * @var bool
+		 */
+		private static $own_buffer = false;
+
 		public static function init() {
 			add_action( 'wp_ajax_tcbvm_search_products', array( __CLASS__, 'ajax_search_products' ) );
+			add_action( 'wp_ajax_tcbvm_search_single_products', array( __CLASS__, 'ajax_search_single_products' ) );
+			add_action( 'wp_ajax_tcbvm_get_attributes', array( __CLASS__, 'ajax_get_attributes' ) );
 			add_action( 'wp_ajax_tcbvm_preview', array( __CLASS__, 'ajax_preview' ) );
 			add_action( 'wp_ajax_tcbvm_start_run', array( __CLASS__, 'ajax_start_run' ) );
 			add_action( 'wp_ajax_tcbvm_execute_batch', array( __CLASS__, 'ajax_execute_batch' ) );
@@ -34,24 +51,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 		}
 
 		/**
-		 * آیا پاسخ JSON همین حالا ارسال شده است؟ (برای محافظ خطای مهلک)
-		 *
-		 * @var bool
-		 */
-		private static $responded = false;
-
-		/**
-		 * بافر خروجیِ خودمان (برای دور ریختن notice/warning قبل از پاسخ JSON).
-		 *
-		 * @var bool
-		 */
-		private static $own_buffer = false;
-
-		/**
-		 * آماده‌سازی محیط درخواست‌های سنگین (اجرای بسته‌ها و تهیه پشتیبان).
-		 *
-		 * بدون این‌ها، روی هاست‌های معمولی، درخواست در میانهٔ کار با خطای
-		 * «تایم‌اوت شبکه»/۵۰۰ قطع می‌شد و کاربر فقط «Network timeout» می‌دید.
+		 * آماده‌سازی حافظه و زمان اجرا جهت پردازش ایمن بسته‌ها.
 		 */
 		private static function prepare_runtime() {
 			if ( function_exists( 'wp_raise_memory_limit' ) ) {
@@ -65,8 +65,6 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 				ignore_user_abort( true );
 			}
 
-			// هر خروجی سرگردان (notice/warning افزونه‌های دیگر) JSON را خراب می‌کند؛
-			// بافر می‌گیریم تا در صورت نیاز دور ریخته شود.
 			if ( ! ob_get_level() ) {
 				ob_start();
 				self::$own_buffer = true;
@@ -75,9 +73,6 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 			register_shutdown_function( array( __CLASS__, 'shutdown_guard' ) );
 		}
 
-		/**
-		 * دور ریختن بافر خروجیِ خودمان قبل از ارسال JSON.
-		 */
 		private static function clean_output() {
 			if ( self::$own_buffer && ob_get_level() ) {
 				@ob_end_clean(); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
@@ -85,29 +80,17 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 			}
 		}
 
-		/**
-		 * ارسال پاسخ JSON و علامت‌گذاری آن (تا محافظ مهلک دوباره پاسخ ندهد).
-		 *
-		 * @param array $payload دادهٔ پاسخ.
-		 */
 		private static function send_error_json( array $payload ) {
 			self::clean_output();
 			self::$responded = true;
 			wp_send_json_error( $payload, 500 );
 		}
 
-		/**
-		 * محافظ خطای مهلک: اگر PHP در میانهٔ پردازش از کار افتاد (کمبود حافظه،
-		 * خطای کشنده، تایم‌اوت سرور)، به‌جای صفحهٔ سفید/۵۰۰، پیام واقعی به مرورگر
-		 * برگردانده می‌شود تا کاربر و توسعه‌دهنده بدانند دقیقاً چه شد.
-		 * همچنین اسنپ‌شات‌های در حافظه در همین لحظه ذخیره می‌شوند.
-		 */
 		public static function shutdown_guard() {
-			$error      = error_get_last();
+			$error       = error_get_last();
 			$fatal_types = array( E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR );
 			$is_fatal    = ( $error && in_array( $error['type'], $fatal_types, true ) );
 
-			// هر چه از اسنپ‌شات‌ها/متغیرها در حافظه مانده، قبل از هر چیز ذخیره شود.
 			if ( class_exists( 'TCBVM_Backup' ) ) {
 				TCBVM_Backup::flush();
 			}
@@ -118,7 +101,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 
 			$can_see_details = function_exists( 'current_user_can' ) && current_user_can( 'manage_woocommerce' );
 			$message         = $can_see_details
-				? sprintf( 'خطای مهلک PHP در میانهٔ اجرا: %s — %s خط %d', $error['message'], basename( (string) $error['file'] ), (int) $error['line'] )
+				? sprintf( 'خطای مهلک PHP در میانهٔ اجرا: %s در %s خط %d', $error['message'], basename( (string) $error['file'] ), (int) $error['line'] )
 				: 'سرور در میانهٔ اجرا با خطای مهلک متوقف شد.';
 
 			self::clean_output();
@@ -137,12 +120,12 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 				status_header( 500 );
 				header( 'Content-Type: application/json; charset=' . get_option( 'blog_charset' ) );
 			}
-			echo $payload; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON ساخته‌شده.
+			echo $payload; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			self::$responded = true;
 		}
 
 		/**
-		 * جستجوی زنده و فیلتر کردن محصولات.
+		 * جستجوی گروهی محصولات بر اساس فیلترها (دسته‌بندی، شناسه‌ها، کلمات کلیدی).
 		 */
 		public static function ajax_search_products() {
 			self::check_auth();
@@ -151,9 +134,14 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 				? wp_unslash( $_POST['filters'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 				: array();
 
+			// اطمینان از پذیرش انواع محصولات (هم متغیر و هم ساده برای تبدیل)
+			if ( empty( $filters['product_types'] ) ) {
+				$filters['product_types'] = array( 'variable', 'simple' );
+			}
+
 			$ids     = TCBVM_DB::query_product_ids( $filters );
 			$total   = count( $ids );
-			$summary = TCBVM_DB::get_products_summary( $ids, 50, 0 );
+			$summary = TCBVM_DB::get_products_summary( $ids, 100, 0 );
 
 			wp_send_json_success( array(
 				'total'   => $total,
@@ -164,48 +152,146 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 		}
 
 		/**
-		 * پیش‌نمایش تغییرات بدون ذخیره در پایگاه داده.
+		 * جستجوی زنده برای انتخاب تکی محصول (Autocomplete برای افزودن مستقیم).
+		 */
+		public static function ajax_search_single_products() {
+			self::check_auth();
+
+			$term = isset( $_GET['term'] ) ? sanitize_text_field( wp_unslash( $_GET['term'] ) ) : '';
+			if ( '' === $term ) {
+				wp_send_json_success( array( 'results' => array() ) );
+			}
+
+			$args = array(
+				'post_type'      => 'product',
+				'post_status'    => array( 'publish', 'draft' ),
+				'posts_per_page' => 20,
+				's'              => $term,
+				'fields'         => 'ids',
+			);
+
+			// اگر عدد بود، مستقیماً با شناسه چک شود
+			if ( is_numeric( $term ) ) {
+				$direct_id = absint( $term );
+				if ( 'product' === get_post_type( $direct_id ) ) {
+					$args = array(
+						'post_type' => 'product',
+						'post__in'  => array( $direct_id ),
+						'fields'    => 'ids',
+					);
+				}
+			}
+
+			$query = new WP_Query( $args );
+			$ids   = array_map( 'absint', (array) $query->posts );
+
+			$summary = TCBVM_DB::get_products_summary( $ids, 20, 0 );
+			$results = array();
+
+			foreach ( $summary['items'] as $item ) {
+				$results[] = array(
+					'id'              => $item['id'],
+					'text'            => sprintf( '#%d — %s (%s)', $item['id'], $item['name'], $item['sku'] ),
+					'name'            => $item['name'],
+					'sku'             => $item['sku'],
+					'type'            => $item['type'],
+					'image_url'       => $item['image_url'],
+					'variation_count' => $item['variation_count'],
+					'cats'            => $item['cats'],
+				);
+			}
+
+			wp_send_json_success( array( 'results' => $results ) );
+		}
+
+		/**
+		 * استخراج ویژگی‌های موجود فروشگاه برای Autocomplete نام ویژگی.
+		 */
+		public static function ajax_get_attributes() {
+			self::check_auth();
+
+			$attrs = array();
+			if ( function_exists( 'wc_get_attribute_taxonomies' ) ) {
+				foreach ( (array) wc_get_attribute_taxonomies() as $attribute ) {
+					if ( ! empty( $attribute->attribute_name ) ) {
+						$label = ! empty( $attribute->attribute_label ) ? $attribute->attribute_label : $attribute->attribute_name;
+						$attrs[] = array(
+							'name'  => wc_attribute_taxonomy_name( $attribute->attribute_name ),
+							'label' => $label,
+						);
+					}
+				}
+			}
+
+			wp_send_json_success( array( 'attributes' => $attrs ) );
+		}
+
+		/**
+		 * پیش‌نمایش تولید متغیرها قبل از اجرا.
 		 */
 		public static function ajax_preview() {
 			self::check_auth();
 
-			$product_ids = isset( $_POST['product_ids'] ) ? array_map( 'absint', (array) $_POST['product_ids'] ) : array();
-			$operation   = isset( $_POST['operation'] ) ? sanitize_key( $_POST['operation'] ) : '';
-			$params      = isset( $_POST['params'] ) && is_array( $_POST['params'] ) ? wp_unslash( $_POST['params'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$product_ids   = isset( $_POST['product_ids'] ) ? array_map( 'absint', (array) $_POST['product_ids'] ) : array();
+			$attr_name     = isset( $_POST['attr_name'] ) ? sanitize_text_field( wp_unslash( $_POST['attr_name'] ) ) : 'مدل گوشی';
+			$new_values    = isset( $_POST['new_values'] ) ? (array) $_POST['new_values'] : array();
+			$price         = isset( $_POST['price'] ) ? sanitize_text_field( wp_unslash( $_POST['price'] ) ) : '';
+			$sale_price    = isset( $_POST['sale_price'] ) ? sanitize_text_field( wp_unslash( $_POST['sale_price'] ) ) : '';
+			$combine_other = ! empty( $_POST['combine_other'] );
 
 			if ( empty( $product_ids ) ) {
-				wp_send_json_error( array( 'message' => 'هیچ محصولی انتخاب نشده است.' ) );
+				wp_send_json_error( array( 'message' => 'لطفاً ابتدا حداقل یک محصول را انتخاب کنید.' ) );
 			}
 
-			if ( empty( $operation ) ) {
-				wp_send_json_error( array( 'message' => 'عملیات مشخص نشده است.' ) );
+			if ( empty( $new_values ) ) {
+				wp_send_json_error( array( 'message' => 'لطفاً حداقل یک متغیر جدید تعریف کنید.' ) );
 			}
 
-			$preview_data = TCBVM_OPS::preview( $product_ids, $operation, $params );
-			wp_send_json_success( $preview_data );
+			if ( '' === trim( $price ) ) {
+				wp_send_json_error( array( 'message' => 'وارد کردن قیمت متغیرها الزامی است.' ) );
+			}
+
+			$preview = TCBVM_OPS::preview( $product_ids, $attr_name, $new_values, $price, $sale_price, $combine_other );
+			wp_send_json_success( $preview );
 		}
 
 		/**
-		 * شروع نشست جدید برای پردازش پله‌ای.
+		 * ایجاد نشست جدید و تقسیم‌بندی محصولات به بسته‌های اجرایی.
 		 */
 		public static function ajax_start_run() {
 			self::check_auth();
-			self::prepare_runtime(); // ساخت نشست + پشتیبان اولیه سنگین است.
+			self::prepare_runtime();
 
-			$product_ids = isset( $_POST['product_ids'] ) ? array_map( 'absint', (array) $_POST['product_ids'] ) : array();
-			$operation   = isset( $_POST['operation'] ) ? sanitize_key( $_POST['operation'] ) : '';
-			$params      = isset( $_POST['params'] ) && is_array( $_POST['params'] ) ? wp_unslash( $_POST['params'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$product_ids   = isset( $_POST['product_ids'] ) ? array_map( 'absint', (array) $_POST['product_ids'] ) : array();
+			$attr_name     = isset( $_POST['attr_name'] ) ? sanitize_text_field( wp_unslash( $_POST['attr_name'] ) ) : 'مدل گوشی';
+			$new_values    = isset( $_POST['new_values'] ) ? (array) $_POST['new_values'] : array();
+			$price         = isset( $_POST['price'] ) ? sanitize_text_field( wp_unslash( $_POST['price'] ) ) : '';
+			$sale_price    = isset( $_POST['sale_price'] ) ? sanitize_text_field( wp_unslash( $_POST['sale_price'] ) ) : '';
+			$stock_status  = isset( $_POST['stock_status'] ) ? sanitize_key( $_POST['stock_status'] ) : 'instock';
+			$combine_other = ! empty( $_POST['combine_other'] );
 
 			if ( empty( $product_ids ) ) {
-				wp_send_json_error( array( 'message' => 'هیچ محصولی برای اجرا انتخاب نشده است.' ) );
+				wp_send_json_error( array( 'message' => 'محصولی برای اجرا انتخاب نشده است.' ) );
 			}
 
-			$op_labels = TCBVM_OPS::supported_ops();
-			$op_title  = isset( $op_labels[ $operation ] ) ? $op_labels[ $operation ] : $operation;
+			$clean_values = TCBVM_OPS::sanitize_model_list( $new_values );
+			if ( empty( $clean_values ) ) {
+				wp_send_json_error( array( 'message' => 'لیست متغیرهای جدید خالی است.' ) );
+			}
 
-			$run_id = TCBVM_Backup::create_run_session( $op_title, $product_ids, array(
-				'operation' => $operation,
-				'params'    => $params,
+			if ( '' === trim( $price ) ) {
+				wp_send_json_error( array( 'message' => 'قیمت متغیرها مشخص نشده است.' ) );
+			}
+
+			$run_title = sprintf( 'تولید انبوه متغیرهای ویژگی «%s»', $attr_name );
+
+			$run_id = TCBVM_Backup::create_run_session( $run_title, $product_ids, array(
+				'attr_name'     => $attr_name,
+				'new_values'    => $clean_values,
+				'price'         => $price,
+				'sale_price'    => $sale_price,
+				'stock_status'  => $stock_status,
+				'combine_other' => $combine_other,
 			) );
 
 			$settings   = TCBVM_Core::get_settings();
@@ -222,39 +308,42 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 		}
 
 		/**
-		 * اجرای یک بسته (Batch).
+		 * اجرای پردازش یک بسته (Batch).
 		 */
 		public static function ajax_execute_batch() {
 			self::check_auth();
 			self::prepare_runtime();
 
-			$run_id    = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
-			$batch_ids = isset( $_POST['batch_ids'] ) ? array_map( 'absint', (array) $_POST['batch_ids'] ) : array();
-			$operation = isset( $_POST['operation'] ) ? sanitize_key( $_POST['operation'] ) : '';
-			$params    = isset( $_POST['params'] ) && is_array( $_POST['params'] ) ? wp_unslash( $_POST['params'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			$run_id        = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
+			$batch_ids     = isset( $_POST['batch_ids'] ) ? array_map( 'absint', (array) $_POST['batch_ids'] ) : array();
+			$attr_name     = isset( $_POST['attr_name'] ) ? sanitize_text_field( wp_unslash( $_POST['attr_name'] ) ) : 'مدل گوشی';
+			$new_values    = isset( $_POST['new_values'] ) ? (array) $_POST['new_values'] : array();
+			$price         = isset( $_POST['price'] ) ? sanitize_text_field( wp_unslash( $_POST['price'] ) ) : '';
+			$sale_price    = isset( $_POST['sale_price'] ) ? sanitize_text_field( wp_unslash( $_POST['sale_price'] ) ) : '';
+			$stock_status  = isset( $_POST['stock_status'] ) ? sanitize_key( $_POST['stock_status'] ) : 'instock';
+			$combine_other = ! empty( $_POST['combine_other'] );
 
-			if ( empty( $run_id ) || empty( $batch_ids ) || empty( $operation ) ) {
-				wp_send_json_error( array( 'message' => 'پارامترهای ارسالی دسته ناقص است.' ) );
+			if ( empty( $run_id ) || empty( $batch_ids ) ) {
+				wp_send_json_error( array( 'message' => 'اطلاعات بسته یا شناسه اجرا ناقص است.' ) );
 			}
 
 			try {
-				$batch_result = TCBVM_OPS::execute_batch( $run_id, $batch_ids, $operation, $params );
+				$batch_result = TCBVM_OPS::execute_batch(
+					$run_id,
+					$batch_ids,
+					$attr_name,
+					$new_values,
+					$price,
+					$sale_price,
+					$stock_status,
+					$combine_other
+				);
 			} catch ( \Throwable $e ) {
 				TCBVM_Backup::flush();
-				self::send_error_json(
-					array(
-						'message' => 'خطا در اجرای بسته: ' . $e->getMessage(),
-						'fatal'   => true,
-					)
-				);
-			} catch ( \Exception $e ) { // سازگاری با PHP قدیمی‌تر.
-				TCBVM_Backup::flush();
-				self::send_error_json(
-					array(
-						'message' => 'خطا در اجرای بسته: ' . $e->getMessage(),
-						'fatal'   => true,
-					)
-				);
+				self::send_error_json( array(
+					'message' => 'خطا در پردازش بسته: ' . $e->getMessage(),
+					'fatal'   => true,
+				) );
 			}
 
 			self::clean_output();
@@ -263,7 +352,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 		}
 
 		/**
-		 * بستن و ثبت وضعیت پایان نشست.
+		 * پایان موفق یا اتمام نشست اجرایی.
 		 */
 		public static function ajax_finish_run() {
 			self::check_auth();
@@ -272,20 +361,26 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 			$status = isset( $_POST['status'] ) ? sanitize_key( $_POST['status'] ) : 'completed';
 
 			if ( empty( $run_id ) ) {
-				wp_send_json_error( array( 'message' => 'شناسه اجرا مشخص نشده است.' ) );
+				wp_send_json_error( array( 'message' => 'شناسه اجرا ارسال نشده است.' ) );
 			}
 
 			TCBVM_Backup::finish_run_session( $run_id, $status );
+
+			// پاکسازی ترنزینت‌های سراسری قیمت ووکامرس
+			wc_delete_product_transients();
+			delete_transient( 'wc_var_prices' );
+
 			wp_send_json_success( array(
-				'message' => 'عملیات با موفقیت به پایان رسید و در تاریخچه ثبت شد.',
+				'message' => 'عملیات با موفقیت پایان یافت، متغیرها بازسازی شدند و قیمت‌ها ثبت گردید.',
 			) );
 		}
 
 		/**
-		 * بازگردانی (Rollback) یک اجرا.
+		 * بازگردانی خودکار (Rollback) به وضعیت قبل از اجرا.
 		 */
 		public static function ajax_rollback() {
 			self::check_auth();
+			self::prepare_runtime();
 
 			$run_id = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
 			if ( empty( $run_id ) ) {
@@ -293,7 +388,9 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 			}
 
 			$result = TCBVM_Backup::rollback_run( $run_id );
-			if ( $result['success'] ) {
+			if ( ! empty( $result['success'] ) ) {
+				wc_delete_product_transients();
+				delete_transient( 'wc_var_prices' );
 				wp_send_json_success( $result );
 			} else {
 				wp_send_json_error( $result );
@@ -301,7 +398,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 		}
 
 		/**
-		 * ذخیره الگوی سفارشی جدید.
+		 * ذخیره الگوی سفارشی.
 		 */
 		public static function ajax_save_preset() {
 			self::check_auth();
@@ -317,7 +414,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 				$id = 'custom_' . time();
 			}
 			if ( empty( $name ) || empty( $models ) ) {
-				wp_send_json_error( array( 'message' => 'نام الگو و حداقل یک مدل الزامی است.' ) );
+				wp_send_json_error( array( 'message' => 'نام الگو و حداقل یک مقدار الزامی است.' ) );
 			}
 
 			$saved = TCBVM_Core::save_custom_preset( $id, $name, $description, $models );
@@ -349,14 +446,14 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 
 			$deleted = TCBVM_Core::delete_custom_preset( $id );
 			if ( $deleted ) {
-				wp_send_json_success( array( 'message' => 'الگو حذف شد.' ) );
+				wp_send_json_success( array( 'message' => 'الگو با موفقیت حذف شد.' ) );
 			} else {
 				wp_send_json_error( array( 'message' => 'الگوهای پیش‌فرض سیستم قابل حذف نیستند یا الگو یافت نشد.' ) );
 			}
 		}
 
 		/**
-		 * پاکسازی کش و ترنزینت‌های ووکامرس.
+		 * پاکسازی کش قیمت‌ها و ترنزینت‌های ووکامرس.
 		 */
 		public static function ajax_flush_cache() {
 			self::check_auth();
@@ -365,7 +462,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 			delete_transient( 'wc_var_prices' );
 
 			wp_send_json_success( array(
-				'message' => 'کش قیمت‌ها و ترنزینت‌های ووکامرس با موفقیت نوسازی شد.',
+				'message' => 'کش قیمت‌ها و ترنزینت‌های محصولات با موفقیت نوسازی شد.',
 			) );
 		}
 	}

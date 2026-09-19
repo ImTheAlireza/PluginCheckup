@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       TisaCase — مدیریت گروهی متغیرها و مدل‌ها
  * Plugin URI:        https://tisacase.com
- * Description:       افزونه پیشرفته مدیریت، افزودن، حذف، تغییر نام و همگام‌سازی انبوه متغیرها و مدل‌های گوشی برای قاب‌های اسپیس، چاپی و محصولات متغیر ووکامرس.
- * Version:           1.2.0
+ * Description:       افزونه پیشرفته بازسازی، تولید گروهی متغیرها و قیمت‌گذاری انبوه محصولات متغیر ووکامرس.
+ * Version:           2.0.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * WC requires at least: 5.0
@@ -13,14 +13,14 @@
  * Domain Path:       /languages
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * TisaCase Hub:      title="مدیریت متغیرها و مدل‌ها"; icon=layers; group=products; page=admin.php?page=tisacase-bulk-variation-manager; screen=woocommerce_page_tisacase-bulk-variation-manager; parent=woocommerce; slug=tisacase-bulk-variation-manager; desc="مدیریت، افزودن، تغییر نام، حذف و همگام‌سازی گروهی ویژگی‌ها و متغیرهای قاب و محصولات."
+ * TisaCase Hub:      title="مدیریت متغیرها و مدل‌ها"; icon=layers; group=products; page=admin.php?page=tisacase-bulk-variation-manager; screen=woocommerce_page_tisacase-bulk-variation-manager; parent=woocommerce; slug=tisacase-bulk-variation-manager; desc="تغییر، تولید و بازسازی گروهی متغیرها، ضرب ترکیب‌ها و قیمت‌گذاری یکپارچه."
  *
  * @package TisaCase_Bulk_Variation_Manager
  */
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TCBVM_VERSION', '1.2.0' );
+define( 'TCBVM_VERSION', '2.0.0' );
 define( 'TCBVM_FILE', __FILE__ );
 define( 'TCBVM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TCBVM_URL', plugin_dir_url( __FILE__ ) );
