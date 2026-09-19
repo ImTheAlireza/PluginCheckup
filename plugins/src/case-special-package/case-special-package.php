@@ -2,8 +2,8 @@
 /**
  * Plugin Name: پکیج ویژه قاب موبایل
  * Plugin URI:  https://example.com/wc-case-special-package
- * Description: افزودن گزینه «پکیج ویژه» با قیمت ثابت به محصولات قاب موبایل (تشخیص از روی عنوان/دسته‌بندی، با لیست استثنا بر اساس SKU). قیمت به ازای هر عدد محاسبه و در فاکتور، ایمیل و پیشخوان نمایش داده می‌شود.
- * Version:     1.4.2
+ * Description: افزودن گزینه «پکیج ویژه» با قیمت ثابت به محصولات قاب موبایل (تشخیص از روی عنوان/دسته‌بندی، با لیست استثنا بر اساس SKU و کلمات منفیِ وتوکننده). قیمت به ازای هر عدد محاسبه و در فاکتور، ایمیل و پیشخوان نمایش داده می‌شود.
+ * Version:     1.5.1
  * Author:      علیرضا شعبان زاده
  * Text Domain: case-special-package
  * WC requires at least: 5.0
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'WCSP_MAIN_FILE', __FILE__ );
-define( 'WCSP_VERSION', '1.5.0' );
+define( 'WCSP_VERSION', '1.5.1' );
 
 /**
  * کلاس اصلی پلاگین.
@@ -45,7 +45,8 @@ final class WC_Case_Special_Package {
 		add_action( 'admin_menu', array( $this, 'add_settings_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 		add_action( 'admin_post_wcsp_refresh_stats', array( __CLASS__, 'handle_refresh_stats' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
+		// اولویت ۲۰: بعد از ووکامرس تا هندل‌های select2/enhanced-select ثبت شده باشند.
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ), 20 );
 
 		// فیلد دستی روی صفحه ویرایش محصول.
 		add_action( 'woocommerce_product_options_general_product_data', array( $this, 'product_field' ) );
@@ -170,16 +171,64 @@ final class WC_Case_Special_Package {
 		return $clean;
 	}
 
+	/**
+	 * بارگذاری select2 به روش استاندارد ووکامرس.
+	 *
+	 * نکتهٔ مهم (رفع باگ ۱.۵.۱): در ووکامرس هندل «select2» فقط یک **اسکریپت** است
+	 * (legacy alias → `wc-select2`) و هیچ استایل هم‌نامی وجود ندارد؛ CSS سلکت۲ داخل
+	 * `woocommerce_admin_styles` (فایل admin.css) گنجانده شده است. بارگذاری قبلی
+	 * (`wp_enqueue_style('select2')`) عملاً هیچ استایلی لود نمی‌کرد و در نتیجه منوی
+	 * کشویی دسته‌بندی‌ها بدون CSS رندر می‌شد: نه باز می‌شد و نه آیتمی دیده می‌شد.
+	 *
+	 * @return array آرایهٔ هندل‌های استایل که باید وابستگی استایل افزونه شوند.
+	 */
+	private static function enqueue_enhanced_select() {
+		$style_deps = array();
+
+		if ( ! function_exists( 'WC' ) || ! WC() ) {
+			return $style_deps;
+		}
+
+		if ( wp_script_is( 'wc-enhanced-select', 'registered' ) ) {
+			// مسیر استاندارد: اسکریپت enhanced select ووکامرس + admin.css (شامل CSS سلکت۲).
+			wp_enqueue_style( 'woocommerce_admin_styles' );
+			wp_enqueue_script( 'wc-enhanced-select' );
+			$style_deps[] = 'woocommerce_admin_styles';
+		} elseif ( wp_script_is( 'select2', 'registered' ) ) {
+			// نسخه‌های قدیمی/جایگزین: فقط اسکریپت select2 موجود است.
+			wp_enqueue_script( 'select2' );
+		} else {
+			return $style_deps;
+		}
+
+		// کمربند ایمنی: اگر جایی استایل سلکت۲ را جدا ثبت کرده باشد، همان را می‌زنیم و
+		// اگر نبود، فایل خود ووکامرس را مستقیم صف می‌کنیم تا با حذف/جابه‌جایی
+		// `woocommerce_admin_styles` (بسیاری از افزونه‌های بهینه‌ساز این کار را می‌کنند)
+		// منوی دسته‌بندی‌ها بی‌استایل و عملاً غیرقابل‌استفاده نشود.
+		if ( wp_style_is( 'select2', 'registered' ) ) {
+			wp_enqueue_style( 'select2' );
+			$style_deps[] = 'select2';
+		} else {
+			$rel = '/assets/css/select2.css';
+			if ( file_exists( WC()->plugin_path() . $rel ) ) {
+				wp_enqueue_style( 'wcsp-select2', WC()->plugin_url() . $rel, array(), '4.0.3' );
+				$style_deps[] = 'wcsp-select2';
+			}
+		}
+
+		return $style_deps;
+	}
+
 	public function enqueue_admin_assets( $hook ) {
 		if ( false === strpos( $hook, 'wcsp-settings' ) ) {
 			return;
 		}
 		// قلم از لایهٔ طراحی مشترک (هاب) می‌آید؛ بارگیری از CDN خارجی حذف شد (F5).
-		wp_enqueue_style( 'select2' );
-		wp_enqueue_script( 'select2' );
-		$deps = wp_style_is( 'tisacase-ui', 'registered' ) ? array( 'tisacase-ui', 'select2' ) : array( 'select2' );
+		$deps = wp_style_is( 'tisacase-ui', 'registered' ) ? array( 'tisacase-ui' ) : array();
+		$deps = array_merge( $deps, self::enqueue_enhanced_select() );
+
 		wp_enqueue_style( 'wcsp-admin', plugins_url( 'assets/admin.css', WCSP_MAIN_FILE ), $deps, WCSP_VERSION );
-		wp_enqueue_script( 'wcsp-admin', plugins_url( 'assets/admin.js', WCSP_MAIN_FILE ), array(), WCSP_VERSION, true );
+		wp_enqueue_script( 'wcsp-admin', plugins_url( 'assets/admin.js', WCSP_MAIN_FILE ), array( 'jquery' ), WCSP_VERSION, true );
 	}
 
 	public function render_settings_page() {
@@ -429,12 +478,15 @@ final class WC_Case_Special_Package {
 							</div>
 							<div class="wcsp-field">
 								<label class="wcsp-label" for="wcsp_categories">دسته‌بندی‌های واجد شرایط <span class="wcsp-opt">اختیاری</span></label>
-								<select id="wcsp_categories" class="wcsp-select2" multiple="multiple" name="<?php echo esc_attr( $opt ); ?>[categories][]" data-placeholder="دسته‌ها…">
+								<select id="wcsp_categories" class="wcsp-select2 wc-enhanced-select" multiple="multiple" name="<?php echo esc_attr( $opt ); ?>[categories][]" data-placeholder="دسته‌ها…">
 									<?php foreach ( $terms as $term ) : ?>
 										<option value="<?php echo esc_attr( $term->term_id ); ?>" <?php selected( in_array( (int) $term->term_id, array_map( 'intval', (array) $s['categories'] ), true ) ); ?>><?php echo esc_html( $term->name ); ?></option>
 									<?php endforeach; ?>
 								</select>
 								<p class="wcsp-hint">محصولِ این دسته‌ها حتی بدون کلمه کلیدی در عنوان واجد شرایط می‌شود.</p>
+								<?php if ( empty( $terms ) ) : ?>
+									<div class="wcsp-flashbar wcsp-flashbar--warn" role="status">هیچ دستهٔ محصولی در فروشگاه ساخته نشده است؛ برای استفاده از این فیلد، اول در «محصولات ← دسته‌ها» دسته بساز.</div>
+								<?php endif; ?>
 							</div>
 							<p class="wcsp-hint">کنترل دستی: در ویرایش هر محصول، بخش «اطلاعات عمومی»، فیلد «پکیج ویژه قاب» (خودکار / اجباراً فعال / اجباراً غیرفعال). برای محصولات متغیر، عنوان والد ملاک است.</p>
 

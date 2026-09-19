@@ -10,7 +10,33 @@
 	ready(function () {
 		var tabs = document.querySelectorAll(".wcsp-tab[data-tab]");
 		var panels = document.querySelectorAll(".wcsp-panel[data-panel]");
-		if (!tabs.length) { return; }
+		if (tabs.length) {
+			initTabs(tabs, panels);
+		}
+		initCategorySelect();
+	});
+
+	/**
+	 * انتخاب دسته‌بندی‌ها: مسیر استاندارد ووکامرس.
+	 * رویداد wc-enhanced-select-init همان سلکت۲ ووکامرس (selectWoo) را با ظاهر، RTL و
+	 * جستجوی درست روی هر «select.wc-enhanced-select» اعمال می‌کند؛ اگر آن اسکریپت
+	 * بارگیری نشده باشد، خودمان select2 را می‌زنیم تا فیلد بی‌استایل نماند.
+	 */
+	function initCategorySelect() {
+		if (!window.jQuery) { return; }
+		var $ = window.jQuery;
+		var $select = $(".wcsp-select2");
+		if (!$select.length) { return; }
+
+		$(document.body).trigger("wc-enhanced-select-init");
+
+		if ($select.hasClass("enhanced")) { return; } // ووکامرس خودش ساخته است.
+		if ($.fn.select2) {
+			$select.select2({ dir: "rtl", width: "100%" });
+		}
+	}
+
+	function initTabs(tabs, panels) {
 
 		function show(id) {
 			tabs.forEach(function (t) {
@@ -41,10 +67,5 @@
 			try { initial = localStorage.getItem("wcsp_tab") || ""; } catch (e) { initial = ""; }
 		}
 		show(initial && document.querySelector('.wcsp-tab[data-tab="' + initial + '"]') ? initial : "dash");
-
-		// مقداردهی select2 در صورت وجود.
-		if (window.jQuery && jQuery.fn.select2) {
-			jQuery(".wcsp-select2").select2({ dir: "rtl", width: "100%" });
-		}
-	});
+	}
 })();

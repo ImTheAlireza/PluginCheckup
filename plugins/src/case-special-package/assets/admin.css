@@ -86,6 +86,13 @@ body.woocommerce_page_wcsp-settings #wpcontent { background: var(--tisa-bg, #F4F
 	color: var(--tisa-success, #1A7F37);
 	font-size: var(--tisa-fs-control, 13px); font-weight: 600;
 }
+.wcsp-flashbar--warn {
+	margin-top: var(--tisa-sp-2, 8px);
+	border-color: var(--tisa-warning, #8A6116);
+	background: var(--tisa-warning-soft, #FCF3D7);
+	color: var(--tisa-warning, #8A6116);
+	font-weight: 500;
+}
 
 /* ---------- پنل‌ها ---------- */
 .wcsp-panel { display: none; }

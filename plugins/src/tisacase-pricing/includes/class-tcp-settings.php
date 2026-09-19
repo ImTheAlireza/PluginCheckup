@@ -49,7 +49,8 @@ if ( ! class_exists( 'TCP_Settings' ) ) {
 
 		private function __construct() {
 			add_action( 'admin_menu', array( 'TCP_Admin', 'menus' ) );
-			add_action( 'admin_enqueue_scripts', array( 'TCP_Admin', 'assets' ) );
+			// اولویت ۲۰: بعد از ووکامرس تا هندل‌های select2/enhanced-select ثبت شده باشند.
+			add_action( 'admin_enqueue_scripts', array( 'TCP_Admin', 'assets' ), 20 );
 			add_action( 'admin_notices', array( 'TCP_Admin', 'notices' ) );
 			add_filter( 'plugin_action_links_' . plugin_basename( TCP_FILE ), array( 'TCP_Admin', 'action_links' ) );
 

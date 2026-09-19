@@ -12,6 +12,16 @@ $tcp_modes  = TCP_Rules::modes();
 $tcp_ending = TCP_Round::describe();
 $tcp_jitter = TCP_Round::jitter();
 
+// اگر فروشگاه هیچ دسته‌ای ندارد، جستجوی دسته‌بندی طبعاً نتیجه‌ای نمی‌دهد؛ علتش را بگو.
+$tcp_has_cats = (bool) get_terms(
+	array(
+		'taxonomy'   => 'product_cat',
+		'hide_empty' => false,
+		'number'     => 1,
+		'fields'     => 'ids',
+	)
+);
+
 /** سلکت حالت رند (مشترک سراسری/ردیف). */
 $tcp_mode_select = static function ( $name, $value, $class = 'tisa-input' ) use ( $tcp_modes ) {
 	?>
@@ -157,6 +167,9 @@ $tcp_table_head = static function ( $first ) {
 	<section class="tcp-card">
 		<div class="tcp-card-head"><span class="tcp-dot"></span><div><h2>دسته‌بندی‌ها</h2><p>قانون دسته روی خود دسته و همهٔ زیردسته‌هایش اعمال می‌شود. «استثنا» = این دسته از همهٔ قوانین خارج شود.</p></div></div>
 		<div class="tcp-card-body">
+			<?php if ( ! $tcp_has_cats ) : ?>
+				<div class="tcp-alert tcp-alert--warn">هیچ دستهٔ محصولی در فروشگاه ساخته نشده است؛ جستجوی بالا تا ساخت دسته چیزی برای نشان‌دادن ندارد.</div>
+			<?php endif; ?>
 			<div class="tcp-search-box">
 				<input type="search" class="tisa-input" id="tcp-category-search" placeholder="حداقل ۲ حرف از نام دسته‌بندی…" autocomplete="off">
 				<div id="tcp-category-results" class="tcp-search-results"></div>
