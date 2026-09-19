@@ -368,10 +368,11 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 
 									<div class="tcbvm-field" style="margin-top: 18px;">
 										<label class="tisa-switch tcbvm-toggle">
-											<input type="checkbox" name="tcbvm_settings[auto_sku]" value="1" <?php checked( ! empty( $settings['auto_sku'] ) ); ?>>
+											<input type="checkbox" name="tcbvm_settings[update_only]" value="1" <?php checked( ! empty( $settings['update_only'] ) ); ?>>
 											<span class="tisa-switch__track" aria-hidden="true"></span>
-											<span>تولید خودکار SKU متغیرها <span class="tcbvm-muted">— فرمت: {SKU والد}-{نام مدل انگلیسی یا اسلگ}</span></span>
+											<span>فقط به‌روزرسانی <span class="tcbvm-muted">— هیچ مدل، متغیر، محصول یا ویژگی جدیدی ساخته نمی‌شود؛ فقط رکوردهای موجود به‌روزرسانی می‌شوند (پیشنهاد: روشن)</span></span>
 										</label>
+										<p class="tcbvm-muted" style="margin-top: 8px;">این افزونه هیچ‌وقت SKU نمی‌سازد و SKUهای موجود را تغییر نمی‌دهد؛ SKUها متعلق به خود فروشگاه است. برای ساخت مدل‌های جدید، این گزینه را خاموش کن.</p>
 									</div>
 
 									<div style="margin-top: 24px;">

@@ -139,21 +139,147 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				return self::$variation_map[ $pid ];
 			}
 
-			$map = array();
+			$map   = array();
+			$pairs = array(); // [ مقدار ویژگی، نام تاکسونومی ]
+			$taxes = array();
+
 			foreach ( $product->get_children() as $vid ) {
 				$var = wc_get_product( $vid );
 				if ( ! $var ) {
 					continue;
 				}
-				foreach ( (array) $var->get_attributes() as $slug ) {
-					if ( is_string( $slug ) && '' !== $slug ) {
-						$map[ $slug ] = $vid;
+				foreach ( (array) $var->get_attributes() as $key => $value ) {
+					if ( ! is_string( $value ) || '' === $value ) {
+						continue;
 					}
+
+					$map[ $value ]                    = $vid; // مقدار ذخیره‌شده (معمولاً اسلاگ مدل).
+					$map[ self::model_key( $value ) ] = $vid;
+
+					$tax = ( 0 === strpos( (string) $key, 'pa_' ) ) ? (string) $key : '';
+					if ( '' !== $tax ) {
+						$pairs[]        = array( $value, $tax );
+						$taxes[ $tax ]  = $tax;
+					}
+				}
+			}
+
+			// یک واکشی ترم به‌ازای هر تاکسونومی (نه به‌ازای هر مقدار) و افزودن کلیدهای
+			// نام/اسلاگ، تا مدل‌های موجود با املای متفاوت دوباره ساخته نشوند.
+			$lookup = array();
+			foreach ( $taxes as $tax ) {
+				$terms = get_terms(
+					array(
+						'taxonomy'   => $tax,
+						'hide_empty' => false,
+					)
+				);
+				if ( is_wp_error( $terms ) ) {
+					continue;
+				}
+				foreach ( $terms as $term ) {
+					$lookup[ $tax ][ $term->slug ]                     = $term;
+					$lookup[ $tax ][ 'n:' . self::model_key( $term->name ) ] = $term;
+					$lookup[ $tax ][ 'n:' . self::model_key( $term->slug ) ] = $term;
+				}
+			}
+
+			foreach ( $pairs as $pair ) {
+				list( $value, $tax ) = $pair;
+				if ( empty( $lookup[ $tax ] ) ) {
+					continue;
+				}
+
+				$vid = isset( $map[ $value ] ) ? $map[ $value ] : ( isset( $map[ self::model_key( $value ) ] ) ? $map[ self::model_key( $value ) ] : 0 );
+				if ( ! $vid ) {
+					continue;
+				}
+
+				$term = isset( $lookup[ $tax ][ $value ] ) ? $lookup[ $tax ][ $value ] : null;
+				if ( ! $term && isset( $lookup[ $tax ][ 'n:' . self::model_key( $value ) ] ) ) {
+					$term = $lookup[ $tax ][ 'n:' . self::model_key( $value ) ];
+				}
+
+				if ( $term ) {
+					$map[ $term->name ]                    = $vid;
+					$map[ self::model_key( $term->name ) ] = $vid;
+					$map[ $term->slug ]                    = $vid;
 				}
 			}
 
 			self::$variation_map[ $pid ] = $map;
 			return $map;
+		}
+
+		/**
+		 * تشخیص تاکسونومیِ یک مقدار ویژگی روی متغیر (برای تطبیق نام/اسلاگ مدل).
+		 *
+		 * @param WC_Product $variation متغیر.
+		 * @param string     $value     مقدار ویژگی.
+		 * @return string نام تاکسونومی یا نام ویژگی سفارشی.
+		 */
+		private static function attribute_taxonomy_of( $variation, $value ) {
+			foreach ( (array) $variation->get_attributes() as $key => $val ) {
+				if ( (string) $val === (string) $value && 0 === strpos( (string) $key, 'pa_' ) ) {
+					return (string) $key;
+				}
+			}
+			return 'pa_' . sanitize_title( $value );
+		}
+
+		/**
+		 * کلید تطبیق نام مدل (نرمال‌سازی فارسی + کوچک‌کردن حروف).
+		 *
+		 * @param string $text متن.
+		 * @return string
+		 */
+		public static function model_key( $text ) {
+			$text = (string) $text;
+			$text = function_exists( 'mb_strtolower' ) ? mb_strtolower( $text, 'UTF-8' ) : strtolower( $text );
+			if ( class_exists( 'TCBVM_DB' ) ) {
+				$text = TCBVM_DB::normalize_persian( $text );
+			}
+			return trim( $text );
+		}
+
+		/**
+		 * یافتن متغیرِ موجودِ یک مدل (تطبیق مقاوم: نام، اسلاگ، نام نرمال‌شده).
+		 *
+		 * @param WC_Product_Variable $product    محصول.
+		 * @param string              $taxonomy   تاکسونومی ویژگی.
+		 * @param string              $model_name نام مدل درخواستی.
+		 * @param WP_Term|null        $term       ترم متناظر (اگر پیدا شده).
+		 * @return int شناسهٔ متغیر یا ۰.
+		 */
+		private static function existing_variation_for_model( WC_Product_Variable $product, $taxonomy, $model_name, $term ) {
+			$map = self::get_variation_map( $product );
+			if ( empty( $map ) ) {
+				return 0;
+			}
+
+			$candidates = array( $model_name );
+			if ( $term && ! is_wp_error( $term ) ) {
+				$candidates[] = $term->slug;
+				$candidates[] = $term->name;
+				$candidates[] = urldecode( $term->slug );
+			}
+			$candidates[] = sanitize_title( $model_name );
+
+			foreach ( $candidates as $candidate ) {
+				$candidate = (string) $candidate;
+				if ( '' === $candidate ) {
+					continue;
+				}
+				if ( isset( $map[ $candidate ] ) ) {
+					return (int) $map[ $candidate ];
+				}
+				$key = self::model_key( $candidate );
+				if ( isset( $map[ $key ] ) ) {
+					return (int) $map[ $key ];
+				}
+			}
+
+			return 0;
 		}
 
 		/**
@@ -228,8 +354,15 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				);
 			}
 
-			// اگر محصول ساده است، آن را به متغیر ارتقا می‌دهیم
+			// محصول ساده: در حالت «فقط به‌روزرسانی» هیچ تغییری در نوع محصول نمی‌دهیم
+			// (تبدیل نوع، ساختار محصول را عوض می‌کند و خارج از خواستهٔ کاربر است).
 			if ( ! $product->is_type( 'variable' ) ) {
+				if ( self::is_update_only() ) {
+					return array(
+						'success' => false,
+						'message' => sprintf( 'این محصول «%s» است نه متغیر؛ در حالت «فقط به‌روزرسانی» نوع محصول تغییر نمی‌کند.', $product->get_type() ),
+					);
+				}
 				wp_set_object_terms( $product_id, 'variable', 'product_type' );
 				clean_post_cache( $product_id );
 				$product = wc_get_product( $product_id );
@@ -263,126 +396,138 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		}
 
 		/**
-		 * ساخت SKU یکتا برای متغیر.
+		 * ذخیرهٔ ایمن یک متغیر.
 		 *
-		 * ریشهٔ خطای «SKU نامعتبر یا تکراری است»: کد قبلی بدون بررسی، SKU را
-		 * «SKU والد + اسلاگ مدل» می‌ساخت؛ اگر همان SKU از قبل در فروشگاه وجود داشت
-		 * (متغیر باقی‌ماندهٔ اجرای قبلی، حذف نرم، یا SKU مشابه در محصول دیگر)
-		 * ووکامرس در save() استثنا می‌داد و کل محصول (و در عمل کل بسته) شکست می‌خورد.
-		 *
-		 * @param string $base SKU پیشنهادی.
-		 * @return string SKU یکتا یا رشتهٔ خالی اگر امکان ساخت نبود.
-		 */
-		public static function unique_variation_sku( $base ) {
-			$base = trim( (string) $base );
-			if ( '' === $base ) {
-				return '';
-			}
-			if ( ! function_exists( 'wc_get_product_id_by_sku' ) ) {
-				return $base;
-			}
-
-			$candidate = $base;
-			$suffix    = 2;
-			while ( wc_get_product_id_by_sku( $candidate ) ) {
-				$candidate = $base . '-' . $suffix;
-				$suffix++;
-				if ( $suffix > 50 ) {
-					return ''; // به‌جای شکست عملیات، بدون SKU ذخیره می‌شود.
-				}
-			}
-			return $candidate;
-		}
-
-		/**
-		 * ذخیرهٔ ایمن یک متغیر: اگر ووکامرس به‌خاطر SKU استثنا داد، بدون SKU
-		 * دوباره تلاش می‌شود (یک مدل مشکل‌دار نباید کل محصول را شکست بدهد).
+		 * این افزونه هیچ‌وقت SKU نمی‌سازد و SKU متغیرها را تغییر نمی‌دهد (SKUها متعلق به
+		 * خود فروشگاه و ابزارهای آن است). اگر ذخیره به هر دلیلی شکست خورد، فقط همان مدل
+		 * ناموفق می‌شود و علت واقعی به‌صورت هشدار برگردانده می‌شود.
 		 *
 		 * @param WC_Product_Variation $variation متغیر.
-		 * @return array{id:int, warning:string} شناسهٔ متغیر (۰ = ناموفق) و هشدار.
+		 * @return array{id:int, warning:string}
 		 */
 		private static function save_variation_safely( $variation ) {
 			try {
 				$var_id = $variation->save();
 				return array( 'id' => (int) $var_id, 'warning' => '' );
 			} catch ( \Exception $e ) {
-				$message   = $e->getMessage();
-				$is_sku    = ( false !== mb_stripos( $message, 'SKU' ) );
-				$had_sku   = '' !== (string) $variation->get_sku();
-
-				if ( $is_sku && $had_sku ) {
-					// تلاش دوباره بدون SKU (SKU دستی بعداً قابل ثبت است).
-					try {
-						$variation->set_sku( '' );
-						$var_id = $variation->save();
-						return array(
-							'id'      => (int) $var_id,
-							'warning' => 'SKU خودکار ثبت نشد (تکراری بود)؛ متغیر بدون SKU ساخته شد.',
-						);
-					} catch ( \Exception $e2 ) {
-						return array( 'id' => 0, 'warning' => $e2->getMessage() );
-					}
-				}
-
-				return array( 'id' => 0, 'warning' => $message );
+				return array( 'id' => 0, 'warning' => $e->getMessage() );
 			}
+		}
+
+		/**
+		 * آیا حالت «فقط به‌روزرسانی» فعال است؟ (پیش‌فرض: فعال)
+		 *
+		 * در این حالت هیچ محصول/متغیر/مدل/ویژگیِ جدیدی ساخته نمی‌شود و فقط رکوردهای
+		 * موجود به‌روزرسانی می‌شوند؛ مدل‌های ناموجود فقط گزارش می‌شوند.
+		 */
+		public static function is_update_only() {
+			$settings = TCBVM_Core::get_settings();
+			return ! empty( $settings['update_only'] );
 		}
 
 		/**
 		 * عملیات ۱: افزودن مدل‌های جدید به محصول.
 		 */
 		private static function do_add_models( $run_id, WC_Product_Variable $product, $taxonomy, array $params ) {
-			$product_id   = $product->get_id();
+			$product_id    = $product->get_id();
 			$models_to_add = self::sanitize_model_list( $params['models'] ?? '' );
 			if ( empty( $models_to_add ) ) {
 				return array( 'success' => false, 'message' => 'هیچ مدلی وارد نشده است.' );
 			}
 
-			$existing_terms = self::get_product_attribute_terms( $product_id, $taxonomy );
+			$update_only     = self::is_update_only();
+			$existing_terms  = self::get_product_attribute_terms( $product_id, $taxonomy );
 			$terms_to_assign = $existing_terms;
-			$added_count     = 0;
+			$created_count   = 0;
+			$updated_count   = 0;
+			$skipped         = array();
 			$warnings        = array();
 
-			// تولید SKU خودکار فقط اگر در تنظیمات فعال باشد (پیش‌فرض: فعال).
-			$settings  = TCBVM_Core::get_settings();
-			$auto_sku  = ! isset( $settings['auto_sku'] ) || ! empty( $settings['auto_sku'] );
-			$parent_sku = $auto_sku ? (string) $product->get_sku() : '';
-
-			// پیدا کردن قیمت مرجع در صورت انتخاب شبیه‌سازی قیمت
+			// قیمت/موجودی موردنظر (برای مدل‌های موجود هم اعمال می‌شود).
 			$clone_price_ref = ! empty( $params['clone_from_model'] ) ? trim( $params['clone_from_model'] ) : '';
 			$ref_prices      = $clone_price_ref ? self::get_reference_variation_prices( $product, $taxonomy, $clone_price_ref ) : null;
 
 			$default_reg_price  = isset( $params['regular_price'] ) && '' !== $params['regular_price'] ? (float) $params['regular_price'] : '';
 			$default_sale_price = isset( $params['sale_price'] ) && '' !== $params['sale_price'] ? (float) $params['sale_price'] : '';
-			$stock_status       = ! empty( $params['stock_status'] ) ? sanitize_key( $params['stock_status'] ) : 'instock';
+			$stock_status       = ! empty( $params['stock_status'] ) ? sanitize_key( $params['stock_status'] ) : '';
 
 			foreach ( $models_to_add as $model_name ) {
-				// اطمینان از وجود ترم در تاکسونومی ووکامرس
-				$term_obj = self::ensure_term_exists( $model_name, $taxonomy );
-				if ( ! $term_obj ) {
+				// فقط «یافتن» ترم موجود؛ ساخت ترم جدید تنها وقتی حالت فقط‌به‌روزرسانی خاموش باشد.
+				$term_obj = self::ensure_term_exists( $model_name, $taxonomy, ! $update_only );
+
+				// ۱) آیا متغیری برای این مدل از قبل وجود دارد؟ (تطبیق مقاوم: اسلاگ، نام و نام نرمال‌شده)
+				$existing_var_id = self::existing_variation_for_model( $product, $taxonomy, $model_name, $term_obj );
+
+				if ( $existing_var_id ) {
+					// به‌جای ساخت دوباره، همان متغیر قبلی به‌روزرسانی می‌شود.
+					$variation = wc_get_product( $existing_var_id );
+					if ( $variation ) {
+						$changed = false;
+
+						// روی متغیر موجود، قیمت حراج فقط وقتی نوشته می‌شود که مقداری داده شده باشد
+						// (قیمت حراج فعلی فروشگاه پاک نمی‌شود).
+						if ( $ref_prices && '' !== $ref_prices['regular_price'] ) {
+							$variation->set_regular_price( $ref_prices['regular_price'] );
+							if ( '' !== (string) $ref_prices['sale_price'] ) {
+								$variation->set_sale_price( $ref_prices['sale_price'] );
+							}
+							$changed = true;
+						} else {
+							if ( '' !== $default_reg_price ) {
+								$variation->set_regular_price( $default_reg_price );
+								$changed = true;
+							}
+							if ( '' !== $default_sale_price ) {
+								$variation->set_sale_price( $default_sale_price );
+								$changed = true;
+							}
+						}
+						if ( '' !== $stock_status ) {
+							$variation->set_stock_status( $stock_status );
+							$changed = true;
+						}
+
+						if ( $changed ) {
+							$saved = self::save_variation_safely( $variation );
+							if ( ! empty( $saved['id'] ) ) {
+								$updated_count++;
+							} else {
+								$warnings[] = $model_name . ': ' . $saved['warning'];
+							}
+						}
+					}
+
+					if ( $term_obj && ! in_array( $term_obj->slug, $terms_to_assign, true ) ) {
+						$terms_to_assign[] = $term_obj->slug;
+					}
 					continue;
 				}
 
+				// ۲) مدل موجود نیست
+				if ( ! $term_obj ) {
+					$skipped[] = $model_name . ' (مدل در فروشگاه ساخته نشده)';
+					continue;
+				}
+
+				if ( $update_only ) {
+					$skipped[] = $model_name . ' (متغیر جدید ساخته نشد — حالت فقط‌به‌روزرسانی)';
+					continue;
+				}
+
+				// ۳) ساخت متغیر جدید برای مدلی که واقعاً وجود ندارد
 				if ( ! in_array( $term_obj->slug, $terms_to_assign, true ) ) {
 					$terms_to_assign[] = $term_obj->slug;
 				}
 
-				// بررسی عدم وجود قبلی متغیر برای این مدل
-				$existing_var_id = self::find_variation_by_term( $product, $taxonomy, $term_obj->slug );
-				if ( $existing_var_id ) {
-					continue; // از قبل هست
-				}
-
-				// ساخت متغیر جدید
 				$variation = new WC_Product_Variation();
 				$variation->set_parent_id( $product_id );
 				$variation->set_status( 'publish' );
-				$variation->set_stock_status( $stock_status );
-				$variation->set_attributes( array(
-					$taxonomy => $term_obj->slug,
-				) );
+				$variation->set_attributes( array( $taxonomy => $term_obj->slug ) );
 
-				// تعیین قیمت (اگر از مدل مرجع خوانده شد یا قیمت پیش‌فرض)
+				if ( '' !== $stock_status ) {
+					$variation->set_stock_status( $stock_status );
+				}
+
 				if ( $ref_prices && '' !== $ref_prices['regular_price'] ) {
 					$variation->set_regular_price( $ref_prices['regular_price'] );
 					if ( '' !== $ref_prices['sale_price'] ) {
@@ -397,44 +542,50 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 					}
 				}
 
-				// الگوی SKU خودکار (با تضمین یکتا بودن تا ووکامرس استثنا ندهد).
-				if ( '' !== $parent_sku ) {
-					$sku = self::unique_variation_sku( $parent_sku . '-' . $term_obj->slug );
-					if ( '' !== $sku ) {
-						$variation->set_sku( $sku );
-					}
-				}
+				// هیچ SKUای ساخته یا تغییر داده نمی‌شود؛ SKUها متعلق به فروشگاه است.
 
 				$saved = self::save_variation_safely( $variation );
-				if ( ! empty( $saved['warning'] ) ) {
-					$warnings[] = $term_obj->name . ': ' . $saved['warning'];
-				}
 				if ( ! empty( $saved['id'] ) ) {
 					TCBVM_Backup::track_created_variation( $run_id, $product_id, $saved['id'] );
 					self::$variation_map[ $product_id ][ $term_obj->slug ] = $saved['id'];
-					$added_count++;
+					$created_count++;
 				} else {
-					$warnings[] = $term_obj->name . ': ساخت متغیر ناموفق بود.';
+					$warnings[] = $model_name . ': ساخت متغیر ناموفق بود — ' . $saved['warning'];
 				}
 			}
 
-			// اتصال ویژگی به محصول والد
-			self::sync_product_attribute( $product, $taxonomy, $terms_to_assign );
+			// اتصال ویژگی به محصول والد (و سینک) فقط اگر ویژگی‌های محصول واقعاً تغییر کرده باشد.
+			$terms_changed = ( array_values( array_unique( $terms_to_assign ) ) !== array_values( array_unique( $existing_terms ) ) );
+			if ( $terms_changed ) {
+				self::sync_product_attribute( $product, $taxonomy, array_values( array_unique( $terms_to_assign ) ) );
+			}
 
-			// همگام‌سازی نهایی ووکامرس
 			WC_Product_Variable::sync( $product_id );
 			wc_delete_product_transients( $product_id );
 			self::forget_variation_map( $product_id );
 
-			$message = sprintf( '%d متغیر جدید اضافه شد.', $added_count );
+			// پیام گویا: چه چیزی به‌روزرسانی شد، چه چیزی ساخته شد، چه چیزی رد شد.
+			$parts = array();
+			if ( $updated_count ) {
+				$parts[] = sprintf( '%d متغیر موجود به‌روزرسانی شد', $updated_count );
+			}
+			if ( $created_count ) {
+				$parts[] = sprintf( '%d متغیر جدید ساخته شد', $created_count );
+			}
+			if ( empty( $parts ) ) {
+				$parts[] = 'تغییری لازم نبود';
+			}
+			if ( ! empty( $skipped ) ) {
+				$parts[] = sprintf( '%d مدل رد شد: %s', count( $skipped ), implode( '، ', array_slice( $skipped, 0, 3 ) ) );
+			}
 			if ( ! empty( $warnings ) ) {
-				$message .= ' — هشدارها: ' . implode( ' | ', array_slice( array_unique( $warnings ), 0, 3 ) );
+				$parts[] = 'هشدار: ' . implode( ' | ', array_slice( array_unique( $warnings ), 0, 2 ) );
 			}
 
 			return array(
-				// فقط وقتی شکست کامل است که هیچ متغیری ساخته نشده ولی خطا داشته‌ایم.
-				'success' => ( $added_count > 0 || empty( $warnings ) ),
-				'message' => $message,
+				// «رد شدن مدل» خطا نیست؛ فقط هشدارهای واقعی شکست محسوب می‌شوند.
+				'success' => empty( $warnings ),
+				'message' => implode( ' — ', $parts ),
 			);
 		}
 
@@ -514,9 +665,14 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				return array( 'success' => true, 'message' => 'مدل قدیمی در این محصول یافت نشد.' );
 			}
 
-			$new_term = self::ensure_term_exists( $new_name, $taxonomy );
+			$new_term = self::ensure_term_exists( $new_name, $taxonomy, ! self::is_update_only() );
 			if ( ! $new_term ) {
-				return array( 'success' => false, 'message' => 'امکان ساخت مدل جدید وجود ندارد.' );
+				return array(
+					'success' => false,
+					'message' => self::is_update_only()
+						? sprintf( 'مدل «%s» در فروشگاه وجود ندارد و در حالت «فقط به‌روزرسانی» ساخته نمی‌شود.', $new_name )
+						: 'امکان ساخت مدل جدید وجود ندارد.',
+				);
 			}
 
 			$var_id   = self::find_variation_by_term( $product, $taxonomy, $old_term->slug );
@@ -657,8 +813,40 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		}
 
 		public static function find_or_create_attribute_taxonomy( $label = 'مدل گوشی' ) {
-			$label = trim( $label );
+			$label    = trim( $label );
 			$tax_name = wc_attribute_taxonomy_name( sanitize_title( $label ) );
+
+			if ( taxonomy_exists( $tax_name ) ) {
+				return $tax_name;
+			}
+
+			// شاید ویژگی با همان معنی ولی با برچسب/نام دیگری ساخته شده باشد
+			// (مثلاً «مدل» یا «Model»). اول همان را پیدا می‌کنیم تا ویژگی تکراری ساخته نشود.
+			if ( function_exists( 'wc_get_attribute_taxonomies' ) ) {
+				$target = self::model_key( $label );
+				foreach ( (array) wc_get_attribute_taxonomies() as $attribute ) {
+					if ( empty( $attribute->attribute_name ) ) {
+						continue;
+					}
+					$candidates = array(
+						(string) $attribute->attribute_name,
+						isset( $attribute->attribute_label ) ? (string) $attribute->attribute_label : '',
+					);
+					foreach ( $candidates as $candidate ) {
+						if ( '' !== $candidate && self::model_key( $candidate ) === $target ) {
+							$found = wc_attribute_taxonomy_name( $attribute->attribute_name );
+							if ( taxonomy_exists( $found ) ) {
+								return $found;
+							}
+						}
+					}
+				}
+			}
+
+			// در حالت «فقط به‌روزرسانی» هیچ ویژگی جدیدی ساخته نمی‌شود.
+			if ( self::is_update_only() ) {
+				return $tax_name;
+			}
 
 			// اگر این تاکسونومی در ووکامرس وجود ندارد، آن را ثبت می‌کنیم
 			if ( ! taxonomy_exists( $tax_name ) ) {
@@ -685,7 +873,16 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			return $tax_name;
 		}
 
-		public static function ensure_term_exists( $name, $taxonomy ) {
+		public static function ensure_term_exists( $name, $taxonomy, $allow_create = true ) {
+			if ( ! taxonomy_exists( $taxonomy ) ) {
+				return null; // تاکسونومی وجود ندارد؛ چیزی ساخته نمی‌شود.
+			}
+
+			$name = trim( (string) $name );
+			if ( '' === $name ) {
+				return null;
+			}
+
 			$term = get_term_by( 'name', $name, $taxonomy );
 			if ( $term ) {
 				return $term;
@@ -693,6 +890,28 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			$term = get_term_by( 'slug', sanitize_title( $name ), $taxonomy );
 			if ( $term ) {
 				return $term;
+			}
+
+			// تطبیق نرمال‌شده (ی/ک عربی، نیم‌فاصله، بزرگی/کوچکی حروف) تا مدل‌های موجود
+			// با املای متفاوت دوباره ساخته نشوند.
+			$target  = self::model_key( $name );
+			$matches = get_terms(
+				array(
+					'taxonomy'   => $taxonomy,
+					'hide_empty' => false,
+					'number'     => 50,
+				)
+			);
+			if ( ! is_wp_error( $matches ) ) {
+				foreach ( $matches as $candidate ) {
+					if ( self::model_key( $candidate->name ) === $target || self::model_key( $candidate->slug ) === $target ) {
+						return $candidate;
+					}
+				}
+			}
+
+			if ( ! $allow_create ) {
+				return null;
 			}
 
 			$inserted = wp_insert_term( $name, $taxonomy );
