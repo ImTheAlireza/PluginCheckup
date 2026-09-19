@@ -460,6 +460,17 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		}
 
 		/**
+		 * آیا در بازسازی کامل، ترکیب سایر ویژگی‌های متغیر هم ساخته شود؟ (پیش‌فرض: خیر)
+		 *
+		 * پیش‌فرض خاموش یعنی «یک متغیر به‌ازای هر مدل» — همان چیزی که فروشگاه می‌خواهد:
+		 * تعداد متغیرها دقیقاً برابر تعداد مدل‌های فهرست است.
+		 */
+		public static function is_sync_keep_other_attrs() {
+			$settings = TCBVM_Core::get_settings();
+			return ! empty( $settings['sync_keep_other_attrs'] );
+		}
+
+		/**
 		 * پیدا کردن ویژگی/تاکسونومیِ درست برای «مدل» روی یک محصول.
 		 *
 		 * ترتیب تشخیص:
@@ -848,13 +859,16 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				return array( 'success' => false, 'message' => 'لیست مدل‌های الگو خالی است.' );
 			}
 
-			// حالت قدیمی (ادغام) — فقط اگر بازسازی کامل در تنظیمات خاموش شده باشد.
+			if ( '' === $taxonomy ) {
+				return array( 'success' => false, 'message' => 'ویژگی مدل روی این محصول پیدا نشد.' );
+			}
+
+			// حالت قدیمی (ادغام) — فقط اگر بازسازی کامل در تنظیمات خاموش باشد.
 			if ( ! self::is_sync_rebuild() ) {
-				$preset_models = $models;
 				self::do_add_models( $run_id, $product, $taxonomy, $params );
 
 				$current_models  = self::get_product_model_names( $product );
-				$obsolete_models = array_diff( $current_models, $preset_models );
+				$obsolete_models = array_diff( $current_models, $models );
 				if ( ! empty( $obsolete_models ) ) {
 					self::do_remove_models(
 						$product,
@@ -873,7 +887,61 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				);
 			}
 
-			// ---------- بازسازی کامل ----------
+			// ==================== بازسازی کامل ====================
+			$keep_other = self::is_sync_keep_other_attrs(); // پیش‌فرض: خیر (یک متغیر به‌ازای هر مدل)
+
+			$attributes = $product->get_attributes();
+			$prev_attr  = isset( $attributes[ $taxonomy ] ) ? $attributes[ $taxonomy ] : null;
+			$deleted    = count( $product->get_children() );
+
+			// سایر ویژگی‌های «متغیر» محصول را پیدا می‌کنیم.
+			$other_taxes = array();
+			foreach ( $attributes as $attr_name => $attr_obj ) {
+				if ( $attr_name === $taxonomy || ! $attr_obj->get_variation() ) {
+					continue;
+				}
+				$other_taxes[] = $attr_name;
+			}
+
+			// ترکیب سایر ویژگی‌ها فقط در صورت درخواست صریح.
+			$other_maps = array();
+			if ( $keep_other ) {
+				foreach ( $product->get_children() as $vid ) {
+					$variation = wc_get_product( $vid );
+					if ( ! $variation ) {
+						continue;
+					}
+					$other = (array) $variation->get_attributes();
+					unset( $other[ $taxonomy ] );
+					if ( ! empty( $other ) ) {
+						$other_maps[ wp_json_encode( $other ) ] = $other;
+					}
+				}
+			}
+			if ( empty( $other_maps ) ) {
+				$other_maps = array( 'single' => array() );
+			}
+
+			// ---------- محافظ ایمنی: پیش از هر تغییری ----------
+			$total_combos = count( $models ) * count( $other_maps );
+			if ( $total_combos > 3000 ) {
+				return array(
+					'success' => false,
+					'message' => sprintf(
+						'ایمنی: این عملیات %d متغیر می‌ساخت (%d مدل × %d ترکیب سایر ویژگی‌ها) و هیچ تغییری اعمال نشد. برای ساخت «یک متغیر به‌ازای هر مدل» گزینهٔ «حفظ سایر ویژگی‌های متغیر» را در تنظیمات خاموش کن.',
+						$total_combos,
+						count( $models ),
+						count( $other_maps )
+					),
+				);
+			}
+			if ( count( $models ) > 2000 ) {
+				return array(
+					'success' => false,
+					'message' => sprintf( 'ایمنی: %d مدل بیش از حد مجاز (۲۰۰۰) است و هیچ تغییری اعمال نشد.', count( $models ) ),
+				);
+			}
+
 			// قیمت/موجودی مرجع را پیش از حذف متغیرها استخراج می‌کنیم.
 			$clone_ref  = ! empty( $params['clone_from_model'] ) ? trim( $params['clone_from_model'] ) : '';
 			$ref_prices = $clone_ref ? self::get_reference_variation_prices( $product, $taxonomy, $clone_ref ) : null;
@@ -882,42 +950,37 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			$default_sale_price = isset( $params['sale_price'] ) && '' !== $params['sale_price'] ? (float) $params['sale_price'] : '';
 			$stock_status       = ! empty( $params['stock_status'] ) ? sanitize_key( $params['stock_status'] ) : '';
 
-			// ۰) ترکیب سایر ویژگی‌ها (اگر محصول چند ویژگی متغیر دارد) را از متغیرهای فعلی
-			//    جمع می‌کنیم تا بعد از بازسازی، همان ترکیب‌ها با مدل‌های جدید ساخته شوند و
-			//    هیچ ترکیبی از دست نرود.
-			$other_maps = array();
-			$deleted    = 0;
+			// ---------- ۱) حذف کامل متغیرهای فعلی ----------
 			foreach ( $product->get_children() as $vid ) {
 				$variation = wc_get_product( $vid );
-				if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
-					continue;
+				if ( $variation && $variation->is_type( 'variation' ) ) {
+					$variation->delete( true );
 				}
-
-				$other = (array) $variation->get_attributes();
-				unset( $other[ $taxonomy ] );
-				if ( ! empty( $other ) ) {
-					$other_maps[ wp_json_encode( $other ) ] = $other;
-				}
-
-				$variation->delete( true );
-				$deleted++;
-			}
-			if ( empty( $other_maps ) ) {
-				$other_maps = array( 'single' => array() );
 			}
 			self::forget_variation_map( $product_id );
 
-			// ۲) برداشتن ویژگی از والد (فقط همین ویژگی؛ بقیهٔ ویژگی‌ها دست‌نخورده می‌مانند)
+			// ---------- ۲) برداشتن ویژگی‌ها از والد ----------
 			$attributes = $product->get_attributes();
-			$had_attr   = isset( $attributes[ $taxonomy ] );
-			if ( $had_attr ) {
-				unset( $attributes[ $taxonomy ] );
-				$product->set_attributes( $attributes );
-				$product->save();
-			}
+			unset( $attributes[ $taxonomy ] );
 			wp_set_object_terms( $product_id, array(), $taxonomy, false );
 
-			// ۳) ساخت ترم‌های مدل‌ها از صفر
+			// در حالت «یک متغیر به‌ازای هر مدل»، سایر ویژگی‌های متغیر هم از محصول برداشته
+			// می‌شوند تا ووکامرس منتظر مقدار آن‌ها نماند. ترم‌ها و داده‌هایشان حذف نمی‌شود
+			// و بازگردانی هم آن‌ها را برمی‌گرداند.
+			$removed_other = 0;
+			if ( ! $keep_other ) {
+				foreach ( $other_taxes as $other_tax ) {
+					unset( $attributes[ $other_tax ] );
+					wp_set_object_terms( $product_id, array(), $other_tax, false );
+					$removed_other++;
+				}
+			}
+
+			$product->set_attributes( $attributes );
+			$product->save();
+			clean_post_cache( $product_id );
+
+			// ---------- ۳) ساخت ترم‌های مدل‌ها از صفر ----------
 			$slugs = array();
 			foreach ( $models as $model_name ) {
 				$term = self::ensure_term_exists( $model_name, $taxonomy, true );
@@ -933,66 +996,55 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				);
 			}
 
-			// ۴) ثبت مجدد ویژگی روی والد با همان نام
-			$product = wc_get_product( $product_id ); // شیء تازه برای دیدن ویژگی جدید
+			// ---------- ۴) ثبت مجدد ویژگی روی والد با همان نام ----------
+			$product = wc_get_product( $product_id );
 			if ( ! $product instanceof WC_Product_Variable ) {
 				return array( 'success' => false, 'message' => 'بارگذاری مجدد محصول ممکن نشد.' );
 			}
-			self::sync_product_attribute( $product, $taxonomy, array_keys( $slugs ) );
+			self::sync_product_attribute( $product, $taxonomy, array_keys( $slugs ), $prev_attr );
 
 			$product = wc_get_product( $product_id );
 			if ( ! $product instanceof WC_Product_Variable ) {
 				return array( 'success' => false, 'message' => 'بارگذاری مجدد محصول ممکن نشد.' );
 			}
 
-			// ۵) ساخت متغیر برای هر مدل (× ترکیب سایر ویژگی‌ها) بدون هیچ دست‌کاری SKU
-			$total_combos = count( $slugs ) * count( $other_maps );
-			if ( $total_combos > 5000 ) {
-				return array(
-					'success' => false,
-					'message' => sprintf(
-						'ایمنی: بازسازی این محصول %d متغیر می‌ساخت (بیشتر از حد مجاز ۵۰۰۰). ترکیب ویژگی‌ها را کمتر کن یا از عملیات دیگری استفاده کن.',
-						$total_combos
-					),
-				);
-			}
-
+			// ---------- ۵) ساخت متغیرها (بدون هیچ دست‌کاری SKU) ----------
 			$created  = 0;
 			$warnings = array();
 
 			foreach ( $slugs as $slug => $model_name ) {
-			  foreach ( $other_maps as $other ) {
-				$variation = new WC_Product_Variation();
-				$variation->set_parent_id( $product_id );
-				$variation->set_status( 'publish' );
-				$variation->set_attributes( array_merge( $other, array( $taxonomy => $slug ) ) );
+				foreach ( $other_maps as $other ) {
+					$variation = new WC_Product_Variation();
+					$variation->set_parent_id( $product_id );
+					$variation->set_status( 'publish' );
+					$variation->set_attributes( array_merge( $other, array( $taxonomy => $slug ) ) );
 
-				if ( '' !== $stock_status ) {
-					$variation->set_stock_status( $stock_status );
-				}
+					if ( '' !== $stock_status ) {
+						$variation->set_stock_status( $stock_status );
+					}
 
-				if ( $ref_prices && '' !== (string) $ref_prices['regular_price'] ) {
-					$variation->set_regular_price( $ref_prices['regular_price'] );
-					if ( '' !== (string) $ref_prices['sale_price'] ) {
-						$variation->set_sale_price( $ref_prices['sale_price'] );
+					if ( $ref_prices && '' !== (string) $ref_prices['regular_price'] ) {
+						$variation->set_regular_price( $ref_prices['regular_price'] );
+						if ( '' !== (string) $ref_prices['sale_price'] ) {
+							$variation->set_sale_price( $ref_prices['sale_price'] );
+						}
+					} else {
+						if ( '' !== $default_reg_price ) {
+							$variation->set_regular_price( $default_reg_price );
+						}
+						if ( '' !== $default_sale_price ) {
+							$variation->set_sale_price( $default_sale_price );
+						}
 					}
-				} else {
-					if ( '' !== $default_reg_price ) {
-						$variation->set_regular_price( $default_reg_price );
-					}
-					if ( '' !== $default_sale_price ) {
-						$variation->set_sale_price( $default_sale_price );
-					}
-				}
 
-				$saved = self::save_variation_safely( $variation );
-				if ( ! empty( $saved['id'] ) ) {
-					TCBVM_Backup::track_created_variation( $run_id, $product_id, $saved['id'] );
-					$created++;
-				} else {
-					$warnings[] = $model_name . ': ' . $saved['warning'];
+					$saved = self::save_variation_safely( $variation );
+					if ( ! empty( $saved['id'] ) ) {
+						TCBVM_Backup::track_created_variation( $run_id, $product_id, $saved['id'] );
+						$created++;
+					} else {
+						$warnings[] = $model_name . ': ' . $saved['warning'];
+					}
 				}
-			  }
 			}
 
 			WC_Product_Variable::sync( $product_id );
@@ -1006,8 +1058,8 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 				$created,
 				count( $slugs )
 			);
-			if ( count( $other_maps ) > 1 ) {
-				$message .= sprintf( ' (با حفظ %d ترکیب سایر ویژگی‌ها)', count( $other_maps ) );
+			if ( $removed_other ) {
+				$message .= sprintf( ' (%d ویژگی متغیر دیگر از محصول برداشته شد تا دقیقاً یک متغیر به‌ازای هر مدل بماند)', $removed_other );
 			}
 			if ( ! empty( $warnings ) ) {
 				$message .= ' — هشدار: ' . implode( ' | ', array_slice( array_unique( $warnings ), 0, 2 ) );
@@ -1337,7 +1389,7 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			);
 		}
 
-		public static function sync_product_attribute( WC_Product_Variable $product, $taxonomy, array $term_slugs ) {
+		public static function sync_product_attribute( WC_Product_Variable $product, $taxonomy, array $term_slugs, $prev_attr = null ) {
 			$product_id = $product->get_id();
 			wp_set_object_terms( $product_id, $term_slugs, $taxonomy, false );
 
@@ -1346,8 +1398,15 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 			$attr_obj->set_id( wc_attribute_taxonomy_id_by_name( $taxonomy ) );
 			$attr_obj->set_name( $taxonomy );
 			$attr_obj->set_options( $term_slugs );
-			$attr_obj->set_position( 0 );
-			$attr_obj->set_visible( true );
+
+			// تنظیمات نمایش ویژگی قبلی (اگر وجود داشته) حفظ می‌شود.
+			if ( $prev_attr instanceof WC_Product_Attribute ) {
+				$attr_obj->set_position( $prev_attr->get_position() );
+				$attr_obj->set_visible( $prev_attr->is_visible() );
+			} else {
+				$attr_obj->set_position( 0 );
+				$attr_obj->set_visible( true );
+			}
 			$attr_obj->set_variation( true );
 
 			$attributes[ $taxonomy ] = $attr_obj;

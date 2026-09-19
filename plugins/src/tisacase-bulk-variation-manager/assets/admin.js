@@ -486,6 +486,15 @@
 			}
 
 			var confirmMsg = tcbvmData.i18n.confirmStart.replace('{n}', state.selectedIds.length);
+
+			// برای «همگام‌سازی کامل» دقیقاً بگو چه اتفاقی می‌افتد (چند مدل، حذف کامل قبلی‌ها).
+			if (op === 'sync_preset') {
+				var modelCount = parseModelList(params.models).length;
+				confirmMsg += '\n\nهمگام‌سازی کامل: ' + modelCount + ' مدل شناسایی شد.';
+				confirmMsg += '\nهمهٔ متغیرهای فعلی این ویژگی حذف و دقیقاً ' + modelCount + ' متغیر جدید ساخته می‌شود.';
+				confirmMsg += '\n(نام ویژگی: ' + ($.trim($('#tcbvm-attr-name').val()) || 'مدل') + ')';
+			}
+
 			if (!confirm(confirmMsg)) {
 				return;
 			}

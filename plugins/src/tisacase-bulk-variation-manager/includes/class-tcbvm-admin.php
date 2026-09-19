@@ -381,7 +381,16 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 											<span class="tisa-switch__track" aria-hidden="true"></span>
 											<span>بازسازی کامل در «همگام‌سازی با الگو» <span class="tcbvm-muted">— همهٔ متغیرهای آن ویژگی حذف و دقیقاً از فهرست واردشده از نو ساخته می‌شوند (پیشنهاد: روشن)</span></span>
 										</label>
-										<p class="tcbvm-muted" style="margin-top: 8px;">در این حالت ترتیب و تعداد متغیرها دقیقاً برابر فهرست شماست؛ متغیرهای خارج از فهرست حذف می‌شوند. فقط ویژگی انتخاب‌شده (مثل «مدل») بازسازی می‌شود و بقیهٔ ویژگی‌های محصول دست‌نخورده می‌مانند. برای بازگردانی، از تب «گزارش و بازگردانی» استفاده کن.</p>
+										<p class="tcbvm-muted" style="margin-top: 8px;">در این حالت ترتیب و تعداد متغیرها دقیقاً برابر فهرست شماست (۱۱۲ مدل = ۱۱۲ متغیر): همهٔ متغیرهای قبلی حذف و از صفر ساخته می‌شوند، و ویژگی انتخاب‌شده (مثل «مدل») با همان نام بازسازی می‌شود. برای بازگردانی، از تب «گزارش و بازگردانی» استفاده کن.</p>
+									</div>
+
+									<div class="tcbvm-field" style="margin-top: 18px;">
+										<label class="tisa-switch tcbvm-toggle">
+											<input type="checkbox" name="tcbvm_settings[sync_keep_other_attrs]" value="1" <?php checked( ! empty( $settings['sync_keep_other_attrs'] ) ); ?>>
+											<span class="tisa-switch__track" aria-hidden="true"></span>
+											<span>حفظ سایر ویژگی‌های متغیر (ساخت ترکیبی) <span class="tcbvm-muted">— پیش‌فرض: خاموش</span></span>
+										</label>
+										<p class="tcbvm-muted" style="margin-top: 8px;">خاموش (پیشنهاد): دقیقاً «یک متغیر به‌ازای هر مدل» ساخته می‌شود و سایر ویژگی‌های متغیر از محصول برداشته می‌شوند (داده‌هایشان حذف نمی‌شود و با بازگردانی برمی‌گردد). روشن: هر مدل در ترکیب با سایر ویژگی‌ها ضرب می‌شود (مثلاً ۱۱۲ مدل × ۳ رنگ = ۳۳۶ متغیر) — فقط وقتی محصول واقعاً چند ویژگی متغیر دارد.</p>
 									</div>
 
 									<div style="margin-top: 24px;">
