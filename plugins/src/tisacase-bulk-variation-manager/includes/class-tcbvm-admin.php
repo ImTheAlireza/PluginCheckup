@@ -367,9 +367,14 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 														<td><strong><?php echo esc_html( $r_op ); ?></strong></td>
 														<td><?php echo number_format_i18n( $r_total ); ?> محصول</td>
 														<td>
-															<span class="tcbvm-badge tcbvm-badge--success">+<?php echo number_format_i18n( $r_created ); ?> متغیر</span>
+															<?php if ( $r_created > 0 ) : ?>
+																<span class="tcbvm-badge tcbvm-badge--success">+<?php echo number_format_i18n( $r_created ); ?> متغیر</span>
+															<?php endif; ?>
 															<?php if ( $r_deleted > 0 ) : ?>
-																<span class="tcbvm-badge tcbvm-badge--danger">-<?php echo number_format_i18n( $r_deleted ); ?> قبلی</span>
+																<span class="tcbvm-badge tcbvm-badge--danger">-<?php echo number_format_i18n( $r_deleted ); ?> حذف‌شده</span>
+															<?php endif; ?>
+															<?php if ( 0 === $r_created && 0 === $r_deleted ) : ?>
+																<span class="tcbvm-muted">—</span>
 															<?php endif; ?>
 														</td>
 														<td>
