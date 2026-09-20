@@ -169,6 +169,8 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 						'purgeConfirmStart'    => 'آیا از حذف ویژگی «{attr}» از {n} محصول و پاکسازی متغیرهای وابسته به آن مطمئن هستید؟ پیش از اجرا از همهٔ محصولات اسنپ‌شات گرفته می‌شود و نتیجه در تاریخچه قابل بازگردانی است.',
 						'purgeConfirmGlobal'   => 'تعریف سراسری ویژگی «{attr}» و تمام ترم‌هایش برای همیشه از فروشگاه پاک می‌شود و این بخش با بازگردانی (Rollback) برنمی‌گردد. ادامه می‌دهید؟',
 						'purgeDoneText'        => 'پاکسازی ویژگی از محصولات با موفقیت پایان یافت.',
+						'cancelRunConfirm'     => 'عملیات پس از پایان بستهٔ در حال اجرا متوقف می‌شود. تغییراتی که تا این لحظه انجام شده باقی می‌ماند و برای برگرداندنشان باید بعداً از تب «تاریخچه» دکمه بازگردانی (Rollback) را بزنید. لغو کنید؟',
+						'cancelledText'        => 'عملیات توسط کاربر لغو شد و جزئیات پردازش‌های انجام‌شده در تاریخچه ثبت گردید.',
 					),
 				)
 			);
@@ -375,6 +377,10 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 																<span class="tcbvm-badge tcbvm-badge--muted">بازگردانی شده</span>
 															<?php elseif ( 'completed' === $r_status ) : ?>
 																<span class="tcbvm-badge tcbvm-badge--success">تکمیل شده</span>
+															<?php elseif ( 'cancelled' === $r_status ) : ?>
+																<span class="tcbvm-badge tcbvm-badge--warn">لغو شده توسط کاربر</span>
+															<?php elseif ( 'in_progress' === $r_status ) : ?>
+																<span class="tcbvm-badge tcbvm-badge--info">ناتمام (متوقف‌شده)</span>
 															<?php elseif ( 'completed_with_errors' === $r_status ) : ?>
 																<span class="tcbvm-badge tcbvm-badge--warn">با خطا</span>
 															<?php else : ?>
@@ -547,6 +553,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									<div class="tcbvm-progress-header">
 										<span id="tcbvm-purge-progress-text" class="tcbvm-progress-text">در حال آماده‌سازی…</span>
 										<span id="tcbvm-purge-progress-percent" class="tcbvm-progress-percent">0%</span>
+										<button type="button" class="tisa-btn tisa-btn--danger tisa-btn--sm" id="tcbvm-btn-cancel-purge-run">لغو عملیات</button>
 									</div>
 									<div class="tcbvm-bar-track">
 										<div id="tcbvm-purge-bar-fill" class="tcbvm-bar-fill"></div>
@@ -941,6 +948,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									<div class="tcbvm-progress-header">
 										<span id="tcbvm-progress-text" class="tcbvm-progress-text">در حال آماده‌سازی و تهیه اسنپ‌شات…</span>
 										<span id="tcbvm-progress-percent" class="tcbvm-progress-percent">0%</span>
+										<button type="button" class="tisa-btn tisa-btn--danger tisa-btn--sm" id="tcbvm-btn-cancel-run">لغو عملیات</button>
 									</div>
 									<div class="tcbvm-bar-track">
 										<div id="tcbvm-bar-fill" class="tcbvm-bar-fill"></div>

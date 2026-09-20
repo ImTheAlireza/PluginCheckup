@@ -10,9 +10,10 @@
 	/**
 	 * آبجکت مرکزی مدیریت متغیرهای گروهی
 	 */
-	const TCBVM = {
+		const TCBVM = {
 		selectedProducts: {},
 		isExecuting: false,
+		cancelRequested: false,
 
 		init: function() {
 			this.bindTargetMode();
@@ -703,17 +704,27 @@
 					return;
 				}
 
-				self.startBatchExecution({
-					product_ids: pids,
-					attr_name: attrName,
-					new_values: models,
-					price: price,
-					sale_price: $('#tcbvm-sale-price').val().replace(/[^\d]/g, ''),
-					stock_status: $('#tcbvm-stock-status').val(),
-					combine_other: $('#tcbvm-combine-other').is(':checked') ? 1 : 0
-				});
+			self.startBatchExecution({
+				product_ids: pids,
+				attr_name: attrName,
+				new_values: models,
+				price: price,
+				sale_price: $('#tcbvm-sale-price').val().replace(/[^\d]/g, ''),
+				stock_status: $('#tcbvm-stock-status').val(),
+				combine_other: $('#tcbvm-combine-other').is(':checked') ? 1 : 0
 			});
-		},
+		});
+
+		// دکمه لغو عملیات (توقف پس از پایان بستهٔ جاری)
+		$('#tcbvm-btn-cancel-run').on('click', function(e) {
+			e.preventDefault();
+			if (!self.isExecuting || self.cancelRequested) return;
+			if (!confirm(tcbvmData.i18n.cancelRunConfirm || 'لغو کنید؟')) return;
+			self.cancelRequested = true;
+			$(this).prop('disabled', true).text('در حال توقف پس از بستهٔ جاری…');
+			self.log('⚠ درخواست لغو توسط کاربر ثبت شد؛ پس از اتمام بستهٔ جاری عملیات متوقف می‌شود.', 'error');
+		});
+	},
 
 		/**
 		 * رندر کارت پیش‌نمایش
@@ -760,6 +771,8 @@
 		startBatchExecution: function(params) {
 			const self = this;
 			self.isExecuting = true;
+			self.cancelRequested = false;
+			$('#tcbvm-btn-cancel-run').prop('disabled', false).text('لغو عملیات');
 
 			const $progressWrap = $('#tcbvm-progress-wrap');
 			const $bar = $('#tcbvm-bar-fill');
@@ -820,20 +833,35 @@
 					let totalDeleted = 0;
 					const allItems = [];
 
-					const runNextBatch = function() {
-						if (currentBatchIndex >= batches.length) {
-							// پایان تمام بسته‌ها
-							self.finishRun(runId, totalCreated, totalDeleted, allItems, function() {
-								$bar.css('width', '100%');
-								$pPercent.text('۱۰۰٪');
-								$pText.text('تولید و بازسازی تمام متغیرها با موفقیت تکمیل و ثبت شد.');
-								self.log('پایان تمام بسته‌ها! ' + totalCreated + ' متغیر تازه ساخته و ' + totalDeleted + ' متغیر قدیمی پاکسازی شد.', 'success');
-								self.isExecuting = false;
-								$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
-								alert(tcbvmData.i18n.completedText);
-							});
-							return;
-						}
+				const runNextBatch = function() {
+					// لغو توسط کاربر: پس از پایان بستهٔ جاری، زنجیره ادامه نمی‌یابد
+					if (self.cancelRequested) {
+						self.finishRun(runId, totalCreated, totalDeleted, allItems, function() {
+							$pText.text('عملیات لغو شد (' + self.toPersianDigits(processedCount) + ' از ' + self.toPersianDigits(totalProducts) + ' محصول پردازش شده بود). برای برگرداندن تغییرات، از تب تاریخچه Rollback کنید.');
+							self.log('⚠ عملیات لغو شد. ' + self.toPersianDigits(processedCount) + ' محصول پردازش شده بود؛ تغییرات آن‌ها باقی مانده و از تب تاریخچه قابل بازگردانی است.', 'error');
+							self.isExecuting = false;
+							self.cancelRequested = false;
+							$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
+							$('#tcbvm-btn-cancel-run').prop('disabled', true).text('لغو شد');
+							alert(tcbvmData.i18n.cancelledText || 'عملیات لغو شد.');
+						}, 'cancelled');
+						return;
+					}
+
+					if (currentBatchIndex >= batches.length) {
+						// پایان تمام بسته‌ها
+						self.finishRun(runId, totalCreated, totalDeleted, allItems, function() {
+							$bar.css('width', '100%');
+							$pPercent.text('۱۰۰٪');
+							$pText.text('تولید و بازسازی تمام متغیرها با موفقیت تکمیل و ثبت شد.');
+							self.log('پایان تمام بسته‌ها! ' + totalCreated + ' متغیر تازه ساخته و ' + totalDeleted + ' متغیر قدیمی پاکسازی شد.', 'success');
+							self.isExecuting = false;
+							$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
+							$('#tcbvm-btn-cancel-run').prop('disabled', true);
+							alert(tcbvmData.i18n.completedText);
+						});
+						return;
+					}
 
 						const batchIds = batches[currentBatchIndex];
 						const batchNum = currentBatchIndex + 1;
@@ -916,27 +944,27 @@
 			});
 		},
 
-		/**
-		 * اتمام نشست
-		 */
-		finishRun: function(runId, createdCount, deletedCount, items, callback) {
-			$.ajax({
-				url: tcbvmData.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'tcbvm_finish_run',
-					nonce: tcbvmData.nonce,
-					run_id: runId,
-					status: 'completed',
-					created_count: createdCount,
-					deleted_count: deletedCount,
-					items: items
-				},
-				complete: function() {
-					if (typeof callback === 'function') callback();
-				}
-			});
-		},
+	/**
+	 * اتمام نشست
+	 */
+	finishRun: function(runId, createdCount, deletedCount, items, callback, status) {
+		$.ajax({
+			url: tcbvmData.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'tcbvm_finish_run',
+				nonce: tcbvmData.nonce,
+				run_id: runId,
+				status: status || 'completed',
+				created_count: createdCount,
+				deleted_count: deletedCount,
+				items: items
+			},
+			complete: function() {
+				if (typeof callback === 'function') callback();
+			}
+		});
+	},
 
 		/**
 		 * مدیریت ذخیره و حذف الگوهای سفارشی
@@ -1049,6 +1077,7 @@
 		purgeItems: {},
 		purgeMatches: null,
 		isPurging: false,
+		purgeCancelRequested: false,
 
 		/**
 		 * اتصال رخدادهای ابزار پاکسازی ویژگی: جستجو، جدول، اجرای بسته‌ای و حذف سراسری.
@@ -1154,6 +1183,16 @@
 				if (!confirm(msg)) return;
 
 				self.startPurgeExecution(attrName, ids, $('#tcbvm-purge-global-delete').is(':checked'));
+			});
+
+			// دکمه لغو پاکسازی (توقف پس از پایان بستهٔ جاری)
+			$('#tcbvm-btn-cancel-purge-run').on('click', function(e) {
+				e.preventDefault();
+				if (!self.isPurging || self.purgeCancelRequested) return;
+				if (!confirm(tcbvmData.i18n.cancelRunConfirm || 'لغو کنید؟')) return;
+				self.purgeCancelRequested = true;
+				$(this).prop('disabled', true).text('در حال توقف پس از بستهٔ جاری…');
+				self.log('⚠ درخواست لغو توسط کاربر ثبت شد؛ پس از اتمام بستهٔ جاری پاکسازی متوقف می‌شود.', 'error', '#tcbvm-purge-log-console');
 			});
 		},
 
@@ -1270,6 +1309,8 @@
 		startPurgeExecution: function(attrName, ids, deleteGlobalAfter) {
 			const self = this;
 			self.isPurging = true;
+			self.purgeCancelRequested = false;
+			$('#tcbvm-btn-cancel-purge-run').prop('disabled', false).text('لغو عملیات');
 
 			const $wrap = $('#tcbvm-purge-progress-wrap');
 			const $bar = $('#tcbvm-purge-bar-fill');
@@ -1322,34 +1363,49 @@
 					let totalDeleted = 0;
 					const allItems = [];
 
-					const runNextBatch = function() {
-						if (currentBatchIndex >= batches.length) {
-							// پایان بسته‌ها — ثبت در تاریخچه
-							self.finishRun(runId, 0, totalDeleted, allItems, function() {
-								$bar.css('width', '100%');
-								$pPercent.text('۱۰۰٪');
-								$pText.text('پاکسازی ویژگی تمام شد و در تاریخچه ثبت گردید.');
-								self.log('پایان پاکسازی! مجموعاً ' + self.toPersianDigits(self.formatNumber(totalDeleted)) + ' متغیر وابسته حذف و ویژگی از محصولات برداشته شد.', 'success', consoleId);
+				const runNextBatch = function() {
+					// لغو توسط کاربر: پس از پایان بستهٔ جاری، زنجیره ادامه نمی‌یابد
+					if (self.purgeCancelRequested) {
+						self.finishRun(runId, 0, totalDeleted, allItems, function() {
+							$pText.text('پاکسازی لغو شد (' + self.toPersianDigits(processedCount) + ' از ' + self.toPersianDigits(totalProducts) + ' محصول پردازش شده بود). برای برگرداندن تغییرات، از تب تاریخچه Rollback کنید.');
+							self.log('⚠ پاکسازی لغو شد. ' + self.toPersianDigits(processedCount) + ' محصول پردازش شده بود؛ تغییرات آن‌ها باقی مانده و از تب تاریخچه قابل بازگردانی است.', 'error', consoleId);
+							self.isPurging = false;
+							self.purgeCancelRequested = false;
+							$('#tcbvm-btn-purge-run, #tcbvm-btn-purge-search').prop('disabled', false);
+							$('#tcbvm-btn-cancel-purge-run').prop('disabled', true).text('لغو شد');
+							alert(tcbvmData.i18n.cancelledText || 'عملیات لغو شد.');
+						}, 'cancelled');
+						return;
+					}
 
-								const finalize = function() {
-									self.isPurging = false;
-									$('#tcbvm-btn-purge-run, #tcbvm-btn-purge-search').prop('disabled', false);
-									alert(tcbvmData.i18n.purgeDoneText || 'پاکسازی پایان یافت.');
-								};
+					if (currentBatchIndex >= batches.length) {
+						// پایان بسته‌ها — ثبت در تاریخچه
+						self.finishRun(runId, 0, totalDeleted, allItems, function() {
+							$bar.css('width', '100%');
+							$pPercent.text('۱۰۰٪');
+							$pText.text('پاکسازی ویژگی تمام شد و در تاریخچه ثبت گردید.');
+							self.log('پایان پاکسازی! مجموعاً ' + self.toPersianDigits(self.formatNumber(totalDeleted)) + ' متغیر وابسته حذف و ویژگی از محصولات برداشته شد.', 'success', consoleId);
 
-								if (deleteGlobalAfter) {
-									self.runGlobalAttributeDelete(attrName, consoleId, finalize);
-								} else {
-									finalize();
-								}
-							});
-							return;
-						}
+							const finalize = function() {
+								self.isPurging = false;
+								$('#tcbvm-btn-purge-run, #tcbvm-btn-purge-search').prop('disabled', false);
+								$('#tcbvm-btn-cancel-purge-run').prop('disabled', true);
+								alert(tcbvmData.i18n.purgeDoneText || 'پاکسازی پایان یافت.');
+							};
 
-						const batchIds = batches[currentBatchIndex];
-						const batchNum = currentBatchIndex + 1;
-						$pText.text('در حال پاکسازی بسته ' + self.toPersianDigits(batchNum) + ' از ' + self.toPersianDigits(batches.length) + '…');
-						self.log('⏳ بسته ' + self.toPersianDigits(batchNum) + ' شامل ' + self.toPersianDigits(batchIds.length) + ' محصول…', 'info', consoleId);
+							if (deleteGlobalAfter) {
+								self.runGlobalAttributeDelete(attrName, consoleId, finalize);
+							} else {
+								finalize();
+							}
+						});
+						return;
+					}
+
+					const batchIds = batches[currentBatchIndex];
+					const batchNum = currentBatchIndex + 1;
+					$pText.text('در حال پاکسازی بسته ' + self.toPersianDigits(batchNum) + ' از ' + self.toPersianDigits(batches.length) + '…');
+					self.log('⏳ بسته ' + self.toPersianDigits(batchNum) + ' شامل ' + self.toPersianDigits(batchIds.length) + ' محصول…', 'info', consoleId);
 
 						$.ajax({
 							url: tcbvmData.ajaxUrl,

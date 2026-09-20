@@ -679,7 +679,12 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	gap: var(--tisa-sp-2);
 	margin-bottom: var(--tisa-sp-2);
+}
+
+.tcbvm-progress-text {
+	flex: 1 1 auto;
 }
 
 .tcbvm-progress-text {
