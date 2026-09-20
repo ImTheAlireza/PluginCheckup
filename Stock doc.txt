@@ -1,0 +1,2287 @@
+/*
+ * TisaShop - دکتر موجودی v5 (محدوده با نام یا SKU + فقط هشدارها)
+ * مخصوص Code Snippets - بدون <?php در ابتدای فایل
+ *
+ * تفاوت با نسخه‌ی قبلی:
+ *  ۱) حالت «سریع» (پیش‌فرض): فقط محصولات متغیر و محصولات ساده را بررسی می‌کند — یعنی
+ *     یک ردیف برای هر محصول، نه یک ردیف برای هر Variation. اگر محصولی ۳۰۰ Variation داشته
+ *     باشد، یک ردیف می‌شود (همه‌ی فرزندان با یک کوئری تجمیعی سنجیده می‌شوند).
+ *  ۲) همه‌ی تشخیص‌ها با SQL گروهی انجام می‌شود (۴ کوئری برای هر صفحه)، نه با بارگذاری
+ *     تک‌تک محصولات؛ پس در چند ثانیه تمام می‌شود.
+ *  ۳) لیست شناسه‌های محدوده یک بار ساخته و ۱۰ دقیقه کش می‌شود؛ صفحه‌های بعدی فوری می‌آیند.
+ *  ۴) دکمه‌ی «ترمیم خودکار همه»: بدون نمایش لیست، همه‌ی والدهای ناسازگار را پیدا و sync می‌کند
+ *     (زمان‌بندی‌شده و مرحله‌ای؛ مناسب صدها محصول).
+ *  ۵) حالت «کامل» هم برای بررسی عمیق Variationها باقی مانده (کندتر، ولی حالا SQL-محور).
+ *
+ * تشخیص‌ها (همان چهار لایه‌ی همیشگی):
+ *  - وضعیت خودِ محصول (والد متغیر / ساده) با تجمیع فرزندانش نمی‌خواند  ← عامل «ناموجود» نمایش‌داده‌شده
+ *  - ردیف جدول wp_wc_product_meta_lookup قدیمی است (صفحه‌های آرشیو/فیلتر وودمارت)
+ *  - ترم product_visibility=outofstock چسبیده در حالی که محصول موجود است
+ *  - انبار مدیریت‌شده با عدد صفر (هشدار: خرید ممکن نیست)
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+if ( ! class_exists( 'TisaShop_Stock_Doctor' ) ) {
+
+	final class TisaShop_Stock_Doctor {
+
+		const PAGE         = 'tisashop-stock-doctor';
+		const AJAX         = 'tisashop_stock_doctor';
+		const NONCE        = 'tisashop_stock_doctor_nonce';
+		const PAGE_FAST    = 200;   // چند محصول در هر درخواست (حالت سریع)
+		const PAGE_FULL    = 60;    // چند مورد در هر درخواست (حالت کامل)
+		const FIX_BATCH    = 25;    // چند شناسه در هر درخواست ترمیم
+		const ENRICH_MAX   = 40;    // حداکثر چند ردیف علامت‌خورده در هر پاسخ HTML/جزئیات بگیرند
+		const CACHE_TTL    = 600;   // اعتبار لیست شناسه‌ها (ثانیه)
+		const ALL_BUDGET   = 12;    // سقف زمانی هر درخواست «ترمیم خودکار همه» (ثانیه)
+		const ALL_MAX      = 500;   // سقف محصول در هر درخواست «ترمیم خودکار همه»
+		const LIST_MAX     = 20000; // سقف لیست شناسه‌ها
+
+		public static function init() {
+			if ( ! is_admin() ) return;
+
+			add_action( 'admin_menu', array( __CLASS__, 'menu' ), 101 );
+			add_action( 'wp_ajax_' . self::AJAX, array( __CLASS__, 'handle' ) );
+
+			// ردیاب: هر نوشتنی روی _stock_status را ثبت می‌کند (فقط وقتی روشن باشد)
+			add_action( 'updated_post_meta', array( __CLASS__, 'maybe_log_stock_write' ), 10, 4 );
+			add_action( 'added_post_meta', array( __CLASS__, 'maybe_log_stock_write' ), 10, 4 );
+		}
+
+		public static function menu() {
+			add_submenu_page(
+				'edit.php?post_type=product',
+				'دکتر موجودی',
+				'دکتر موجودی (ناموجودی اشتباهی)',
+				'manage_woocommerce',
+				self::PAGE,
+				array( __CLASS__, 'page' )
+			);
+		}
+
+		public static function page() {
+			if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'دسترسی غیرمجاز است.' );
+			$nonce = wp_create_nonce( self::NONCE );
+			?>
+			<div class="wrap" dir="rtl" style="max-width:1400px">
+				<h1>دکتر موجودی v5 — نام محصول / SKU</h1>
+
+				<div style="background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:20px;margin-top:16px">
+					<p style="line-height:2;color:#646970;margin-top:0">
+						<strong>حالت سریع</strong> فقط محصولات (والدهای متغیر و محصولات ساده) را می‌سنجد — یک ردیف برای هر محصول،
+						نه برای هر Variation. مثلاً محصولی با ۳۲۱ Variation = یک ردیف.
+					</p>
+
+					<p>
+						<label><strong>محدوده بر اساس:</strong>
+                            <select id="tsd-scope"><option value="sku">پیشوند SKU</option><option value="name">شروع نام محصول با…</option></select>
+                        </label>
+                        <label><strong id="tsd-prefix-label">پیشوند SKU:</strong>
+							<input type="text" id="tsd-prefix" value="CH" style="width:180px;direction:ltr" placeholder="CH">
+						</label>
+
+						<label style="margin-right:16px">
+							<input type="radio" name="tsd-mode" value="fast" checked> سریع (والدها)
+						</label>
+						<label style="margin-right:10px">
+							<input type="radio" name="tsd-mode" value="full"> کامل (Variationها هم)
+						</label>
+
+						<label style="margin-right:16px">
+							<input type="checkbox" id="tsd-refresh"> لیست شناسه‌ها از نو ساخته شود
+						</label>
+					</p>
+
+					<p style="color:#646970">در حالت نام، عنوان خود محصول اصلی باید با متن واردشده شروع شود؛ مثلاً «قاب اسپیس». SKU در این حالت شرط نیست. تنوع‌ها از نام والد انتخاب می‌شوند؛ عبارت در وسط نام کافی نیست.</p>
+                    <p style="background:#f6f7f7;border-radius:8px;padding:12px;line-height:2">
+						<label style="display:block">
+							<input type="checkbox" id="tsd-refresh-children" checked>
+							<strong>ردیف‌های جدول lookup فرزندان بازسازی شود</strong>
+							<span style="color:#646970"> — ووکامرس وضعیت فرزندان را از این جدول می‌خواند؛ اگر قدیمی باشد، sync والد هرگز درست نمی‌شود.</span>
+						</label>
+						<label style="display:block">
+							<input type="checkbox" id="tsd-release-parent" checked>
+							<strong>انبار والد به فرزندان سپرده شود</strong>
+							<span style="color:#646970"> — اگر خودِ محصول «مدیریت انبار» دارد، ووکامرس وضعیتش را از فرزندان نمی‌سازد؛ با این گزینه مدیریت انبار والد خاموش می‌شود (مقدار عددی انبار حفظ می‌شود).</span>
+						</label>
+					</p>
+
+					<p>
+						<button type="button" id="tsd-scan" class="button button-secondary button-large">۱) تشخیص</button>
+						<button type="button" id="tsd-warnings" class="button button-primary button-large" disabled>موجود کردن فقط ردیف‌های هشدار (۰)</button>
+                        <button type="button" id="tsd-fix" class="button button-primary button-large" disabled>۲) ترمیم موارد علامت‌خورده</button>
+					</p>
+
+					<p>
+						<button type="button" id="tsd-fixall" class="button button-primary button-large" style="background:#00a32a;border-color:#00a32a">
+							⚡ ترمیم خودکار همه (بدون لیست، سریع‌ترین راه)
+						</button>
+						<button type="button" id="tsd-cache" class="button button-large">پاک‌سازی کش و ترنزینت‌ها</button>
+						<span id="tsd-spinner" class="spinner" style="float:none;margin:4px 8px"></span>
+					</p>
+
+					<p style="border-top:1px solid #ddd;padding-top:14px;line-height:2">
+                        <button type="button" id="tsd-restore" class="button button-primary button-large">موجود کردن همهٔ این محدوده + تنوع‌ها</button>
+                        <br><strong>این دکمه با ترمیم فرق دارد:</strong> حتی موارد ناموجودِ بدون مغایرت را موجود می‌کند.
+                        مدیریت عددی انبار محصول و تنوع‌ها خاموش می‌شود؛ عدد انبار، قیمت و SKU حفظ می‌شوند.
+                        فقط اگر فروش بدون محدودیت تعداد مدنظر است اجرا کن. ابتدا از دیتابیس پشتیبان بگیر؛ قبل از نوشتن، تعداد و نمونهٔ نام‌ها برای تأیید نمایش داده می‌شود.
+                    </p>
+                    <p><button type="button" id="tsd-stop-restore" class="button" style="display:none">توقف پس از مرحلهٔ جاری</button></p>
+                    <p style="color:#646970">«فقط هشدارها» در حالت سریع، فقط ردیف‌های زرد همین لیست را می‌گیرد؛ سالم‌ها و مغایرت‌های قرمز انتخاب نمی‌شوند. در والدهای هشدار‌دار فقط تنوع‌های منتشرشدهٔ ناموجود/پیش‌فروش موجود می‌شوند و سپس والد به‌روزرسانی می‌شود؛ تنوع‌های موجود دوباره پردازش نمی‌شوند. هشدارِ بدون تنوع قابل اصلاح، رد می‌شود.</p>
+                    <div id="tsd-restore-result" style="display:none;padding:12px;background:#f6f7f7;line-height:2"></div>
+                    <div id="tsd-progress" style="display:none;margin-top:12px;padding:12px;background:#f6f7f7;border-right:4px solid #2271b1;line-height:2"></div>
+				</div>
+
+				<div style="background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:16px;margin-top:16px;line-height:2">
+					<h2 style="margin-top:0;font-size:15px">ردیاب: چه چیزی وضعیت انبار را عوض می‌کند؟</h2>
+					<p style="color:#646970;margin-top:0">
+						اگر بعد از ترمیم، وضعیت‌ها «خودبه‌خود» به ناموجود برگشتند، ردیاب را روشن کن؛ هر تغییری روی
+						<span style="direction:ltr;display:inline-block">_stock_status</span>
+						با نام فایل/افزونه‌ی نویسنده ثبت می‌شود.
+					</p>
+					<p>
+						<button type="button" id="tsd-trace-start" class="button">شروع ردیاب (۱۵ دقیقه)</button>
+						<button type="button" id="tsd-trace-report" class="button">نمایش گزارش</button>
+						<button type="button" id="tsd-trace-clear" class="button">پاک کردن</button>
+					</p>
+					<div id="tsd-trace-out" style="display:none;background:#f6f7f7;border-radius:6px;padding:10px;font-size:12px;line-height:2;max-height:280px;overflow:auto"></div>
+				</div>
+
+				<div id="tsd-env" style="display:none;background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:16px;margin-top:16px;line-height:2"></div>
+
+				<div id="tsd-results" style="display:none;background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:16px;margin-top:16px">
+					<h2 style="margin-top:0">نتیجه‌ی تشخیص <span id="tsd-counter" style="font-weight:400;color:#646970;font-size:14px"></span></h2>
+					<div id="tsd-table"></div>
+				</div>
+			</div>
+
+			<style>
+				.tsd-row{display:grid;grid-template-columns:80px 1fr 100px 120px 110px 110px 90px;gap:8px;align-items:center;padding:10px 8px;border-bottom:1px solid #eee;font-size:13px}
+				.tsd-row:last-child{border-bottom:0}
+				.tsd-head{background:#f6f7f7;font-weight:700;border-bottom:1px solid #dcdcde;position:sticky;top:0;z-index:2}
+				.tsd-skip{opacity:.45}
+				.tsd-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+				.tsd-b-in{background:#edfaef;color:#137333}
+				.tsd-b-out{background:#fbeaea;color:#a61b1b}
+				.tsd-b-mut{background:#f0f0f1;color:#646970}
+				.tsd-b-warn{background:#fef8e7;color:#996800}
+				.tsd-reasons{grid-column:1 / -1;color:#a61b1b;font-size:12px;line-height:1.9;padding:0 4px}
+				.tsd-reasons.warnline{color:#996800}
+				.tsd-html{grid-column:1 / -1;font-size:11px;color:#646970;direction:ltr;text-align:left;background:#fafafa;border:1px dashed #dcdcde;border-radius:6px;padding:6px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+				.tsd-filter{margin:0 0 12px}
+			</style>
+
+			<script>
+			jQuery(function($){
+				'use strict';
+
+				var nonce=<?php echo wp_json_encode( $nonce ); ?>;
+				var running=false;
+                var scanComplete=false;
+                var restoreStop=false;
+				var rows=[];        // ردیف‌های تشخیص‌داده‌شده
+				var flagged=[];     // شناسه‌های نیازمند ترمیم
+				var offset=0;
+				var totalIds=0;
+
+				function esc(v){ return $('<div/>').text(String(v||'')).html(); }
+				function mode(){ return $('input[name="tsd-mode"]:checked').val(); }
+				function scope(){ return $('#tsd-scope').val(); }
+                function prefix(){ return $.trim($('#tsd-prefix').val()||''); }
+				function optRefresh(){ return $('#tsd-refresh-children').is(':checked')?'1':'0'; }
+				function optRelease(){ return $('#tsd-release-parent').is(':checked')?'1':'0'; }
+
+				function badge(st){
+					if(st==='instock')return '<span class="tsd-badge tsd-b-in">موجود</span>';
+					if(st==='outofstock')return '<span class="tsd-badge tsd-b-out">ناموجود</span>';
+					if(st==='—'||!st)return '<span class="tsd-badge tsd-b-mut">—</span>';
+					return '<span class="tsd-badge tsd-b-warn">'+esc(st)+'</span>';
+				}
+
+				function summary(t){
+					var out='ترمیم‌شده: '+t.fixed+
+						' | تغییر وضعیت: '+t.status+
+						' | ردیف lookup فرزندان بازسازی‌شده: '+t.child_lookup+
+						' | کش ترنزینت: '+t.transients+
+						' | انبار والد آزادشده: '+t.manage_off+
+						' | متای تکراری پاک‌شده: '+t.meta_dedup+
+						' | نوشتن مستقیم: '+t.force_write+
+						' | تأیید موفق: '+t.verify_ok+' | <strong>تأیید ناموفق: '+t.verify_fail+'</strong>';
+
+					if(t.verify_fail>0){
+						out+='<br><span style="color:#d63638">⚠️ تأیید ناموفق یعنی مقدار بعد از نوشتن به «ناموجود» برگشته — «ردیاب» را روشن کن تا نویسنده‌اش پیدا شود.</span>';
+					}
+
+					return out;
+				}
+
+				function traceLog(html,tone){
+					$('#tsd-trace-out').show().css('border-right','4px solid '+(tone||'#2271b1')).html(html);
+				}
+
+				function log(msg,tone){
+					$('#tsd-progress').show().css('border-right-color',tone||'#2271b1').html(msg);
+				}
+
+				function warningIds(){
+                    return rows.filter(function(r){return r.flag==='warn' && r.type!=='variation';}).map(function(r){return String(r.id);});
+                }
+                function updateWarningButton(){
+                    var n=warningIds().length;
+                    $('#tsd-warnings').prop('disabled',running||!scanComplete||mode()!=='fast'||!n).text('موجود کردن فقط ردیف‌های هشدار ('+n+')');
+                }
+                function setBusy(b){
+					running=b;
+					$('#tsd-spinner').toggleClass('is-active',b);
+					$('#tsd-scan,#tsd-cache,#tsd-fixall,#tsd-restore,#tsd-scope,#tsd-prefix,input[name="tsd-mode"],#tsd-refresh,#tsd-refresh-children,#tsd-release-parent').prop('disabled',b);
+					$('#tsd-fix').prop('disabled',b||!flagged.length);
+                    updateWarningButton();
+                    if(!b)$('#tsd-stop-restore').hide();
+				}
+
+				function render(){
+					if(!rows.length){ $('#tsd-table').html('<div style="padding:14px;color:#646970">موردی پیدا نشد.</div>'); return; }
+
+					var onlyFlagged=$('#tsd-only-flagged').is(':checked');
+					var shown=0;
+					var html='<div class="tsd-row tsd-head">'+
+						'<span>شناسه</span><span>محصول</span><span>وضعیت</span><span>فرزندان</span><span>جدول lookup</span><span>ترم</span><span>نتیجه</span>'+
+					'</div>';
+
+					rows.forEach(function(r){
+						if(onlyFlagged && r.flag==='ok')return;
+						shown++;
+
+						var kids='—';
+						if(r.children&&r.children.total>0){
+							kids=Number(r.children.total - r.children.oos)+' / '+Number(r.children.total)+' موجود';
+						}
+
+						html+='<div class="tsd-row'+(r.flag==='ok'?' tsd-skip':'')+'">'+
+							'<span style="direction:ltr">#'+Number(r.id)+'</span>'+
+							'<span>'+esc(r.title)+
+								'<br><span style="color:#646970;font-size:11px;direction:ltr">'+esc(r.type)+' | SKU: '+esc(r.sku||'—')+'</span></span>'+
+							'<span>'+badge(r.effective)+'</span>'+
+							'<span style="font-size:12px">'+esc(kids)+'</span>'+
+							'<span>'+(r.lookup?badge(r.lookup):'<span class="tsd-badge tsd-b-mut">—</span>')+'</span>'+
+							'<span>'+(r.oos_term?'<span class="tsd-badge tsd-b-out">outofstock</span>':'<span class="tsd-badge tsd-b-in">پاک</span>')+'</span>'+
+							'<span>'+(r.flag==='ok'?'✅ سالم':(r.flag==='warn'?'⚠️ هشدار':'❌ مغایرت'))+'</span>'+
+							(r.reasons&&r.reasons.length?'<span class="tsd-reasons'+(r.flag==='warn'?' warnline':'')+'">'+r.reasons.map(esc).join('<br>')+'</span>':'')+
+							(r.stock_html?'<span class="tsd-html">'+esc(r.stock_html)+'</span>':'')+
+						'</div>';
+					});
+
+					if(!shown) html+='<div style="padding:14px;color:#646970">ردیف علامت‌داری نیست.</div>';
+
+					$('#tsd-table').html(html);
+					$('#tsd-counter').text('— بررسی‌شده: '+rows.length+' ردیف | مغایرت: '+flagged.length+' | از کل '+totalIds+' شناسه');
+					$('#tsd-results').show();
+				}
+
+				function resetTable(){
+					rows=[]; flagged=[]; offset=0; scanComplete=false;
+                    updateWarningButton();
+					$('#tsd-table').html('<label class="tsd-filter"><input type="checkbox" id="tsd-only-flagged" checked> فقط ردیف‌های علامت‌خورده را نشان بده</label>');
+					$(document).off('change.tsd').on('change.tsd','#tsd-only-flagged',render);
+				}
+
+		
+
+		/* ---------------- تشخیص ---------------- */
+
+				function scan(){
+					if(running)return;
+					if(!prefix()){alert('متن شروع نام یا پیشوند SKU را وارد کن.');return;}
+
+					setBusy(true);
+					resetTable();
+					$('#tsd-results').show();
+
+					scanStep(0);
+
+					function scanStep(off){
+						log('در حال تشخیص... ('+off+' از '+(totalIds||'?')+')');
+
+						$.ajax({
+							url:ajaxurl,type:'POST',dataType:'json',
+							data:{
+								action:<?php echo wp_json_encode( self::AJAX ); ?>,
+								nonce:nonce,op:'scan',mode:mode(),prefix:prefix(),scope:scope(),
+								offset:off,refresh:$('#tsd-refresh').is(':checked')?'1':'0'
+							}
+						}).done(function(res){
+							if(!res||!res.success){ log(res&&res.data&&res.data.message?res.data.message:'خطای نامشخص','#d63638'); setBusy(false); return; }
+
+							var d=res.data||{};
+							if(d.env)$('#tsd-env').show().html(d.env);
+							if(typeof d.total==='number')totalIds=d.total;
+
+							(d.rows||[]).forEach(function(r){
+								rows.push(r);
+								if(r.flag!=='ok'&&flagged.indexOf(String(r.id))===-1)flagged.push(String(r.id));
+							});
+
+							offset=Number(d.next_offset||0);
+							render();
+							$('#tsd-fix').prop('disabled',!flagged.length);
+
+							if(d.done){
+                                scanComplete=true;
+								log('تشخیص تمام شد — ردیف: '+rows.length+' | مغایرت: '+flagged.length+' | بررسی‌شده از '+totalIds,
+									flagged.length?'#dba617':'#00a32a');
+								setBusy(false);
+								return;
+							}
+
+							setTimeout(function(){ scanStep(offset); },30);
+						}).fail(function(xhr){
+							log(xhr.responseJSON&&xhr.responseJSON.data&&xhr.responseJSON.data.message
+								?xhr.responseJSON.data.message:'ارتباط با سرور برقرار نشد.','#d63638');
+							setBusy(false);
+						});
+					}
+				}
+
+				/* ---------------- ترمیم لیست‌شده ---------------- */
+
+				function fixList(){
+					if(running||!flagged.length)return;
+
+					if(!confirm('همه‌ی لایه‌ها (وضعیت، جدول lookup، ترم visibility، همگام‌سازی والد و کش) برای '+flagged.length+' مورد همخوان شود؟\\n\\nقیمت، SKU و عدد انبار تغییر نمی‌کند.'))return;
+
+					setBusy(true);
+					var queue=flagged.slice();
+					var totals={fixed:0,status:0,sync:0,child_lookup:0,transients:0,manage_off:0,meta_dedup:0,force_write:0,verify_ok:0,verify_fail:0,terms:0,lookup:0,cache:0};
+
+					fixStep();
+
+					function fixStep(){
+						var chunk=queue.splice(0,25);
+
+						if(!chunk.length){
+							log(summary(totals), totals.verify_fail>0?'#d63638':'#00a32a');
+							setBusy(false);
+							setTimeout(scan,500);
+							return;
+						}
+
+						log('در حال ترمیم... باقی‌مانده: '+queue.length);
+
+						$.ajax({
+							url:ajaxurl,type:'POST',dataType:'json',
+							data:{
+								action:<?php echo wp_json_encode( self::AJAX ); ?>,nonce:nonce,op:'fix',
+								ids:chunk.join(','),refresh_children:optRefresh(),release_parent:optRelease()
+							}
+						}).done(function(res){
+							if(!res||!res.success){ log(res&&res.data&&res.data.message?res.data.message:'خطای نامشخص','#d63638'); setBusy(false); return; }
+							var s=(res.data&&res.data.stats)||{};
+							Object.keys(totals).forEach(function(k){ totals[k]+=Number(s[k]||0); });
+							setTimeout(fixStep,30);
+						}).fail(function(){
+							log('خطای ارتباط در حین ترمیم.','#d63638');
+							setBusy(false);
+						});
+					}
+				}
+
+				/* ---------------- ترمیم خودکار همه ---------------- */
+
+				function fixAll(){
+					if(running)return;
+					if(!prefix()){alert('متن شروع نام یا پیشوند SKU را وارد کن.');return;}
+
+					if(!confirm('همه‌ی محصولات متغیر این محدوده بررسی و والدهای ناسازگار همگام‌سازی شوند؟\\n\\nلیست نمایش داده نمی‌شود؛ فقط تعداد گزارش می‌شود.'))return;
+
+					setBusy(true);
+					$('#tsd-results').hide();
+
+					var totals={scanned:0,stale:0,fixed:0,status:0,sync:0,child_lookup:0,transients:0,manage_off:0,meta_dedup:0,force_write:0,verify_ok:0,verify_fail:0,terms:0,lookup:0,cache:0};
+					var lastId=0;
+					var started=Date.now();
+
+					allStep();
+
+					function allStep(){
+						var secs=Math.round((Date.now()-started)/1000);
+						log('⚡ ترمیم خودکار... بررسی‌شده: '+totals.scanned+
+							' | ناسازگار: '+totals.stale+' | ترمیم‌شده: '+totals.fixed+' | زمان: '+secs+' ثانیه');
+
+						$.ajax({
+							url:ajaxurl,type:'POST',dataType:'json',
+							data:{
+								action:<?php echo wp_json_encode( self::AJAX ); ?>,
+								nonce:nonce,op:'fix_all',prefix:prefix(),scope:scope(),last_id:lastId,
+								refresh_children:optRefresh(),release_parent:optRelease()
+							}
+						}).done(function(res){
+							if(!res||!res.success){ log(res&&res.data&&res.data.message?res.data.message:'خطای نامشخص','#d63638'); setBusy(false); return; }
+
+							var d=res.data||{},s=d.stats||{};
+							Object.keys(totals).forEach(function(k){ totals[k]+=Number(s[k]||0); });
+							lastId=Number(d.last_id||lastId);
+
+							if(d.done){
+								var secs=Math.round((Date.now()-started)/1000);
+								log('✅ ترمیم خودکار تمام شد ('+secs+' ثانیه) — بررسی‌شده: '+totals.scanned+
+									' | ناسازگار: '+totals.stale+'<br>'+summary(totals),
+									totals.verify_fail>0?'#d63638':'#00a32a');
+								setBusy(false);
+								return;
+							}
+
+							setTimeout(allStep,50);
+						}).fail(function(){
+							log('خطای ارتباط در حین ترمیم خودکار.','#d63638');
+							setBusy(false);
+						});
+					}
+				}
+
+				/* ---------------- کش ---------------- */
+
+                function restoreScope(warningsOnly){
+                    if(running)return;
+                    warningsOnly=warningsOnly===true;
+                    if(warningsOnly&&(!scanComplete||mode()!=='fast'||!warningIds().length))return;
+                    if(!prefix()){alert('متن محدوده را وارد کن.');return;}
+                    var description=(warningsOnly?'فقط هشدارهای زرد لیست — ':'')+(scope()==='name'?'شروع نام محصول با «':'پیشوند SKU «')+prefix()+'»';
+                    setBusy(true);
+                    $('#tsd-restore-result').hide();
+                    log('در حال آماده‌سازی پیش‌نمایش؛ هنوز هیچ موجودی تغییر نمی‌کند…');
+                    $.post(ajaxurl,{
+                        action:<?php echo wp_json_encode( self::AJAX ); ?>,nonce:nonce,
+                        op:warningsOnly?'restore_prepare_warnings':'restore_prepare',scope:scope(),prefix:prefix(),
+                        ids:warningsOnly?warningIds().join(','):'',mode:mode()
+                    }).done(function(r){
+                        if(!r||!r.success){restoreError(r&&r.data&&r.data.message);return;}
+                        var d=r.data;
+                        var info=description+'\n'+d.parents+' محصول اصلی + '+d.children+' تنوع'+(warningsOnly?' ناموجود/پیش‌فروش — ردشده از ورودی: '+d.skipped:'')+'\n\nنمونه‌ها:\n'+d.sample.join('\n');
+                        if(warningsOnly)info+='\n\nفقط همین موارد موجود شوند؟ تنوع‌های موجود دوباره پردازش نمی‌شوند.';
+                        if(!confirm(info+'\n\nهمهٔ این محصولات و تنوع‌ها موجود شوند؟\nمدیریت عددی انبارشان خاموش می‌شود (حتی با تعداد صفر). عدد انبار، قیمت و SKU تغییر داده نمی‌شوند.'+(warningsOnly?'\nفقط تنوع‌های منتشرشده هدف هستند؛ سایر تنوع‌ها انتخاب نشده‌اند.':'\nمحصولات پیش‌نویس/تنوع‌های غیرفعال هم در محدوده‌اند، اما منتشر یا فعال نمی‌شوند.')+'\n\nاز دیتابیس پشتیبان گرفته‌ای؟')){
+                            log('لغو شد؛ هیچ موجودی تغییر نکرد.');setBusy(false);return;
+                        }
+                        resetTable();$('#tsd-results').hide();
+                        restoreStop=false;
+                        $('#tsd-stop-restore').show().prop('disabled',false);
+                        restoreStep(d.token,description);
+                    }).fail(function(xhr){restoreError(xhr.responseJSON&&xhr.responseJSON.data&&xhr.responseJSON.data.message);});
+                }
+                function restoreError(message){
+                    log(esc(message||'ارتباط قطع شد. ممکن است بخشی از موارد تغییر کرده باشند؛ نتیجه را تشخیص بده و در صورت نیاز همین محدوده را دوباره اجرا کن.'),'#d63638');
+                    setBusy(false);
+                }
+                function restoreStep(token,description){
+                    if(restoreStop){
+                        log('متوقف شد؛ مرحلهٔ بعد ارسال نشد. تغییرات قبلی باقی مانده‌اند؛ قبل از اجرای دوباره، تشخیص بگیر.','#dba617');
+                        setBusy(false);return;
+                    }
+                    log('موجود کردن / تأیید محدوده: '+esc(description)+' — لطفاً صفحه را نبند.');
+                    $.post(ajaxurl,{
+                        action:<?php echo wp_json_encode( self::AJAX ); ?>,nonce:nonce,
+                        op:'restore_step',token:token,confirmed:'1'
+                    }).done(function(r){
+                        if(!r||!r.success){restoreError(r&&r.data&&r.data.message);return;}
+                        var d=r.data;
+                        var text=esc(description)+'<br>'+(d.phase==='release'?'آزادسازی انبار والدها':(d.phase==='write'?'نوشتن موجودی':'تأیید نهایی پس از نوشتن والدها'))+
+                            ': '+d.cursor+' از '+d.total+' | تأیید موفق: '+d.ok+' | تأیید ناموفق: '+d.failed+' | خطای اجرا: '+d.write_errors;
+                        if(d.done){
+                            var bad=d.failed>0||d.write_errors>0;
+                            text='<strong>'+(bad?'عملیات با خطا / موارد تأییدنشده تمام شد.':'وضعیت موجودی محدوده در دیتابیس تأیید شد.')+'</strong><br>'+text;
+                            if(d.errors.length)text+='<br>'+d.errors.map(esc).join('<br>');
+                            text+='<br>حالا «تشخیص» را دوباره اجرا و خرید یک تنوع را در سایت بررسی کن. تأیید موجودی به معنی تأیید قیمت یا امکان خرید همهٔ تنوع‌ها نیست.';
+                            $('#tsd-restore-result').show().css('border-right','4px solid '+(bad?'#d63638':'#00a32a')).html(text);
+                            log('عملیات پایان یافت؛ گزارش نهایی در کادر بالا باقی می‌ماند.',bad?'#d63638':'#00a32a');
+                            setBusy(false);return;
+                        }
+                        $('#tsd-restore-result').show().html(text);
+                        setTimeout(function(){restoreStep(token,description);},70);
+                    }).fail(function(xhr){restoreError(xhr.responseJSON&&xhr.responseJSON.data&&xhr.responseJSON.data.message);});
+                }
+
+				function clearCache(){
+					if(running)return;
+					if(!confirm('کش آبجکت، گروه کش محصولات ووکامرس، ترنزینت‌ها و کش افزونه‌های شناخته‌شده پاک شوند؟'))return;
+
+					setBusy(true);
+
+					$.ajax({
+						url:ajaxurl,type:'POST',dataType:'json',
+						data:{ action:<?php echo wp_json_encode( self::AJAX ); ?>,nonce:nonce,op:'cache' }
+					}).done(function(res){
+						log(res&&res.data&&res.data.log?res.data.log:((res&&res.data&&res.data.message)||'انجام شد.'),
+							res&&res.success?'#00a32a':'#d63638');
+						setBusy(false);
+					}).fail(function(){
+						log('ارتباط با سرور برقرار نشد.','#d63638');
+						setBusy(false);
+					});
+				}
+
+				$('#tsd-scope').on('change',function(){
+                    var byName=scope()==='name';
+                    $('#tsd-prefix-label').text(byName?'شروع نام:':'پیشوند SKU:');
+                    $('#tsd-prefix').val(byName?'قاب اسپیس':'CH').attr('placeholder',byName?'قاب اسپیس':'CH').css('direction',byName?'rtl':'ltr');
+                });
+                $('#tsd-scope,#tsd-prefix,input[name="tsd-mode"]').on('change input',function(){
+                    if(!running){resetTable();$('#tsd-results,#tsd-env,#tsd-restore-result').hide();$('#tsd-fix').prop('disabled',true);}
+                });
+                $('#tsd-restore').on('click',function(){restoreScope(false);});
+                $('#tsd-warnings').on('click',function(){restoreScope(true);});
+                $('#tsd-stop-restore').on('click',function(){
+                    restoreStop=true;$(this).prop('disabled',true);
+                    log('درخواست توقف ثبت شد؛ منتظر پایان مرحلهٔ جاری هستیم. مرحلهٔ بعد اجرا نمی‌شود.','#dba617');
+                });
+                $('#tsd-scan').on('click',scan);
+				$('#tsd-fix').on('click',fixList);
+				$('#tsd-fixall').on('click',fixAll);
+				$('#tsd-cache').on('click',clearCache);
+
+				$('#tsd-trace-start').on('click',function(){
+					$.post(ajaxurl,{action:<?php echo wp_json_encode( self::AJAX ); ?>,nonce:nonce,op:'trace_start'},function(r){
+						traceLog(r&&r.data&&r.data.log?r.data.log:'شروع شد.',r&&r.success?'#00a32a':'#d63638');
+					},'json');
+				});
+
+				$('#tsd-trace-report').on('click',function(){
+					$.post(ajaxurl,{action:<?php echo wp_json_encode( self::AJAX ); ?>,nonce:nonce,op:'trace_report'},function(r){
+						traceLog(r&&r.data&&r.data.log?r.data.log:'گزارشی نیست.',r&&r.success?'#2271b1':'#d63638');
+					},'json');
+				});
+
+				$('#tsd-trace-clear').on('click',function(){
+					$.post(ajaxurl,{action:<?php echo wp_json_encode( self::AJAX ); ?>,nonce:nonce,op:'trace_clear'},function(r){
+						traceLog(r&&r.data&&r.data.log?r.data.log:'پاک شد.','#00a32a');
+					},'json');
+				});
+			});
+			</script>
+			<?php
+		}
+
+		/* ==================================================== سرور */
+
+		private static function access() {
+			if ( ! current_user_can( 'manage_woocommerce' ) ) {
+				wp_send_json_error( array( 'message' => 'دسترسی غیرمجاز است.' ), 403 );
+			}
+
+			if ( false === check_ajax_referer( self::NONCE, 'nonce', false ) ) {
+				wp_send_json_error( array( 'message' => 'نشست امنیتی منقضی شده؛ صفحه را تازه‌سازی کن.' ), 403 );
+			}
+
+			if ( ! function_exists( 'wc_get_product' ) || ! class_exists( 'WC_Product' ) ) {
+				wp_send_json_error( array( 'message' => 'ووکامرس در دسترس نیست.' ), 500 );
+			}
+		}
+
+		public static function handle() {
+			self::access();
+
+			$op = isset( $_POST['op'] ) ? sanitize_key( wp_unslash( $_POST['op'] ) ) : '';
+
+			if ( 'scan' === $op ) self::op_scan();
+			if ( 'fix' === $op ) self::op_fix();
+			if ( 'fix_all' === $op ) self::op_fix_all();
+			if ( 'restore_prepare_warnings' === $op ) self::op_restore_prepare_warnings();
+            if ( 'restore_prepare' === $op ) self::op_restore_prepare();
+            if ( 'restore_step' === $op ) self::op_restore_step();
+            if ( 'cache' === $op ) self::op_cache();
+			if ( 'trace_start' === $op ) self::op_trace_start();
+			if ( 'trace_report' === $op ) self::op_trace_report();
+			if ( 'trace_clear' === $op ) self::op_trace_clear();
+
+			wp_send_json_error( array( 'message' => 'درخواست نامعتبر است.' ), 400 );
+		}
+
+		/** وقتی خودمان می‌نویسیم، ردیاب نباید آن را به‌عنوان عامل بیرونی نشان دهد */
+		private static $writing_self = false;
+
+		/* ==================== ردیاب: چه چیزی وضعیت انبار را عوض می‌کند؟ ==================== */
+
+		/** مسیر کوتاه فایل برای نمایش در گزارش */
+		private static function short_path( $file ) {
+			$file = str_replace( '\\', '/', (string) $file );
+
+			if ( defined( 'ABSPATH' ) ) {
+				$ab = str_replace( '\\', '/', ABSPATH );
+				if ( '' !== $ab && 0 === strpos( $file, $ab ) ) {
+					$file = substr( $file, strlen( $ab ) );
+				}
+			}
+
+			$parts = array_values( array_filter( explode( '/', trim( $file, '/' ) ), 'strlen' ) );
+			if ( count( $parts ) > 3 ) {
+				$parts = array_slice( $parts, -3 );
+			}
+
+			return implode( '/', $parts );
+		}
+
+		/** نویسنده‌ی واقعی نوشتن: اولین فریم «بیرون از هسته، ووکامرس و خودِ دکتر» */
+		private static function writer_frame() {
+			$frames = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 30 ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions
+
+			$skip_core = array( '/wp-includes/', '/wp-admin/', '/woocommerce/', 'tisashop-stock-doctor' );
+
+			foreach ( array( true, false ) as $strict ) {
+				foreach ( $frames as $f ) {
+					$file = isset( $f['file'] ) ? str_replace( '\\', '/', (string) $f['file'] ) : '';
+					if ( '' === $file ) continue;
+
+					$skip = false;
+					foreach ( $skip_core as $needle ) {
+						if ( false !== strpos( $file, $needle ) ) { $skip = true; break; }
+					}
+					if ( $skip && $strict ) continue;
+
+					$fn = isset( $f['function'] ) ? (string) $f['function'] : '';
+					$ln = isset( $f['line'] ) ? (int) $f['line'] : 0;
+
+					return self::short_path( $file ) . ':' . $ln . ( '' !== $fn ? ' → ' . $fn . '()' : '' );
+				}
+			}
+
+			return 'نامشخص (هسته‌ی وردپرس یا ووکامرس)';
+		}
+
+		/**
+		 * هر نوشتنی روی _stock_status را ثبت می‌کند — فقط وقتی پنجره‌ی ردیاب باز باشد.
+		 * وصل‌شده به updated_post_meta و added_post_meta (۴ آرگومان).
+		 */
+		public static function maybe_log_stock_write( $meta_id, $id, $key, $value ) {
+			if ( '_stock_status' !== $key ) return;
+
+			if ( (int) get_option( 'tsd_trace_until', 0 ) < time() ) return;
+
+			$log = get_option( 'tsd_trace_log', array() );
+			if ( ! is_array( $log ) ) $log = array();
+
+			$id    = absint( $id );
+			$value = is_scalar( $value ) ? (string) $value : '';
+			$who   = self::$writing_self ? 'خودِ دکتر موجودی (ترمیم)' : self::writer_frame();
+
+			// تکراری‌های فوری (همان محصول + همان مقدار، کمتر از ۲ ثانیه) در یک ردیف جمع می‌شوند
+			$n = count( $log );
+			if ( $n ) {
+				$last = $log[ $n - 1 ];
+				if ( isset( $last['id'], $last['value'], $last['t'], $last['who'] )
+					&& (int) $last['id'] === $id
+					&& (string) $last['value'] === $value
+					&& (string) $last['who'] === $who
+					&& ( time() - (int) $last['t'] ) < 2 ) {
+					$log[ $n - 1 ]['n'] = ( isset( $last['n'] ) ? (int) $last['n'] : 1 ) + 1;
+					update_option( 'tsd_trace_log', $log, false );
+					return;
+				}
+			}
+
+			$log[] = array(
+				't'     => time(),
+				'id'    => $id,
+				'value' => $value,
+				'who'   => $who,
+				'self'  => self::$writing_self ? 1 : 0,
+				'n'     => 1,
+			);
+
+			if ( count( $log ) > 120 ) $log = array_slice( $log, -120 );
+
+			update_option( 'tsd_trace_log', $log, false );
+		}
+
+		/** شروع پنجره‌ی ۱۵ دقیقه‌ای ردیاب */
+		private static function op_trace_start() {
+			update_option( 'tsd_trace_log', array(), false );
+			update_option( 'tsd_trace_until', time() + 900, false );
+
+			wp_send_json_success( array(
+				'message' => 'ردیاب روشن شد (۱۵ دقیقه).',
+				'log'     => '<b>ردیاب روشن شد.</b><br>حالا همان کاری را انجام بده که فکر می‌کنی وضعیت را برمی‌گرداند به «ناموجود»'
+					. ' (مثلاً «ترمیم خودکار همه»، پاک‌سازی کش، یا همگام‌سازی ووکامرس) و بعد دکمه‌ی «گزارش ردیاب» را بزن.'
+					. '<br><span style="color:#666">فقط نوشتن‌های روی _stock_status ثبت می‌شوند؛ حداکثر ۱۲۰ ردیف نگه داشته می‌شود.</span>',
+			) );
+		}
+
+		/** پاک کردن لاگ و خاموش کردن ردیاب */
+		private static function op_trace_clear() {
+			update_option( 'tsd_trace_log', array(), false );
+			update_option( 'tsd_trace_until', 0, false );
+
+			wp_send_json_success( array( 'message' => 'ردیاب خاموش و پاک شد.', 'log' => 'لاگ ردیاب پاک شد و ردیاب خاموش است.' ) );
+		}
+
+		/** گزارش گروه‌بندی‌شده بر اساس نویسنده */
+		private static function op_trace_report() {
+			$until = (int) get_option( 'tsd_trace_until', 0 );
+			$log   = get_option( 'tsd_trace_log', array() );
+			if ( ! is_array( $log ) ) $log = array();
+
+			$now     = time();
+			$state   = $until > $now
+				? 'روشن — ' . (int) ceil( ( $until - $now ) / 60 ) . ' دقیقه‌ی دیگر'
+				: 'خاموش';
+
+			if ( ! $log ) {
+				wp_send_json_success( array(
+					'message' => 'گزارش ردیاب خالی است.',
+					'log'     => '<b>گزارش ردیاب: خالی</b> — ' . esc_html( $state )
+						. '<br>یعنی در این مدت هیچ نوشتنی روی _stock_status ثبت نشده. اگر مطمئنی وضعیت‌ها عوض شده‌اند،'
+						. ' ردیاب را دوباره روشن کن و همان عمل را <b>بلافاصله</b> انجام بده (پنجره ۱۵ دقیقه است).',
+				) );
+			}
+
+			$groups = array();
+			foreach ( $log as $e ) {
+				$who = isset( $e['who'] ) ? (string) $e['who'] : 'نامشخص';
+				if ( ! isset( $groups[ $who ] ) ) {
+					$groups[ $who ] = array( 'n' => 0, 'self' => 0, 'ids' => array(), 'vals' => array(), 'from' => (int) $e['t'], 'to' => (int) $e['t'] );
+				}
+
+				$groups[ $who ]['n']   += max( 1, (int) $e['n'] );
+				$groups[ $who ]['self'] = isset( $e['self'] ) ? (int) $e['self'] : 0;
+				$groups[ $who ]['to']   = (int) $e['t'];
+
+				$ids  = isset( $e['id'] ) ? (int) $e['id'] : 0;
+				$vals = isset( $e['value'] ) ? (string) $e['value'] : '';
+				if ( count( $groups[ $who ]['ids'] ) < 3 && ! in_array( $ids, $groups[ $who ]['ids'], true ) ) {
+					$groups[ $who ]['ids'][]  = $ids;
+					$groups[ $who ]['vals'][] = $ids . '=' . $vals;
+				}
+			}
+
+			uasort( $groups, function ( $a, $b ) { return $b['n'] - $a['n']; } );
+
+			$out = '<b>گزارش ردیاب</b> — وضعیت: ' . esc_html( $state ) . ' | ' . count( $log ) . ' ردیف خام<br>';
+
+			foreach ( $groups as $who => $g ) {
+				$mine = ! empty( $g['self'] );
+				$out .= '<div style="margin:6px 0;padding:6px 8px;border:1px solid ' . ( $mine ? '#c3c4c7' : '#d63638' ) . ';border-radius:4px;background:' . ( $mine ? '#f6f7f7' : '#fcf0f1' ) . '">'
+					. '<b style="color:' . ( $mine ? '#1d2327' : '#d63638' ) . '">' . esc_html( $who ) . '</b>'
+					. ' — ' . (int) $g['n'] . ' بار'
+					. '<br><span style="color:#666">نمونه: ' . esc_html( implode( ' ، ', $g['vals'] ) ) . '</span>'
+					. '<br><span style="color:#666">از ' . esc_html( self::trace_time( $g['from'] ) ) . ' تا ' . esc_html( self::trace_time( $g['to'] ) ) . '</span>'
+					. ( $mine ? '' : '<br><b>این نویسنده‌ی بیرونی است — همین چیز وضعیت را برمی‌گرداند.</b>' )
+					. '</div>';
+			}
+
+			$out .= '<span style="color:#666">راهنمای خواندن: ردیف‌های «خودِ دکتر موجودی» طبیعی‌اند. هر نویسنده‌ی دیگری که بلافاصله بعد از ترمیم ظاهر شود، عامل برگشت وضعیت است (معمولاً یک افزونه‌ی کش/همگام‌سازی یا فیلتر موجودی).</span>';
+
+			wp_send_json_success( array( 'message' => 'گزارش ردیاب آماده است.', 'log' => $out ) );
+		}
+
+		private static function trace_time( $t ) {
+			$t = (int) $t;
+			return function_exists( 'wp_date' ) ? wp_date( 'H:i:s', $t ) : date( 'H:i:s', $t );
+		}
+
+		private static function empty_stats() {
+			return array(
+				'fixed'        => 0,
+				'status'       => 0,
+				'sync'         => 0,
+				'child_lookup' => 0,
+				'transients'   => 0,
+				'manage_off'   => 0,
+				'meta_dedup'   => 0,
+				'force_write'  => 0,
+				'verify_ok'    => 0,
+				'verify_fail'  => 0,
+				'terms'        => 0,
+				'lookup'       => 0,
+				'cache'        => 0,
+			);
+		}
+
+		private static function scope() {
+            return isset( $_POST['scope'] ) && 'name' === $_POST['scope'] ? 'name' : 'sku';
+        }
+
+        private static function prefix() {
+			$raw = isset( $_POST['prefix'] ) ? sanitize_text_field( wp_unslash( $_POST['prefix'] ) ) : '';
+			// Literal prefix: esc_like() escapes wildcards at query time; do not delete characters.
+
+			return trim( (string) $raw );
+		}
+
+		private static function in( $ids ) {
+			return implode( ',', array_map( 'absint', (array) $ids ) );
+		}
+
+		/* ---------------- لیست شناسه‌ها (کش‌شده) ---------------- */
+
+		private static function list_key( $mode, $prefix ) {
+			return 'tsd_ids_' . md5( 'v4|' . self::scope() . '|' . $mode . '|' . $prefix . '|' . ( defined( 'WC_VERSION' ) ? WC_VERSION : '' ) );
+		}
+
+		private static function list_ids( $mode, $prefix, $refresh = false ) {
+			$key = self::list_key( $mode, $prefix );
+
+			if ( ! $refresh ) {
+				$cached = get_transient( $key );
+				if ( is_array( $cached ) ) return $cached;
+			}
+
+			$ids = ( 'fast' === $mode ) ? self::build_parent_ids( $prefix ) : self::build_full_ids( $prefix );
+
+			set_transient( $key, $ids, self::CACHE_TTL );
+
+			return $ids;
+		}
+
+		private static function build_parent_ids( $prefix ) {
+            if ( 'name' === self::scope() ) return self::build_name_ids( $prefix, false );
+			global $wpdb;
+
+			$like = $wpdb->esc_like( $prefix ) . '%';
+
+			$sql = $wpdb->prepare(
+				"SELECT p.ID
+				 FROM {$wpdb->posts} p
+				 LEFT JOIN {$wpdb->postmeta} sku ON sku.post_id=p.ID AND sku.meta_key='_sku'
+				 WHERE p.post_type='product'
+				   AND p.post_status NOT IN ('trash','auto-draft')
+				   AND (
+				         sku.meta_value LIKE %s
+				         OR EXISTS (
+				               SELECT 1 FROM {$wpdb->posts} v
+				               INNER JOIN {$wpdb->postmeta} vs ON vs.post_id=v.ID AND vs.meta_key='_sku'
+				               WHERE v.post_type='product_variation'
+				                 AND v.post_parent=p.ID
+				                 AND v.post_status NOT IN ('trash','auto-draft')
+				                 AND vs.meta_value LIKE %s
+				         )
+				   )
+				 ORDER BY p.ID ASC
+				 LIMIT %d",
+				$like,
+				$like,
+				self::LIST_MAX
+			);
+
+			return array_map( 'absint', (array) $wpdb->get_col( $sql ) );
+		}
+
+		private static function build_full_ids( $prefix ) {
+            if ( 'name' === self::scope() ) return self::build_name_ids( $prefix, true );
+			global $wpdb;
+
+			$like = $wpdb->esc_like( $prefix ) . '%';
+
+			$sql = $wpdb->prepare(
+				"SELECT p.ID
+				 FROM {$wpdb->posts} p
+				 LEFT JOIN {$wpdb->postmeta} sku ON sku.post_id=p.ID AND sku.meta_key='_sku'
+				 WHERE p.post_type='product'
+				   AND p.post_status NOT IN ('trash','auto-draft')
+				   AND (
+				         sku.meta_value LIKE %s
+				         OR EXISTS (
+				               SELECT 1 FROM {$wpdb->posts} v
+				               INNER JOIN {$wpdb->postmeta} vs ON vs.post_id=v.ID AND vs.meta_key='_sku'
+				               WHERE v.post_type='product_variation'
+				                 AND v.post_parent=p.ID
+				                 AND v.post_status NOT IN ('trash','auto-draft')
+				                 AND vs.meta_value LIKE %s
+				         )
+				   )
+				 UNION
+				 SELECT v.ID
+				 FROM {$wpdb->posts} v
+				 LEFT JOIN {$wpdb->postmeta} vs ON vs.post_id=v.ID AND vs.meta_key='_sku'
+				 WHERE v.post_type='product_variation'
+				   AND v.post_status NOT IN ('trash','auto-draft')
+				   AND (
+				         vs.meta_value LIKE %s
+				         OR EXISTS (
+				               SELECT 1 FROM {$wpdb->postmeta} ps
+				               WHERE ps.post_id=v.post_parent AND ps.meta_key='_sku' AND ps.meta_value LIKE %s
+				         )
+				   )
+				 ORDER BY 1 ASC
+				 LIMIT %d",
+				$like,
+				$like,
+				$like,
+				$like,
+				self::LIST_MAX
+			);
+
+			return array_map( 'absint', (array) $wpdb->get_col( $sql ) );
+		}
+
+        /** Name scope is anchored on the product title, never on a variation's generated title. */
+        private static function build_name_ids( $prefix, $full ) {
+            global $wpdb;
+            $like = $wpdb->esc_like( $prefix ) . '%';
+            $sql = "SELECT p.ID FROM {$wpdb->posts} p
+                WHERE p.post_type='product' AND p.post_status NOT IN ('trash','auto-draft')
+                AND p.post_title LIKE %s";
+            $args = array( $like );
+            if ( $full ) {
+                $sql .= " UNION SELECT v.ID FROM {$wpdb->posts} v
+                    INNER JOIN {$wpdb->posts} p ON p.ID=v.post_parent
+                    WHERE v.post_type='product_variation' AND v.post_status NOT IN ('trash','auto-draft')
+                    AND p.post_type='product' AND p.post_status NOT IN ('trash','auto-draft')
+                    AND p.post_title LIKE %s";
+                $args[] = $like;
+            }
+            $sql .= ' ORDER BY 1 ASC LIMIT %d';
+            $args[] = self::LIST_MAX;
+            return array_map( 'absint', (array) $wpdb->get_col( $wpdb->prepare( $sql, $args ) ) );
+        }
+
+		/* ---------------- نقشه‌های گروهی (SQL) ---------------- */
+
+		private static function map_posts( $ids ) {
+			global $wpdb;
+			$ids = array_filter( array_map( 'absint', (array) $ids ) );
+			if ( empty( $ids ) ) return array();
+
+			$in  = self::in( $ids );
+			$out = array();
+
+			// کوئری فقط با اعداد صحیح ساخته می‌شود (بدون ورودی کاربر) → امن
+			$rows = (array) $wpdb->get_results(
+				"SELECT ID,post_type,post_title,post_parent FROM {$wpdb->posts} WHERE ID IN ({$in})"
+			);
+
+			foreach ( $rows as $r ) {
+				$out[ (int) $r->ID ] = array(
+					'type'   => (string) $r->post_type,
+					'title'  => (string) $r->post_title,
+					'parent' => (int) $r->post_parent,
+				);
+			}
+
+			return $out;
+		}
+
+		private static function map_sku( $ids ) {
+			global $wpdb;
+			$ids = array_filter( array_map( 'absint', (array) $ids ) );
+			if ( empty( $ids ) ) return array();
+
+			$in  = self::in( $ids );
+			$out = array();
+
+			$rows = (array) $wpdb->get_results(
+				"SELECT post_id,meta_value FROM {$wpdb->postmeta} WHERE meta_key='_sku' AND post_id IN ({$in})"
+			);
+
+			foreach ( $rows as $r ) $out[ (int) $r->post_id ] = (string) $r->meta_value;
+
+			return $out;
+		}
+
+		private static function map_meta_status( $ids ) {
+			global $wpdb;
+			$ids = array_filter( array_map( 'absint', (array) $ids ) );
+			if ( empty( $ids ) ) return array();
+
+			$in  = self::in( $ids );
+			$out = array();
+
+			$rows = (array) $wpdb->get_results(
+				"SELECT post_id,meta_value FROM {$wpdb->postmeta} WHERE meta_key='_stock_status' AND post_id IN ({$in})"
+			);
+
+			foreach ( $rows as $r ) $out[ (int) $r->post_id ] = (string) $r->meta_value;
+
+			return $out;
+		}
+
+		private static function map_manage( $ids ) {
+			global $wpdb;
+			$ids = array_filter( array_map( 'absint', (array) $ids ) );
+			if ( empty( $ids ) ) return array();
+
+			$in  = self::in( $ids );
+			$out = array();
+
+			$rows = (array) $wpdb->get_results(
+				"SELECT post_id,meta_key,meta_value FROM {$wpdb->postmeta}
+				 WHERE meta_key IN ('_manage_stock','_stock','_backorders') AND post_id IN ({$in})"
+			);
+
+			foreach ( $rows as $r ) {
+				$id = (int) $r->post_id;
+				if ( ! isset( $out[ $id ] ) ) $out[ $id ] = array();
+				$out[ $id ][ (string) $r->meta_key ] = (string) $r->meta_value;
+			}
+
+			return $out;
+		}
+
+		private static function lookup_available() {
+			global $wpdb;
+
+			static $has = null;
+			if ( null !== $has ) return $has;
+
+			$table = $wpdb->prefix . 'wc_product_meta_lookup';
+
+			if ( method_exists( $wpdb, 'suppress_errors' ) ) $wpdb->suppress_errors( true );
+			$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+			if ( method_exists( $wpdb, 'suppress_errors' ) ) $wpdb->suppress_errors( false );
+
+			$has = ( (string) $found === (string) $table );
+
+			return $has;
+		}
+
+		private static function map_lookup( $ids ) {
+			global $wpdb;
+			$ids = array_filter( array_map( 'absint', (array) $ids ) );
+			if ( empty( $ids ) || ! self::lookup_available() ) return array();
+
+			$in    = self::in( $ids );
+			$table = $wpdb->prefix . 'wc_product_meta_lookup';
+			$out   = array();
+
+			if ( method_exists( $wpdb, 'suppress_errors' ) ) $wpdb->suppress_errors( true );
+			$rows = (array) $wpdb->get_results(
+				"SELECT product_id,stock_status,stock_quantity FROM {$table} WHERE product_id IN ({$in})"
+			);
+			if ( method_exists( $wpdb, 'suppress_errors' ) ) $wpdb->suppress_errors( false );
+
+			foreach ( $rows as $r ) {
+				$out[ (int) $r->product_id ] = array(
+					'status' => (string) $r->stock_status,
+					'qty'    => ( null === $r->stock_quantity ? null : (int) $r->stock_quantity ),
+				);
+			}
+
+			return $out;
+		}
+
+		private static function oos_term_id() {
+			if ( function_exists( 'wc_get_product_visibility_term_ids' ) ) {
+				$ids = wc_get_product_visibility_term_ids();
+				if ( isset( $ids['outofstock'] ) ) return (int) $ids['outofstock'];
+			}
+
+			return 0;
+		}
+
+		/** شناسه‌هایی که ترم outofstock دارند */
+		private static function map_oos_terms( $ids ) {
+			global $wpdb;
+			$ids = array_filter( array_map( 'absint', (array) $ids ) );
+			if ( empty( $ids ) ) return array();
+
+			$in     = self::in( $ids );
+			$term   = self::oos_term_id();
+			$out    = array();
+			$filter = $term ? "tt.term_id={$term}" : "t.slug='outofstock' AND tt.taxonomy='product_visibility'";
+
+			$rows = (array) $wpdb->get_results(
+				"SELECT DISTINCT tr.object_id
+				 FROM {$wpdb->term_relationships} tr
+				 INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id=tr.term_taxonomy_id
+				 INNER JOIN {$wpdb->terms} t ON t.term_id=tt.term_id
+				 WHERE tt.taxonomy='product_visibility'
+				   AND tr.object_id IN ({$in})
+				   AND ({$filter})"
+			);
+
+			foreach ( $rows as $r ) $out[ (int) $r->object_id ] = true;
+
+			return $out;
+		}
+
+		/** شناسه‌های محصولاتی که نوعشان «متغیر» است (از تاکسونومی product_type، بدون بارگذاری محصول) */
+		private static function map_variable_products( $ids ) {
+			global $wpdb;
+			$ids = array_filter( array_map( 'absint', (array) $ids ) );
+			if ( empty( $ids ) ) return array();
+
+			$in  = self::in( $ids );
+			$out = array();
+
+			$rows = (array) $wpdb->get_results(
+				"SELECT DISTINCT tr.object_id
+				 FROM {$wpdb->term_relationships} tr
+				 INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id=tr.term_taxonomy_id
+				 INNER JOIN {$wpdb->terms} t ON t.term_id=tt.term_id
+				 WHERE tt.taxonomy='product_type'
+				   AND t.slug='variable'
+				   AND tr.object_id IN ({$in})"
+			);
+
+			foreach ( $rows as $r ) $out[ (int) $r->object_id ] = true;
+
+			return $out;
+		}
+
+		/** تجمیع وضعیت فرزندان برای والدها */
+		private static function map_children( $parent_ids ) {
+			global $wpdb;
+			$parent_ids = array_filter( array_map( 'absint', (array) $parent_ids ) );
+			if ( empty( $parent_ids ) ) return array();
+
+			$in  = self::in( $parent_ids );
+			$out = array();
+
+			$rows = (array) $wpdb->get_results(
+				"SELECT v.post_parent pid,
+				        COUNT(*) total,
+				        SUM(CASE WHEN COALESCE(st.meta_value,'instock')='outofstock' THEN 1 ELSE 0 END) oos
+				 FROM {$wpdb->posts} v
+				 LEFT JOIN {$wpdb->postmeta} st ON st.post_id=v.ID AND st.meta_key='_stock_status'
+				 WHERE v.post_type='product_variation'
+				   AND v.post_status='publish'
+				   AND v.post_parent IN ({$in})
+				 GROUP BY v.post_parent"
+			);
+
+			foreach ( $rows as $r ) {
+				$out[ (int) $r->pid ] = array( 'total' => (int) $r->total, 'oos' => (int) $r->oos );
+			}
+
+			return $out;
+		}
+
+		/* ============================================================
+		 * v3 — رفع «تله‌های» ووکامرس که باعث می‌شد sync والد کار نکند:
+		 *  ۱) ووکامرس وضعیت فرزندان را از جدول wp_wc_product_meta_lookup می‌خواند
+		 *     (نه از متای _stock_status). اگر ردیف‌های lookup فرزندان قدیمی باشند،
+		 *     هر بار sync، والد را «ناموجود» می‌سازد.
+		 *  ۲) اگر خودِ والد «مدیریت انبار» داشته باشد، ووکامرس وضعیتش را از فرزندان
+		 *     نمی‌سازد (validate_props) و بازار را به عدد انبار خودش می‌سپارد.
+		 * ============================================================ */
+
+		/** آمار فرزندان: متا در مقابل جدول lookup (یک کوئری برای چند والد) */
+		private static function map_children_stats( $parent_ids ) {
+			global $wpdb;
+			$parent_ids = array_filter( array_map( 'absint', (array) $parent_ids ) );
+			if ( empty( $parent_ids ) ) return array();
+
+			$in  = self::in( $parent_ids );
+			$out = array();
+
+			$has_lookup = self::lookup_available();
+			$lookup     = $wpdb->prefix . 'wc_product_meta_lookup';
+
+			$join_lookup = $has_lookup ? "LEFT JOIN {$lookup} lk ON lk.product_id = v.ID" : '';
+			$lk_instock  = $has_lookup ? "SUM(CASE WHEN lk.stock_status='instock' THEN 1 ELSE 0 END)" : '0';
+			$lk_out      = $has_lookup ? "SUM(CASE WHEN lk.stock_status='outofstock' THEN 1 ELSE 0 END)" : '0';
+			$lk_missing  = $has_lookup ? "SUM(CASE WHEN lk.product_id IS NULL THEN 1 ELSE 0 END)" : '0';
+
+			$sql = "SELECT v.post_parent pid,
+			               COUNT(*) total,
+			               SUM(CASE WHEN COALESCE(m.meta_value,'instock')='instock' THEN 1 ELSE 0 END) meta_instock,
+			               SUM(CASE WHEN m.meta_value='outofstock' THEN 1 ELSE 0 END) meta_oos,
+			               SUM(CASE WHEN m.meta_value='onbackorder' THEN 1 ELSE 0 END) meta_back,
+			               {$lk_instock} lookup_instock,
+			               {$lk_out} lookup_oos,
+			               {$lk_missing} lookup_missing
+			        FROM {$wpdb->posts} v
+			        LEFT JOIN {$wpdb->postmeta} m ON m.post_id = v.ID AND m.meta_key='_stock_status'
+			        {$join_lookup}
+			        WHERE v.post_type='product_variation'
+			          AND v.post_status='publish'
+			          AND v.post_parent IN ({$in})
+			        GROUP BY v.post_parent";
+
+			$rows = (array) $wpdb->get_results( $sql );
+
+			foreach ( $rows as $r ) {
+				$out[ (int) $r->pid ] = array(
+					'total'          => (int) $r->total,
+					'meta_instock'   => (int) $r->meta_instock,
+					'meta_oos'       => (int) $r->meta_oos,
+					'meta_back'      => (int) $r->meta_back,
+					'lookup_instock' => (int) $r->lookup_instock,
+					'lookup_oos'     => (int) $r->lookup_oos,
+					'lookup_missing' => (int) $r->lookup_missing,
+				);
+			}
+
+			return $out;
+		}
+
+		/** محصولاتی که متای _stock_status تکراری دارند (منبع ناهمخوانی بین get_post_meta و SQL) */
+		private static function map_duplicate_meta( $ids ) {
+			global $wpdb;
+			$ids = array_filter( array_map( 'absint', (array) $ids ) );
+			if ( empty( $ids ) ) return array();
+
+			$in  = self::in( $ids );
+			$out = array();
+
+			$rows = (array) $wpdb->get_results(
+				"SELECT post_id, COUNT(*) c FROM {$wpdb->postmeta}
+				 WHERE meta_key='_stock_status' AND post_id IN ({$in})
+				 GROUP BY post_id HAVING c > 1"
+			);
+
+			foreach ( $rows as $r ) $out[ (int) $r->post_id ] = (int) $r->c;
+
+			return $out;
+		}
+
+		/** انبار مدیریت‌شده و عدد انبار یک محصول (تکی، از API وردپرس) */
+		private static function product_stock_meta( $id ) {
+			$id   = absint( $id );
+			$qty  = get_post_meta( $id, '_stock', true );
+			$bo   = get_post_meta( $id, '_backorders', true );
+
+			return array(
+				'manage'     => (string) get_post_meta( $id, '_manage_stock', true ),
+				'qty'        => ( '' === (string) $qty || null === $qty ) ? null : (float) $qty,
+				'backorders' => (string) $bo,
+			);
+		}
+
+		/** ترنزینت‌های کش‌شده‌ی والد متغیر (اگر قدیمی باشند، لیست فرزندان/قیمت‌ها غلط می‌ماند) */
+		private static function child_transients_state( $id ) {
+			$id  = absint( $id );
+			$key = 'wc_product_children_' . $id;
+			$val = get_transient( $key );
+
+			if ( ! is_array( $val ) || ! isset( $val['all'] ) ) {
+				return array( 'exists' => false, 'count' => 0 );
+			}
+
+			return array( 'exists' => true, 'count' => count( (array) $val['all'] ) );
+		}
+
+		private static function clear_child_transients( $id ) {
+			$id   = absint( $id );
+			$keys = array(
+				'wc_product_children_' . $id,
+				'wc_var_prices_' . $id,
+				'wc_child_has_weight_' . $id,
+				'wc_child_has_dimensions_' . $id,
+				'wc_related_' . $id,
+				'wc_product_total_stock_' . $id,
+			);
+
+			$n = 0;
+
+			foreach ( $keys as $k ) {
+				if ( function_exists( 'delete_transient' ) ) delete_transient( $k );
+				// کلیدهای شبکه‌ای/چندسایتی هم پاک شوند
+				delete_option( '_transient_' . $k );
+				delete_option( '_transient_timeout_' . $k );
+				$n++;
+			}
+
+			return $n;
+		}
+
+		/** بازسازی ردیف‌های جدول lookup فرزندان از روی متای واقعی (SQL گروهی) */
+		private static function rebuild_children_lookup( $parent_ids, &$stats ) {
+			global $wpdb;
+
+			$parent_ids = array_filter( array_map( 'absint', (array) $parent_ids ) );
+			if ( empty( $parent_ids ) || ! self::lookup_available() ) return 0;
+
+			$in     = self::in( $parent_ids );
+			$lookup = $wpdb->prefix . 'wc_product_meta_lookup';
+
+			// ۱) به‌روزرسانی وضعیت ردیف‌های موجود
+			$n1 = (int) $wpdb->query(
+				"UPDATE {$lookup} lk
+				 INNER JOIN {$wpdb->posts} v ON v.ID=lk.product_id
+				 INNER JOIN {$wpdb->postmeta} m ON m.post_id=lk.product_id AND m.meta_key='_stock_status'
+				 SET lk.stock_status=m.meta_value
+				 WHERE v.post_type='product_variation' AND v.post_parent IN ({$in})
+				   AND lk.stock_status <> m.meta_value"
+			);
+
+			// ۲) به‌روزرسانی عدد انبار (جایی که متا دارد)
+			$n2 = (int) $wpdb->query(
+				"UPDATE {$lookup} lk
+				 INNER JOIN {$wpdb->posts} v ON v.ID=lk.product_id
+				 INNER JOIN {$wpdb->postmeta} q ON q.post_id=lk.product_id AND q.meta_key='_stock'
+				 SET lk.stock_quantity=CAST(q.meta_value AS DECIMAL(12,2))
+				 WHERE v.post_type='product_variation' AND v.post_parent IN ({$in})
+				   AND ( lk.stock_quantity IS NULL OR lk.stock_quantity <> CAST(q.meta_value AS DECIMAL(12,2)) )"
+			);
+
+			// ۳) ردیف‌های ناقص (فرزندی که ردیف lookup ندارد) → از مسیر خود ووکامرس ساخته می‌شود
+			$missing = (array) $wpdb->get_col(
+				"SELECT v.ID FROM {$wpdb->posts} v
+				 LEFT JOIN {$lookup} lk ON lk.product_id=v.ID
+				 WHERE v.post_type='product_variation' AND v.post_status='publish'
+				   AND v.post_parent IN ({$in}) AND lk.product_id IS NULL
+				 LIMIT 300"
+			);
+
+			$n3 = 0;
+
+			foreach ( $missing as $mid ) {
+				if ( self::refresh_lookup( $mid ) ) $n3++;
+			}
+
+			return $n1 + $n2 + $n3;
+		}
+
+		/** چندگانه‌های متای _stock_status را پاک می‌کند و مقدار درست را می‌نویسد */
+		private static function dedupe_stock_meta( $id, $value ) {
+			global $wpdb;
+			$id = absint( $id );
+
+			$count = (int) $wpdb->get_var( $wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE post_id=%d AND meta_key='_stock_status'",
+				$id
+			) );
+
+			if ( $count <= 1 ) return false;
+
+			$wpdb->query( $wpdb->prepare(
+				"DELETE FROM {$wpdb->postmeta} WHERE post_id=%d AND meta_key='_stock_status'",
+				$id
+			) );
+
+			add_post_meta( $id, '_stock_status', $value, true );
+			wp_cache_delete( $id, 'post_meta' );
+
+			return true;
+		}
+
+		/** وضعیت مورد انتظار والد بر اساس متای واقعی فرزندان */
+		private static function expected_parent_status( $id ) {
+			$agg = self::map_children_stats( array( $id ) );
+			$agg = isset( $agg[ $id ] ) ? $agg[ $id ] : array( 'total' => 0, 'meta_instock' => 0, 'meta_back' => 0 );
+
+			if ( $agg['total'] > 0 && $agg['meta_instock'] > 0 ) return array( 'instock', $agg );
+			if ( $agg['total'] > 0 && $agg['meta_back'] > 0 ) return array( 'onbackorder', $agg );
+
+			return array( 'outofstock', $agg );
+		}
+
+		/** ووکامرس هنگام sync والد، وضعیت فرزندان را از جدول lookup می‌خواند؛
+		 *  این گزینه موقت باعث می‌شود به‌جای جدول، متای واقعی خوانده شود. */
+		private static function with_lookup_bypass( $callback ) {
+			$had = get_option( 'woocommerce_product_lookup_table_is_generating', false );
+
+			update_option( 'woocommerce_product_lookup_table_is_generating', 'yes', false );
+
+			try {
+				call_user_func( $callback );
+			} catch ( Throwable $e ) {
+				// بی‌صدا
+			}
+
+			if ( false === $had ) {
+				delete_option( 'woocommerce_product_lookup_table_is_generating' );
+			} else {
+				update_option( 'woocommerce_product_lookup_table_is_generating', $had, false );
+			}
+		}
+
+		/* ---------------- تشخیص ---------------- */
+
+		/**
+		 * تشخیص گروهی: ورودی چند شناسه، خروجی یک ردیف گزارش برای هرکدام (بدون بارگذاری محصول).
+		 *
+		 * @param array $ids
+		 * @param bool  $relaxed  در حالت کامل، برای Variationها فقط ناهمخوانی متا/lookup را چک می‌کنیم.
+		 */
+		private static function detect( $ids, $relaxed = false ) {
+			$ids = array_values( array_filter( array_map( 'absint', (array) $ids ) ) );
+			if ( empty( $ids ) ) return array();
+
+			$posts    = self::map_posts( $ids );
+			$vars     = self::map_variable_products( $ids );
+			$skus     = self::map_sku( $ids );
+			$metas    = self::map_meta_status( $ids );
+			$manages  = self::map_manage( $ids );
+			$lookups  = self::map_lookup( $ids );
+			$terms_oos = self::map_oos_terms( $ids );
+
+			$parent_ids = array();
+
+			foreach ( $ids as $id ) {
+				$info = isset( $posts[ $id ] ) ? $posts[ $id ] : null;
+				if ( ! $info ) continue;
+
+				if ( 'product_variation' === $info['type'] ) {
+					if ( $info['parent'] ) $parent_ids[ $info['parent'] ] = true;
+				} else {
+					$parent_ids[ $id ] = true; // برای تجمیع فرزندان؛ محصولات ساده نتیجه‌ی خالی می‌گیرند
+				}
+			}
+
+			$children   = self::map_children( array_keys( $parent_ids ) );
+			$child_stat = self::map_children_stats( array_keys( $parent_ids ) );
+			$parent_st  = self::map_meta_status( array_keys( $parent_ids ) );
+			$duplicates = self::map_duplicate_meta( $ids );
+
+			$rows = array();
+
+			foreach ( $ids as $id ) {
+				$info = isset( $posts[ $id ] ) ? $posts[ $id ] : null;
+				if ( ! $info ) continue;
+
+				$is_var   = ( 'product_variation' === $info['type'] );
+				$parent   = (int) $info['parent'];
+				$is_varia = ( ! $is_var && ( isset( $vars[ $id ] ) || ( isset( $children[ $id ] ) && $children[ $id ]['total'] > 0 ) ) );
+
+				$meta   = isset( $metas[ $id ] ) ? (string) $metas[ $id ] : '';
+				$lookup = isset( $lookups[ $id ] ) ? $lookups[ $id ] : null;
+				$term   = ! empty( $terms_oos[ $id ] );
+				$manage = isset( $manages[ $id ] ) ? $manages[ $id ] : array();
+
+				$effective = '' !== $meta ? $meta : ( $lookup ? $lookup['status'] : 'instock' );
+
+				$reasons = array();
+				$flag    = 'ok';
+
+				// ۱) جدول lookup
+				if ( $lookup && $lookup['status'] !== $effective ) {
+					$flag      = 'bad';
+					$reasons[] = 'جدول lookup ووکامرس «' . $lookup['status'] . '» است ولی وضعیت واقعی «' . $effective . '» → صفحه‌های آرشیو/فیلتر از این جدول می‌خوانند.';
+				}
+
+				// ۲) ترم visibility چسبیده
+				if ( $term && 'instock' === $effective ) {
+					$flag      = 'bad';
+					$reasons[] = 'ترم product_visibility=outofstock چسبیده در حالی که محصول «موجود» است → با «پنهان‌کردن ناموجودها» از فهرست می‌افتد و بعضی قالب‌ها «ناموجود» نشان می‌دهند.';
+				}
+
+				$actionable = false;
+
+				if ( $is_varia ) {
+					$agg   = isset( $children[ $id ] ) ? $children[ $id ] : array( 'total' => 0, 'oos' => 0 );
+					$stat  = isset( $child_stat[ $id ] ) ? $child_stat[ $id ] : null;
+					$total = (int) $agg['total'];
+					$oos   = (int) $agg['oos'];
+
+					if ( $total > 0 ) {
+						$expected = ( $oos < $total ) ? 'instock' : 'outofstock';
+
+						if ( $expected !== $effective ) {
+							$flag       = 'bad';
+							$actionable = true;
+
+							if ( 'instock' === $expected ) {
+								$reasons[] = 'هر ' . $total . ' Variation این محصول «موجود» است ولی وضعیت خودِ محصول «ناموجود» مانده ← دقیقاً همین باعث می‌شود صفحه/قالب «ناموجود» نشان دهد در حالی که خرید کار می‌کند.';
+							} else {
+								$reasons[] = 'هر ' . $total . ' Variation ناموجودند ولی وضعیت محصول «موجود» است ← ناهمخوان (برچسب موجود است ولی خرید ممکن نیست).';
+							}
+						}
+
+						// تله‌ی ۱: ردیف‌های جدول lookup فرزندان
+						if ( $stat && $stat['meta_instock'] > 0 && $stat['lookup_instock'] < $stat['meta_instock'] ) {
+							$flag       = 'bad';
+							$actionable = true;
+							$reasons[]  = 'ردیف‌های جدول lookup فرزندان قدیمی‌اند (' . $stat['lookup_instock'] . ' ردیف «موجود» در جدول، در حالی که متای ' . $stat['meta_instock'] . ' فرزند «موجود» است' .
+								( $stat['lookup_missing'] > 0 ? ' و ' . $stat['lookup_missing'] . ' ردیف کاملاً ناقص' : '' ) .
+								') ← ووکامرس هنگام همگام‌سازی والد، وضعیت فرزندان را از همین جدول می‌خواند؛ بنابراین همگام‌سازی بعدی ممکن است والد را دوباره ناموجود کند. باید ردیف‌ها بازسازی شوند.';
+						}
+
+						// تله‌ی ۲: مدیریت انبار روی خودِ والد
+						$manage_stock_on = isset( $manage['_manage_stock'] ) && 'yes' === (string) $manage['_manage_stock'];
+						$manage_qty      = ( isset( $manage['_stock'] ) && '' !== (string) $manage['_stock'] ) ? (float) $manage['_stock'] : null;
+
+						if ( $manage_stock_on ) {
+							$flag       = 'bad';
+							$actionable = true;
+							$reasons[]  = 'خودِ والد «مدیریت انبار» دارد' . ( null !== $manage_qty ? ' (عدد انبار: ' . (int) $manage_qty . ')' : '' ) .
+								' ← ووکامرس وقتی والد مدیریت انبار دارد، وضعیتش را از فرزندان نمی‌سازد (تابع validate_props) و روی هر ذخیره، وضعیت والد را روی فرزندانِ بدون مدیریت انبار می‌نویسد. یعنی هم sync بی‌اثر است، هم می‌تواند فرزندان را خراب کند.';
+						}
+
+						if ( $oos > 0 && $oos < $total && 'ok' === $flag ) {
+							$flag      = 'warn';
+							$reasons[] = $oos . ' از ' . $total . ' Variation ناموجودند (بقیه قابل خریدند) — طبیعی است.';
+						}
+					} else {
+						if ( 'ok' === $flag ) $flag = 'warn';
+						$reasons[] = 'این محصول متغیر هیچ Variation منتشرشده‌ای ندارد.';
+					}
+				}
+
+				// ۵) متای _stock_status تکراری (get_post_meta اولین ردیف را می‌دهد، SQL آخرین را)
+				if ( ! empty( $duplicates[ $id ] ) ) {
+					$flag       = 'bad';
+					$actionable = true;
+					$reasons[]  = 'متای _stock_status این محصول ' . $duplicates[ $id ] . ' ردیف تکراری دارد ← get_post_meta و کوئری‌های SQL می‌توانند دو مقدار متفاوت ببینند؛ در ترمیم یکی می‌شود.';
+				}
+
+				// ۳) انبار مدیریت‌شده با عدد صفر (برای Variation و محصول ساده)
+				if ( ! $is_varia ) {
+					$managing = isset( $manage['_manage_stock'] ) && 'yes' === $manage['_manage_stock'];
+					$qty      = isset( $manage['_stock'] ) && '' !== $manage['_stock'] ? (float) $manage['_stock'] : null;
+					$back     = isset( $manage['_backorders'] ) ? (string) $manage['_backorders'] : 'no';
+
+					if ( $managing && null !== $qty && $qty <= 0 && 'no' === $back ) {
+						if ( 'ok' === $flag ) $flag = 'warn';
+						$reasons[] = 'انبار مدیریت‌شده با عدد ' . (int) $qty . ' و بدون پیش‌سفارش → خرید ممکن نیست (وضعیت «موجود» فقط برچسب است).';
+					}
+				}
+
+				// ۴) در حالت کامل: اگر Variation موجود است ولی والدش ناموجود مانده، یادآوری شود
+				if ( $relaxed && $is_var && $parent && isset( $parent_st[ $parent ] ) ) {
+					if ( 'instock' === $effective && 'outofstock' === (string) $parent_st[ $parent ] ) {
+						if ( 'ok' === $flag ) $flag = 'warn';
+						$reasons[] = 'خودِ این Variation موجود است، ولی والدش (#' . $parent . ') هنوز «ناموجود» مانده — والد در حالت سریع هم فهرست می‌شود و همان‌جا ترمیم می‌شود.';
+					}
+				}
+
+				$rows[] = array(
+					'id'          => $id,
+					'title'       => isset( $info['title'] ) && '' !== $info['title'] ? $info['title'] : get_the_title( $id ),
+					'type'        => $is_var ? 'variation' : $info['type'],
+					'sku'         => isset( $skus[ $id ] ) ? $skus[ $id ] : '',
+					'effective'   => $effective ? $effective : '—',
+					'lookup'      => $lookup ? $lookup['status'] : null,
+					'oos_term'    => $term,
+					'children'    => ( $is_varia && isset( $children[ $id ] ) ) ? $children[ $id ] : array( 'total' => 0, 'oos' => 0 ),
+					'child_stat'  => ( $is_varia && isset( $child_stat[ $id ] ) ) ? $child_stat[ $id ] : null,
+					'parent'      => $parent,
+					'flag'        => $flag,
+					'actionable'  => $actionable,
+					'reasons'     => $reasons,
+					'stock_html'  => '',
+				);
+			}
+
+			return $rows;
+		}
+
+		/** فقط برای ردیف‌های علامت‌خورده: HTML موجودی و جزئیات را از خود ووکامرس می‌گیریم */
+		private static function enrich( &$rows, $max = self::ENRICH_MAX ) {
+			$done = 0;
+
+			foreach ( $rows as $i => $r ) {
+				if ( 'ok' === $r['flag'] ) continue;
+				if ( $done >= $max ) break;
+
+				if ( ! function_exists( 'wc_get_stock_html' ) ) break;
+
+				try {
+					$product = wc_get_product( $r['id'] );
+					if ( $product ) {
+						$rows[ $i ]['stock_html'] = (string) wc_get_stock_html( $product );
+
+						if ( 'variable' === $product->get_type() ) {
+							$tr = self::child_transients_state( $r['id'] );
+							$rows[ $i ]['children_transient'] = $tr;
+
+							$real = isset( $r['children']['total'] ) ? (int) $r['children']['total'] : 0;
+
+							if ( $tr['exists'] && $real > 0 && $tr['count'] !== $real ) {
+								$rows[ $i ]['reasons'][] = 'کش لیست فرزندان (ترنزینت wc_product_children) ' . $tr['count'] . ' فرزند دارد ولی واقعیت ' . $real . ' فرزند است → کش قدیمی است و باید پاک شود.';
+								if ( 'ok' === $rows[ $i ]['flag'] ) $rows[ $i ]['flag'] = 'bad';
+								$rows[ $i ]['actionable'] = true;
+							}
+						}
+					}
+				} catch ( Throwable $e ) {
+					// بی‌صدا
+				}
+
+				$done++;
+			}
+		}
+
+		private static function env_html() {
+			$bits = array();
+
+			$bits[] = 'ووکامرس: ' . ( defined( 'WC_VERSION' ) ? WC_VERSION : '—' );
+			$bits[] = 'PHP: ' . PHP_VERSION;
+			$bits[] = 'کش آبجکت پایدار: ' . ( ( function_exists( 'wp_using_ext_object_cache' ) && wp_using_ext_object_cache() ) ? 'فعال' : 'غیرفعال' );
+			$bits[] = 'پنهان‌کردن ناموجودها: ' . ( 'yes' === get_option( 'woocommerce_hide_out_of_stock_items' ) ? '<strong style="color:#b32d2e">روشن</strong>' : 'خاموش' );
+
+			$all     = (array) get_option( 'active_plugins', array() );
+			$needles = array( 'cache', 'litespeed', 'rocket', 'w3-total', 'wp-super', 'nitropack', 'cloudflare', 'varnish', 'redis', 'memcach', 'autoptimize' );
+			$found   = array();
+
+			foreach ( $all as $file ) {
+				$low = strtolower( (string) $file );
+				foreach ( $needles as $n ) {
+					if ( false !== strpos( $low, $n ) ) { $found[] = basename( dirname( (string) $file ) ); break; }
+				}
+			}
+
+			$bits[] = 'افزونه‌های کش: ' . ( $found ? '<strong>' . implode( ' ، ', array_map( 'esc_html', array_unique( $found ) ) ) . '</strong>' : 'شناسایی نشد' );
+			$bits[] = 'جدول lookup: ' . ( self::lookup_available() ? 'موجود' : '<strong>در دسترس نیست</strong>' );
+
+			return '<div>' . implode( ' &nbsp;|&nbsp; ', $bits ) . '</div>';
+		}
+
+		/* ---------------- عملیات ---------------- */
+
+		private static function op_scan() {
+			$prefix = self::prefix();
+			if ( '' === $prefix ) wp_send_json_error( array( 'message' => 'متن محدوده خالی یا نامعتبر است.' ), 400 );
+
+			$mode    = ( isset( $_POST['mode'] ) && 'full' === sanitize_key( wp_unslash( $_POST['mode'] ) ) ) ? 'full' : 'fast';
+			$refresh = ! empty( $_POST['refresh'] );
+			$offset  = isset( $_POST['offset'] ) ? absint( $_POST['offset'] ) : 0;
+			$page    = ( 'fast' === $mode ) ? self::PAGE_FAST : self::PAGE_FULL;
+
+			$ids = self::list_ids( $mode, $prefix, $refresh );
+
+			if ( empty( $ids ) ) {
+				wp_send_json_success(
+					array( 'rows' => array(), 'done' => true, 'next_offset' => 0, 'total' => 0, 'env' => self::env_html() )
+				);
+			}
+
+			$slice = array_slice( $ids, $offset, $page );
+			$rows  = self::detect( $slice, ( 'full' === $mode ) );
+
+			self::enrich( $rows );
+
+			$next = $offset + count( $slice );
+
+			wp_send_json_success(
+				array(
+					'rows'        => $rows,
+					'done'        => $next >= count( $ids ),
+					'next_offset' => $next,
+					'total'       => count( $ids ),
+					'env'         => ( 0 === $offset ) ? self::env_html() : '',
+				)
+			);
+		}
+
+		/**
+		 * ترمیم یک شناسه — به‌ترتیب:
+		 *  ۱) (والد متغیر) بازسازی ردیف‌های lookup فرزندان + پاک‌سازی ترنزینت‌های کش
+		 *  ۲) (والد متغیر) اگر «مدیریت انبار والد» روشن است و گزینه‌اش فعال: انبار والد به فرزندان سپرده می‌شود
+		 *  ۳) وضعیت درست از متای واقعی فرزندان محاسبه و مستقیماً نوشته می‌شود (بدون تکیه به sync ووکامرس)
+		 *  ۴) ترم visibility، ردیف lookup خودِ محصول، ترنزینت/کش و در آخر «تأیید نوشتن»
+		 */
+		private static function fix_one( $id, &$stats, $opts = array() ) {
+			$id      = absint( $id );
+			$product = wc_get_product( $id );
+
+			if ( ! $product ) return;
+
+			$opts = wp_parse_args(
+				$opts,
+				array(
+					'refresh_children_lookup' => true,
+					'release_parent_stock'    => true,
+				)
+			);
+
+			$stats['fixed']++;
+
+			self::$writing_self = true;
+
+			$type = method_exists( $product, 'get_type' ) ? $product->get_type() : '';
+			$meta = (string) get_post_meta( $id, '_stock_status', true );
+
+			if ( 'variable' === $type ) {
+				// ۱) ردیف‌های lookup فرزندان (تله‌ی اصلی)
+				if ( ! empty( $opts['refresh_children_lookup'] ) ) {
+					$stats['child_lookup'] = ( isset( $stats['child_lookup'] ) ? $stats['child_lookup'] : 0 ) + self::rebuild_children_lookup( array( $id ), $stats );
+				}
+
+				// ۲) ترنزینت‌های کش‌شده‌ی والد (لیست فرزندان/قیمت‌ها/وزن/ابعاد)
+				$stats['transients'] = ( isset( $stats['transients'] ) ? $stats['transients'] : 0 ) + self::clear_child_transients( $id );
+
+				// ۳) وضعیت مورد انتظار از متای واقعی فرزندان
+				list( $expected, $agg ) = self::expected_parent_status( $id );
+
+				// ۴) مدیریت انبار روی خودِ والد → به فرزندان سپرده شود
+				$pm = self::product_stock_meta( $id );
+
+				if ( 'yes' === $pm['manage'] && ! empty( $opts['release_parent_stock'] ) ) {
+					$product->set_manage_stock( false );
+					$stats['manage_off'] = ( isset( $stats['manage_off'] ) ? $stats['manage_off'] : 0 ) + 1;
+				}
+
+				if ( (string) $product->get_stock_status() !== $expected ) {
+					$product->set_stock_status( $expected );
+					$stats['status']++;
+				}
+
+				// ذخیره‌ی واقعی (validate_props با انبارِ آزادشده، دوباره از فرزندان sync می‌کند؛
+				// با bypass جدول lookup تا ردیف‌های stale دوباره خرابش نکنند)
+				$product->save();
+
+				self::with_lookup_bypass(
+					function() use ( $id ) {
+						if ( class_exists( 'WC_Product_Variable' ) && is_callable( array( 'WC_Product_Variable', 'sync_stock_status' ) ) ) {
+							WC_Product_Variable::sync_stock_status( $id, true );
+						}
+					}
+				);
+
+				$stats['sync']++;
+
+				// ۵) اگر باز هم ناهمخوان بود، مستقیم روی متا بنویس
+				$product2 = wc_get_product( $id );
+				$after    = $product2 ? (string) $product2->get_stock_status() : '';
+
+				if ( $after !== $expected ) {
+					update_post_meta( $id, '_stock_status', $expected );
+					wp_cache_delete( $id, 'post_meta' );
+					self::set_out_of_stock_meta_compat( $id, $expected );
+					$stats['force_write'] = ( isset( $stats['force_write'] ) ? $stats['force_write'] : 0 ) + 1;
+				}
+
+				// ۶) تأیید نوشتن با کوئری مستقیم (بدون کش)
+				$verify = self::raw_stock_status( $id );
+
+				if ( $verify === $expected ) {
+					$stats['verify_ok'] = ( isset( $stats['verify_ok'] ) ? $stats['verify_ok'] : 0 ) + 1;
+				} else {
+					$stats['verify_fail'] = ( isset( $stats['verify_fail'] ) ? $stats['verify_fail'] : 0 ) + 1;
+				}
+
+				$product = $product2 ? $product2 : $product;
+
+			} elseif ( $force = ( ! empty( $opts['force_instock'] ) || 'instock' === $meta ) ) {
+				$target = ! empty( $opts['force_instock'] ) ? 'instock' : $meta;
+
+				if ( (string) $product->get_stock_status() !== $target ) {
+					if ( function_exists( 'wc_update_product_stock_status' ) ) {
+						wc_update_product_stock_status( $id, $target );
+					} else {
+						$product->set_stock_status( $target );
+						$product->save();
+					}
+
+					$stats['status']++;
+				} else {
+					if ( function_exists( 'wc_update_product_stock_status' ) ) {
+						wc_update_product_stock_status( $id, $target );
+					}
+					$stats['status']++;
+				}
+
+				$product = wc_get_product( $id );
+			}
+
+			// ۷) متای تکراری _stock_status
+			if ( ! empty( $meta ) && self::dedupe_stock_meta( $id, self::raw_stock_status( $id ) ) ) {
+				$stats['meta_dedup'] = ( isset( $stats['meta_dedup'] ) ? $stats['meta_dedup'] : 0 ) + 1;
+			}
+
+			// ۸) ترم visibility در صورتی که محصول همین حالا موجود است
+			$product = $product ? wc_get_product( $id ) : $product;
+
+			if ( $product && 'instock' === (string) $product->get_stock_status() ) {
+				$terms = wp_get_object_terms( $id, 'product_visibility', array( 'fields' => 'slugs' ) );
+				$terms = is_array( $terms ) ? $terms : array();
+
+				if ( in_array( 'outofstock', $terms, true ) ) {
+					$term_id = self::oos_term_id();
+					wp_remove_object_terms( $id, ( $term_id ? $term_id : 'outofstock' ), 'product_visibility' );
+					$stats['terms']++;
+				}
+			}
+
+			// ۹) ردیف lookup خودِ محصول + کش
+			if ( self::refresh_lookup( $id ) ) $stats['lookup']++;
+
+			$stats['cache'] += self::clear_product_caches( $id );
+
+			// ۱۰) والد Variation هم همین مسیر را بگیرد
+			if ( 'variation' === $type && $product && method_exists( $product, 'get_parent_id' ) ) {
+				$pid = absint( $product->get_parent_id() );
+
+				if ( $pid ) {
+					self::fix_parent_only( $pid, $stats, $opts );
+				}
+			}
+
+			self::$writing_self = false;
+		}
+
+		/** از روی متا، وضعیت را مستقیم می‌نویسد (فقط به‌عنوان آخرین راه‌حل) */
+		private static function set_out_of_stock_meta_compat( $id, $status ) {
+			global $wpdb;
+			$id = absint( $id );
+
+			$exists = (int) $wpdb->get_var( $wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->postmeta} WHERE post_id=%d AND meta_key='_stock_status'",
+				$id
+			) );
+
+			if ( $exists ) {
+				$wpdb->update( $wpdb->postmeta, array( 'meta_value' => $status ), array( 'post_id' => $id, 'meta_key' => '_stock_status' ) );
+			} else {
+				add_post_meta( $id, '_stock_status', $status, true );
+			}
+
+			wp_cache_delete( $id, 'post_meta' );
+
+			if ( self::refresh_lookup( $id ) ) {
+				// ردیف جدول هم هم‌راستا شود
+			}
+		}
+
+		private static function raw_stock_status( $id ) {
+			global $wpdb;
+			$id = absint( $id );
+
+			return (string) $wpdb->get_var( $wpdb->prepare(
+				"SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id=%d AND meta_key='_stock_status' ORDER BY meta_id DESC LIMIT 1",
+				$id
+			) );
+		}
+
+		/** فقط والد متغیر (بدون بازگشت به فرزندان) */
+		private static function fix_parent_only( $pid, &$stats, $opts ) {
+			$pid     = absint( $pid );
+			$product = wc_get_product( $pid );
+
+			if ( ! $product || 'variable' !== $product->get_type() ) return;
+
+			if ( ! empty( $opts['refresh_children_lookup'] ) ) {
+				$stats['child_lookup'] = ( isset( $stats['child_lookup'] ) ? $stats['child_lookup'] : 0 ) + self::rebuild_children_lookup( array( $pid ), $stats );
+			}
+
+			$stats['transients'] = ( isset( $stats['transients'] ) ? $stats['transients'] : 0 ) + self::clear_child_transients( $pid );
+
+			list( $expected ) = self::expected_parent_status( $pid );
+
+			$pm = self::product_stock_meta( $pid );
+
+			if ( 'yes' === $pm['manage'] && ! empty( $opts['release_parent_stock'] ) ) {
+				$product->set_manage_stock( false );
+				$stats['manage_off'] = ( isset( $stats['manage_off'] ) ? $stats['manage_off'] : 0 ) + 1;
+			}
+
+			if ( (string) $product->get_stock_status() !== $expected ) {
+				$product->set_stock_status( $expected );
+				$stats['status']++;
+			}
+
+			$product->save();
+
+			self::with_lookup_bypass(
+				function() use ( $pid ) {
+					if ( class_exists( 'WC_Product_Variable' ) && is_callable( array( 'WC_Product_Variable', 'sync_stock_status' ) ) ) {
+						WC_Product_Variable::sync_stock_status( $pid, true );
+					}
+				}
+			);
+
+			$stats['sync']++;
+
+			$verify = self::raw_stock_status( $pid );
+
+			if ( $verify === $expected ) {
+				$stats['verify_ok'] = ( isset( $stats['verify_ok'] ) ? $stats['verify_ok'] : 0 ) + 1;
+			} else {
+				$stats['verify_fail'] = ( isset( $stats['verify_fail'] ) ? $stats['verify_fail'] : 0 ) + 1;
+			}
+
+			if ( 'instock' === $verify ) {
+				$terms = wp_get_object_terms( $pid, 'product_visibility', array( 'fields' => 'slugs' ) );
+				$terms = is_array( $terms ) ? $terms : array();
+
+				if ( in_array( 'outofstock', $terms, true ) ) {
+					$term_id = self::oos_term_id();
+					wp_remove_object_terms( $pid, ( $term_id ? $term_id : 'outofstock' ), 'product_visibility' );
+					$stats['terms']++;
+				}
+			}
+
+			if ( self::refresh_lookup( $pid ) ) $stats['lookup']++;
+
+			$stats['cache'] += self::clear_product_caches( $pid );
+		}
+
+		private static function op_fix() {
+			$raw = isset( $_POST['ids'] ) ? sanitize_text_field( wp_unslash( $_POST['ids'] ) ) : '';
+			$ids = array();
+
+			foreach ( explode( ',', $raw ) as $v ) {
+				$v = absint( $v );
+				if ( $v ) $ids[ $v ] = true;
+			}
+
+			if ( empty( $ids ) ) wp_send_json_error( array( 'message' => 'موردی برای ترمیم انتخاب نشده است.' ), 400 );
+			if ( count( $ids ) > 200 ) wp_send_json_error( array( 'message' => 'در هر درخواست حداکثر ۲۰۰ شناسه.' ), 400 );
+
+			if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 0 );
+
+			$stats = self::empty_stats();
+
+			$opts = array(
+				'refresh_children_lookup' => ! isset( $_POST['refresh_children'] ) || ! empty( $_POST['refresh_children'] ),
+				'release_parent_stock'    => ! isset( $_POST['release_parent'] ) || ! empty( $_POST['release_parent'] ),
+				'force_instock'           => ! empty( $_POST['force_instock'] ),
+			);
+
+			foreach ( array_keys( $ids ) as $id ) {
+				self::fix_one( $id, $stats, $opts );
+			}
+
+			wp_send_json_success( array( 'stats' => $stats ) );
+		}
+
+		/**
+		 * ترمیم خودکار همه: بدون نمایش لیست، صفحه‌به‌صفحه والدها را می‌سنجد و
+		 * فقط ناسازگارها را ترمیم می‌کند. با بودجه‌ی زمانی، برای صدها محصول امن است.
+		 */
+		private static function op_fix_all() {
+			$prefix = self::prefix();
+			if ( '' === $prefix ) wp_send_json_error( array( 'message' => 'متن محدوده خالی یا نامعتبر است.' ), 400 );
+
+			if ( function_exists( 'set_time_limit' ) ) @set_time_limit( 0 );
+
+			$last_id = isset( $_POST['last_id'] ) ? absint( $_POST['last_id'] ) : 0;
+			$ids     = self::list_ids( 'fast', $prefix, false );
+
+			$opts = array(
+				'refresh_children_lookup' => ! isset( $_POST['refresh_children'] ) || ! empty( $_POST['refresh_children'] ),
+				'release_parent_stock'    => ! isset( $_POST['release_parent'] ) || ! empty( $_POST['release_parent'] ),
+			);
+
+			if ( empty( $ids ) ) {
+				$empty = self::empty_stats();
+				$empty['scanned'] = 0;
+				$empty['stale']   = 0;
+				wp_send_json_success( array( 'done' => true, 'last_id' => 0, 'stats' => $empty ) );
+			}
+
+			$queue = array();
+
+			foreach ( $ids as $id ) {
+				if ( $id > $last_id ) $queue[] = $id;
+			}
+
+			$stats            = self::empty_stats();
+			$stats['scanned'] = 0;
+			$stats['stale']   = 0;
+			$started          = microtime( true );
+			$last             = $last_id;
+
+			while ( ! empty( $queue ) && $stats['scanned'] < self::ALL_MAX && ( microtime( true ) - $started ) < self::ALL_BUDGET ) {
+				$chunk = array_splice( $queue, 0, 150 );
+
+				$rows = self::detect( $chunk );
+
+				if ( ! empty( $chunk ) ) {
+					$last = max( $last, max( array_map( 'absint', $chunk ) ) );
+				}
+
+				foreach ( $rows as $r ) {
+					$stats['scanned']++;
+					$last = max( $last, (int) $r['id'] );
+
+					if ( 'ok' === $r['flag'] ) continue;
+					if ( empty( $r['actionable'] ) ) continue;
+
+					$stats['stale']++;
+
+					self::fix_one( (int) $r['id'], $stats, $opts );
+				}
+			}
+
+			$done = empty( $queue );
+
+			wp_send_json_success(
+				array(
+					'done'    => $done,
+					'last_id' => $last,
+					'stats'   => $stats,
+				)
+			);
+		}
+
+        /** Read-only preview. Freeze IDs server-side; later batches cannot drift into another scope. */
+        private static function op_restore_prepare() {
+            global $wpdb;
+            $prefix = self::prefix();
+            if ( '' === $prefix ) wp_send_json_error( array( 'message' => 'متن محدوده را وارد کن.' ), 400 );
+            $parents = array_values( array_unique( self::list_ids( 'fast', $prefix, true ) ) );
+            if ( ! empty( $wpdb->last_error ) ) wp_send_json_error( array( 'message' => 'خواندن محدوده از دیتابیس ناموفق بود.' ), 500 );
+            if ( ! $parents ) wp_send_json_error( array( 'message' => 'هیچ محصولی با این شروع نام / SKU پیدا نشد.' ), 400 );
+            if ( count( $parents ) >= self::LIST_MAX ) wp_send_json_error( array( 'message' => 'محدوده خیلی بزرگ است؛ شروع نام یا SKU را دقیق‌تر بنویس.' ), 400 );
+            $in = self::in( $parents );
+            $children = array_map( 'absint', (array) $wpdb->get_col(
+                "SELECT ID FROM {$wpdb->posts} WHERE post_type='product_variation'
+                AND post_status NOT IN ('trash','auto-draft') AND post_parent IN ({$in}) ORDER BY ID ASC LIMIT 100001"
+            ) );
+            if ( ! empty( $wpdb->last_error ) ) wp_send_json_error( array( 'message' => 'خواندن تنوع‌ها ناموفق بود؛ هیچ موجودی تغییر نکرد.' ), 500 );
+            if ( count( $children ) > 100000 ) wp_send_json_error( array( 'message' => 'تنوع‌ها بیش از حد زیادند؛ محدوده را کوچک‌تر کن.' ), 400 );
+            self::prepare_restore_job( $parents, $children );
+        }
+
+        /** Only IDs supplied by the completed fast scan; never rebuild the entire scope. */
+        private static function op_restore_prepare_warnings() {
+            global $wpdb;
+            if ( ! isset( $_POST['mode'] ) || 'fast' !== $_POST['mode'] ) {
+                wp_send_json_error( array( 'message' => 'ابتدا تشخیص را در حالت سریع (والدها) اجرا کن.' ), 400 );
+            }
+            $raw = isset( $_POST['ids'] ) && is_string( $_POST['ids'] ) ? trim( wp_unslash( $_POST['ids'] ) ) : '';
+            if ( ! preg_match( '/^[1-9][0-9]*(,[1-9][0-9]*)*$/D', $raw ) ) {
+                wp_send_json_error( array( 'message' => 'لیست هشدارها خالی یا نامعتبر است؛ دوباره تشخیص بگیر.' ), 400 );
+            }
+            $ids = array_values( array_unique( array_map( 'absint', explode( ',', $raw ) ) ) );
+            if ( count( $ids ) > 2000 ) wp_send_json_error( array( 'message' => 'برای این عملیات محدوده را به حداکثر ۲۰۰۰ محصول محدود کن.' ), 400 );
+            $variables = array();
+            $simple = array();
+            // Recheck flags now: an old browser list must not turn healthy/red rows into targets.
+            foreach ( array_chunk( $ids, 100 ) as $chunk ) {
+                $rows = self::detect( $chunk );
+                foreach ( $rows as $row ) {
+                    if ( 'warn' !== $row['flag'] || 'variation' === $row['type'] ) continue;
+                    $product = wc_get_product( (int) $row['id'] );
+                    if ( ! $product ) continue;
+                    if ( 'variable' === $product->get_type() && ! empty( $row['children']['total'] ) ) {
+                        $variables[] = (int) $row['id'];
+                    } elseif ( 'simple' === $product->get_type() ) {
+                        $simple[] = (int) $row['id'];
+                    }
+                }
+                if ( ! empty( $wpdb->last_error ) ) wp_send_json_error( array( 'message' => 'بازبینی هشدارها ناموفق بود؛ هیچ موجودی تغییر نکرد.' ), 500 );
+            }
+            $children = array();
+            $parents = $simple;
+            if ( $variables ) {
+                $in = self::in( $variables );
+                // Published variations only, matching what the fast scan counts. Never enqueue instock siblings.
+                $targets = (array) $wpdb->get_results(
+                    "SELECT v.ID,v.post_parent FROM {$wpdb->posts} v
+                    WHERE v.post_type='product_variation' AND v.post_status='publish'
+                    AND v.post_parent IN ({$in})
+                    AND EXISTS (SELECT 1 FROM {$wpdb->postmeta} m WHERE m.post_id=v.ID
+                        AND m.meta_key='_stock_status' AND m.meta_value IN ('outofstock','onbackorder'))
+                    ORDER BY v.ID ASC LIMIT 100001"
+                );
+                if ( ! empty( $wpdb->last_error ) ) wp_send_json_error( array( 'message' => 'خواندن تنوع‌های ناموجود ناموفق بود.' ), 500 );
+                if ( count( $targets ) > 100000 ) wp_send_json_error( array( 'message' => 'تعداد تنوع‌های هدف زیاد است؛ محدوده را کوچک‌تر کن.' ), 400 );
+                foreach ( $targets as $target ) {
+                    $children[] = (int) $target->ID;
+                    $parents[] = (int) $target->post_parent;
+                }
+            }
+            $parents = array_values( array_unique( $parents ) );
+            sort( $parents, SORT_NUMERIC );
+            $children = array_values( array_unique( $children ) );
+            if ( ! $parents ) {
+                wp_send_json_error( array( 'message' => 'از لیست ارسالی، هشدار قابل موجودکردن باقی نمانده است. ردیف‌های سالم/قرمز و والدهای بدون تنوع منتشرشده تغییر نکردند؛ دوباره تشخیص بگیر.' ), 400 );
+            }
+            self::prepare_restore_job( $parents, $children, true, count( $ids ) - count( $parents ) );
+        }
+
+        private static function prepare_restore_job( $parents, $children, $warnings_only = false, $skipped = 0 ) {
+            $token = wp_generate_password( 32, false, false );
+            $job = array(
+                'user' => get_current_user_id(), 'queue' => array_values( array_unique( array_merge( $children, $parents ) ) ),
+                'parents' => $parents, 'cursor' => 0, 'phase' => $warnings_only ? 'write' : 'release', 'ok' => 0, 'failed' => 0, 'errors' => array(), 'write_errors' => 0,
+            );
+            if ( ! set_transient( 'tsd_restore_' . $token, $job, 3600 ) ) wp_send_json_error( array( 'message' => 'ذخیرهٔ صف ناموفق بود.' ), 500 );
+            $sample = array();
+            foreach ( array_slice( $parents, 0, 10 ) as $id ) $sample[] = '#' . $id . ' — ' . get_the_title( $id );
+            wp_send_json_success( array( 'token' => $token, 'parents' => count( $parents ), 'children' => count( $children ), 'sample' => $sample, 'skipped' => $skipped ) );
+        }
+
+        /** Explicit stock override only; ordinary repair buttons never enter this path. */
+        private static function restore_one( $id ) {
+            self::clear_product_caches( $id );
+            $product = wc_get_product( $id );
+            if ( ! $product ) throw new RuntimeException( 'محصول قابل خواندن نیست.' );
+            $type = $product->get_type();
+            if ( ! in_array( $type, array( 'simple', 'variable', 'variation' ), true ) ) {
+                throw new RuntimeException( 'نوع محصول پشتیبانی نمی‌شود؛ دست‌نخورده ماند.' );
+            }
+            // WooCommerce validate_props clears quantity/backorder fields when manage_stock is false.
+            // Preserve raw fields explicitly; disabling management must not destroy recorded quantities.
+            $preserved = array();
+            foreach ( array( '_stock', '_backorders', '_low_stock_amount' ) as $key ) {
+                $preserved[ $key ] = get_post_meta( $id, $key, false );
+            }
+            self::$writing_self = true;
+            try {
+                self::clear_product_caches( $id );
+                if ( 'variable' === $type ) self::clear_child_transients( $id );
+                $product->set_manage_stock( false );
+                $product->set_stock_status( 'instock' );
+                $product->save();
+                self::dedupe_stock_meta( $id, self::raw_stock_status( $id ) );
+                if ( 'instock' === self::raw_stock_status( $id ) ) {
+                    $term_id = self::oos_term_id();
+                    wp_remove_object_terms( $id, $term_id ? $term_id : 'outofstock', 'product_visibility' );
+                }
+                if ( ! self::refresh_lookup( $id ) ) throw new RuntimeException( 'بازسازی lookup تأیید نشد.' );
+            } finally {
+                foreach ( $preserved as $key => $values ) {
+                    if ( $values ) update_post_meta( $id, $key, reset( $values ) );
+                    else delete_post_meta( $id, $key );
+                }
+                self::clear_product_caches( $id );
+                self::$writing_self = false;
+            }
+        }
+
+        /** Verify after ALL writes, including parent saves that could affect children. */
+        private static function verify_restored( $id ) {
+            global $wpdb;
+            if ( 'instock' !== self::raw_stock_status( $id ) ) return 'وضعیت متا هنوز موجود نیست.';
+            $manage = $wpdb->get_var( $wpdb->prepare(
+                "SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id=%d AND meta_key='_manage_stock' ORDER BY meta_id DESC LIMIT 1", $id
+            ) );
+            if ( 'no' !== $manage ) return 'خاموش‌شدن مدیریت عددی انبار تأیید نشد.';
+            $lookup = $wpdb->get_var( $wpdb->prepare(
+                "SELECT stock_status FROM {$wpdb->prefix}wc_product_meta_lookup WHERE product_id=%d", $id
+            ) );
+            if ( 'instock' !== $lookup ) return 'ردیف lookup غایب یا ناموجود است.';
+            $terms = self::map_oos_terms( array( $id ) );
+            if ( ! empty( $terms[ $id ] ) ) return 'ترم ناموجودی هنوز باقی است.';
+            return '';
+        }
+
+        private static function op_restore_step() {
+            $token = isset( $_POST['token'] ) && is_string( $_POST['token'] ) ? $_POST['token'] : '';
+            if ( ! preg_match( '/^[A-Za-z0-9]{32}$/', $token ) || empty( $_POST['confirmed'] ) ) {
+                wp_send_json_error( array( 'message' => 'ابتدا پیش‌نمایش و تأیید محدوده لازم است.' ), 400 );
+            }
+            $key = 'tsd_restore_' . $token;
+            $lock = $key . '_lock';
+            if ( ! add_option( $lock, time(), '', false ) ) {
+                if ( (int) get_option( $lock ) < time() - 300 ) delete_option( $lock );
+                wp_send_json_error( array( 'message' => 'درخواست قبلی هنوز در حال اجراست؛ کمی بعد دوباره تلاش کن.' ), 409 );
+            }
+            $response = null;
+            $error = '';
+            try {
+                $job = get_transient( $key );
+                if ( ! is_array( $job ) || $job['user'] !== get_current_user_id() ) {
+                    throw new RuntimeException( 'صف منقضی یا متعلق به کاربر دیگری است؛ دوباره پیش‌نمایش بگیر.' );
+                }
+                $started = microtime( true );
+                $n = 0;
+                $active = 'release' === $job['phase'] ? $job['parents'] : $job['queue'];
+                $total = count( $active );
+                while ( $job['cursor'] < $total && $n < 20 && microtime( true ) - $started < 8 ) {
+                    $id = $active[ $job['cursor'] ];
+                    try {
+                        if ( 'release' === $job['phase'] ) {
+                            // Release parents BEFORE variations: otherwise a zero-stock parent can
+                            // overwrite the child's status during WooCommerce validate_props().
+                            self::clear_product_caches( $id );
+                            $parent = wc_get_product( $id );
+                            if ( $parent && 'variable' === $parent->get_type() ) {
+                                update_post_meta( $id, '_manage_stock', 'no' );
+                                self::clear_product_caches( $id );
+                            }
+                        } elseif ( 'write' === $job['phase'] ) {
+                            self::restore_one( $id );
+                        } else {
+                            $reason = self::verify_restored( $id );
+                            if ( '' !== $reason ) throw new RuntimeException( $reason );
+                            $job['ok']++;
+                        }
+                    } catch ( Throwable $e ) {
+                        if ( 'verify' !== $job['phase'] ) $job['write_errors']++;
+                        else $job['failed']++;
+                        if ( count( $job['errors'] ) < 50 ) $job['errors'][] = '#' . $id . ' [' . $job['phase'] . ']: ' . $e->getMessage();
+                    }
+                    $job['cursor']++;
+                    $n++;
+                }
+                if ( $job['cursor'] >= $total && 'verify' !== $job['phase'] ) {
+                    $job['phase'] = 'release' === $job['phase'] ? 'write' : 'verify';
+                    $job['cursor'] = 0;
+                    $total = count( $job['queue'] );
+                }
+                $done = 'verify' === $job['phase'] && $job['cursor'] >= $total;
+                set_transient( $key, $job, 3600 );
+                $response = array( 'done' => $done, 'phase' => $job['phase'], 'cursor' => $job['cursor'],
+                    'total' => $total, 'ok' => $job['ok'], 'failed' => $job['failed'],
+                    'write_errors' => $job['write_errors'], 'errors' => $job['errors'] );
+            } catch ( Throwable $e ) {
+                $error = $e->getMessage();
+            } finally {
+                delete_option( $lock );
+            }
+            if ( $error ) wp_send_json_error( array( 'message' => $error ), 400 );
+            wp_send_json_success( $response );
+        }
+
+        private static function refresh_lookup( $id ) {
+            global $wpdb;
+            if ( ! class_exists( 'WC_Data_Store' ) || ! self::lookup_available() ) return false;
+            try {
+                $id = absint( $id );
+                $store = WC_Data_Store::load( 'product' );
+                if ( ! $store ) return false;
+                // WC_Data_Store is a proxy. Reflect on its actual instance, not the proxy class.
+                if ( $store instanceof WC_Data_Store && property_exists( $store, 'instance' ) ) {
+                    $prop = new ReflectionProperty( WC_Data_Store::class, 'instance' );
+                    $prop->setAccessible( true );
+                    $store = $prop->getValue( $store );
+                }
+                if ( ! is_object( $store ) || ! method_exists( $store, 'update_lookup_table' ) ) return false;
+                wp_cache_delete( $id, 'post_meta' );
+                wp_cache_delete( 'lookup_table', 'object_' . $id );
+                $ref = new ReflectionMethod( $store, 'update_lookup_table' );
+                $ref->setAccessible( true );
+                $ref->invoke( $store, $id, 'wc_product_meta_lookup' );
+                $actual = $wpdb->get_var( $wpdb->prepare(
+                    "SELECT stock_status FROM {$wpdb->prefix}wc_product_meta_lookup WHERE product_id=%d", $id
+                ) );
+                return null !== $actual && (string) $actual === self::raw_stock_status( $id );
+            } catch ( Throwable $e ) {
+                return false;
+            }
+        }
+
+		private static function clear_product_caches( $id ) {
+			$id = absint( $id );
+			if ( ! $id ) return 0;
+
+			$done = 0;
+
+			if ( function_exists( 'wc_delete_product_transients' ) ) { wc_delete_product_transients( $id ); $done++; }
+			if ( function_exists( 'clean_post_cache' ) ) { clean_post_cache( $id ); $done++; }
+
+			if ( function_exists( 'wp_cache_delete' ) ) {
+				wp_cache_delete( $id, 'post_meta' );
+				wp_cache_delete( $id, 'posts' );
+				wp_cache_delete( $id, 'post' );
+				wp_cache_delete( 'wc_product_' . $id, 'products' );
+				$done++;
+			}
+
+			return $done;
+		}
+
+		private static function op_cache() {
+			$log = array();
+
+			if ( function_exists( 'wp_using_ext_object_cache' ) && wp_using_ext_object_cache() && function_exists( 'wp_cache_flush' ) ) {
+				wp_cache_flush();
+				$log[] = 'کش آبجکت پایدار خالی شد.';
+			}
+
+			if ( class_exists( 'WC_Cache_Helper' ) && is_callable( array( 'WC_Cache_Helper', 'invalidate_cache_group' ) ) ) {
+				try {
+					WC_Cache_Helper::invalidate_cache_group( 'products' );
+					$log[] = 'گروه کش «products» ووکامرس باطل شد.';
+				} catch ( Throwable $e ) {
+					// بی‌صدا
+				}
+			}
+
+			if ( function_exists( 'wc_delete_expired_transients' ) ) {
+				wc_delete_expired_transients();
+				$log[] = 'ترنزینت‌های منقضی‌شده پاک شد.';
+			}
+
+			if ( function_exists( 'rocket_clean_domain' ) ) { rocket_clean_domain(); $log[] = 'کش WP Rocket پاک شد.'; }
+			if ( function_exists( 'w3tc_flush_all' ) ) { w3tc_flush_all(); $log[] = 'کش W3 Total Cache پاک شد.'; }
+			if ( function_exists( 'wp_cache_clear_cache' ) ) { wp_cache_clear_cache(); $log[] = 'کش WP Super Cache پاک شد.'; }
+
+			if ( class_exists( 'LiteSpeed_Cache_API' ) || defined( 'LSCWP_V' ) ) {
+				do_action( 'litespeed_purge_all' );
+				$log[] = 'درخواست پاک‌سازی کش LiteSpeed ثبت شد.';
+			}
+
+			if ( function_exists( 'opcache_reset' ) ) { @opcache_reset(); $log[] = 'OPcache پاک شد.'; }
+
+			$log[] = 'کش CDN/هاست و کش مرورگر را هم پاک کن و تست را در پنجره‌ی ناشناس انجام بده.';
+
+			wp_send_json_success( array( 'log' => implode( '<br>', array_map( 'esc_html', $log ) ) ) );
+		}
+	}
+
+	TisaShop_Stock_Doctor::init();
+}
