@@ -135,12 +135,8 @@
 					},
 					success: function(resp) {
 						$btn.prop('disabled', false).removeClass('is-busy');
-						if (resp.success && resp.data && resp.data.items) {
-							resp.data.items.forEach(function(item) {
-								self.selectedProducts[item.id] = item;
-							});
-							self.renderProductTable();
-							$('#tcbvm-search-counter').text(resp.data.message || (resp.data.items.length + ' محصول یافت شد.'));
+						if (resp.success && resp.data) {
+							self.addSearchResults(resp.data, $('#tcbvm-search-counter'), 'محصولی یافت نشد.');
 						} else {
 							$('#tcbvm-search-counter').text(resp.data && resp.data.message ? resp.data.message : 'محصولی یافت نشد.');
 						}
@@ -181,12 +177,8 @@
 					},
 					success: function(resp) {
 						$btn.prop('disabled', false).removeClass('is-busy');
-						if (resp.success && resp.data && resp.data.items) {
-							resp.data.items.forEach(function(item) {
-								self.selectedProducts[item.id] = item;
-							});
-							self.renderProductTable();
-							$('#tcbvm-sku-counter').text(resp.data.message || (resp.data.items.length + ' محصول یافت شد.'));
+						if (resp.success && resp.data) {
+							self.addSearchResults(resp.data, $('#tcbvm-sku-counter'), 'هیچ محصولی با این شناسه یافت نشد.');
 						} else {
 							$('#tcbvm-sku-counter').text(resp.data && resp.data.message ? resp.data.message : 'هیچ محصولی با این شناسه یافت نشد.');
 						}
@@ -222,11 +214,8 @@
 					},
 					success: function(resp) {
 						$btn.prop('disabled', false);
-						if (resp.success && resp.data && resp.data.items) {
-							resp.data.items.forEach(function(item) {
-								self.selectedProducts[item.id] = item;
-							});
-							self.renderProductTable();
+						if (resp.success && resp.data && (resp.data.items || (resp.data.ids || []).length)) {
+							self.addSearchResults(resp.data, null, 'محصول معتبری یافت نشد.');
 							$('#tcbvm-manual-ids').val('');
 						} else {
 							alert('محصول معتبری با این شناسه‌ها یافت نشد.');
@@ -289,6 +278,155 @@
 		},
 
 		/**
+		 * ادغام نتایج جستجو در لیست انتخاب.
+		 * آیتم‌های کامل‌شده (صفحهٔ اول) بلافاصله اضافه می‌شوند و برای باقی شناسه‌ها
+		 * یک سطر جایگزین (Stub) ثبت می‌شود تا هیچ‌کدام از محصولات یافت‌شده — حتی
+		 * بیش از ۱۰۰ عدد — از لیست انتخاب جا نمانند؛ جزئیات آن‌ها سپس در پس‌زمینه
+		 * بسته‌به‌بسته از سرور دریافت و جایگزینی می‌شود.
+		 */
+		addSearchResults: function(data, $counter, emptyMessage) {
+			const self = this;
+			const items = (data && data.items) || [];
+			const ids = (data && data.ids) || [];
+			const baseMessage = (data && data.message) || (self.toPersianDigits(ids.length || items.length) + ' محصول یافت شد.');
+
+			if (!items.length && !ids.length) {
+				if ($counter && $counter.length) {
+					$counter.text(baseMessage || emptyMessage);
+				}
+				self.renderProductTable();
+				return;
+			}
+
+			items.forEach(function(item) {
+				// حفظ وضعیت تیک اگر محصول از قبل در لیست بوده و کاربر آن را غیرفعال کرده است
+				if (self.selectedProducts[item.id] && self.selectedProducts[item.id].selected === false) {
+					item.selected = false;
+				}
+				self.selectedProducts[item.id] = item;
+			});
+
+			ids.forEach(function(id) {
+				if (!self.selectedProducts[id]) {
+					self.selectedProducts[id] = self.makeStub(id);
+				}
+			});
+
+			self.renderProductTable();
+
+			if (self.countStubs() > 0) {
+				self.hydrateStubs($counter, baseMessage);
+			} else if ($counter && $counter.length) {
+				$counter.text(baseMessage);
+			}
+		},
+
+		/**
+		 * ساخت سطر جایگزین (Stub) برای شناسه‌ای که جزئیاتش هنوز از سرور نیامده است.
+		 */
+		makeStub: function(id) {
+			return {
+				id: id,
+				stub: true,
+				name: 'محصول #' + id,
+				sku: '…',
+				type: 'pending',
+				cats: '…',
+				variation_count: null,
+				image_url: '',
+				edit_url: '#',
+				selected: true
+			};
+		},
+
+		/**
+		 * شمارش سطرهای جایگزین فعلی در لیست.
+		 */
+		countStubs: function() {
+			const self = this;
+			let n = 0;
+			Object.keys(self.selectedProducts).forEach(function(pid) {
+				if (self.selectedProducts[pid] && self.selectedProducts[pid].stub) {
+					n++;
+				}
+			});
+			return n;
+		},
+
+		hydrationSeq: 0,
+
+		/**
+		 * بارگذاری تدریجی جزئیات سطرهای جایگزین، بسته‌های ۱۰۰تایی، در پس‌زمینه.
+		 * اگر کاربر جستجوی جدیدی انجام دهد، زنجیرهٔ قبلی با توکن لغو می‌شود و
+		 * وضعیت تیک/حذف کاربر در حین جایگزینی حفظ می‌گردد.
+		 */
+		hydrateStubs: function($counter, baseMessage) {
+			const self = this;
+			const token = ++self.hydrationSeq;
+			const pageSize = 100;
+
+			const stubIds = Object.keys(self.selectedProducts)
+				.filter(function(pid) { return self.selectedProducts[pid].stub; })
+				.map(function(pid) { return parseInt(pid, 10); });
+
+			const totalPending = stubIds.length;
+			let loaded = 0;
+			let offset = 0;
+
+			const loadNext = function() {
+				if (token !== self.hydrationSeq) return; // زنجیرهٔ قدیمی لغو شد
+
+				const slice = stubIds.slice(offset, offset + pageSize);
+				if (!slice.length) {
+					if ($counter && $counter.length) {
+						$counter.text(baseMessage);
+					}
+					return;
+				}
+
+				if ($counter && $counter.length) {
+					$counter.text(baseMessage + ' — در حال تکمیل جزئیات لیست (' + self.toPersianDigits(loaded) + ' از ' + self.toPersianDigits(totalPending) + ')…');
+				}
+
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_products_summary_page',
+						nonce: tcbvmData.nonce,
+						ids: slice
+					},
+					success: function(resp) {
+						if (token !== self.hydrationSeq) return;
+						if (resp.success && resp.data && resp.data.items) {
+							resp.data.items.forEach(function(item) {
+								if (!self.selectedProducts[item.id]) return; // کاربر سطر را از لیست حذف کرده است
+								if (self.selectedProducts[item.id].selected === false) {
+									item.selected = false; // حفظ وضعیت تیک کاربر
+								}
+								self.selectedProducts[item.id] = item;
+							});
+							self.renderProductTable();
+						}
+						loaded += slice.length;
+						offset += pageSize;
+						loadNext();
+					},
+					error: function() {
+						if (token !== self.hydrationSeq) return;
+						// در صورت خطا صفحهٔ بعدی امتحان می‌شود تا زنجیره قطع نشود؛
+						// سطرهای جایگزین باقی‌مانده همچنان در انتخاب و اجرای نهایی لحاظ می‌شوند.
+						loaded += slice.length;
+						offset += pageSize;
+						loadNext();
+					}
+				});
+			};
+
+			loadNext();
+		},
+
+		/**
 		 * رندر و به‌روزرسانی جدول محصولات انتخاب‌شده
 		 */
 		renderProductTable: function() {
@@ -310,15 +448,33 @@
 			pids.forEach(function(pid) {
 				const item = self.selectedProducts[pid];
 				const isChecked = item.selected !== false;
+				const isStub = !!item.stub;
+
+				const thumbCell = isStub || !item.image_url
+					? '<span class="tcbvm-thumb tcbvm-thumb--empty" aria-hidden="true"></span>'
+					: '<img src="' + item.image_url + '" class="tcbvm-thumb" alt="">';
+
+				const nameCell = isStub
+					? '<strong>' + item.name + '</strong> <small class="tcbvm-muted">(در حال دریافت جزئیات…)</small>'
+					: '<a href="' + (item.edit_url || '#') + '" target="_blank"><strong>' + item.name + '</strong></a>';
+
+				const typeBadge = isStub
+					? '<span class="tcbvm-badge tcbvm-badge--muted tcbvm-badge--loading">…</span>'
+					: '<span class="tcbvm-badge">' + (item.type === 'variable' ? 'متغیر' : 'ساده') + '</span>';
+
+				const varCell = isStub
+					? '<span class="tcbvm-muted">…</span>'
+					: '<strong>' + self.toPersianDigits(item.variation_count || 0) + '</strong> متغیر';
+
 				const row = $(
-					'<tr data-pid="' + item.id + '">' +
+					'<tr data-pid="' + item.id + '"' + (isStub ? ' class="tcbvm-row-stub"' : '') + '>' +
 						'<td class="tcbvm-col-w38 tcbvm-center"><input type="checkbox" class="tcbvm-product-checkbox" ' + (isChecked ? 'checked' : '') + '></td>' +
-						'<td class="tcbvm-col-w48"><img src="' + (item.image_url || '') + '" class="tcbvm-thumb" alt=""></td>' +
-						'<td><a href="' + (item.edit_url || '#') + '" target="_blank"><strong>' + item.name + '</strong></a></td>' +
+						'<td class="tcbvm-col-w48">' + thumbCell + '</td>' +
+						'<td>' + nameCell + '</td>' +
 						'<td><span class="tisa-code">' + (item.sku || '—') + '</span> <small class="tcbvm-muted">(#' + item.id + ')</small></td>' +
 						'<td><small class="tcbvm-muted">' + (item.cats || '—') + '</small></td>' +
-						'<td><span class="tcbvm-badge">' + (item.type === 'variable' ? 'متغیر' : 'ساده') + '</span></td>' +
-						'<td><strong>' + self.toPersianDigits(item.variation_count || 0) + '</strong> متغیر</td>' +
+						'<td>' + typeBadge + '</td>' +
+						'<td>' + varCell + '</td>' +
 						'<td class="tcbvm-col-w70 tcbvm-center"><button type="button" class="tcbvm-btn-remove-row" title="حذف از لیست">&times;</button></td>' +
 					'</tr>'
 				);

@@ -28,6 +28,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 
 		public static function init() {
 			add_action( 'wp_ajax_tcbvm_search_products', array( __CLASS__, 'ajax_search_products' ) );
+			add_action( 'wp_ajax_tcbvm_products_summary_page', array( __CLASS__, 'ajax_products_summary_page' ) );
 			add_action( 'wp_ajax_tcbvm_search_single_products', array( __CLASS__, 'ajax_search_single_products' ) );
 			add_action( 'wp_ajax_tcbvm_get_attributes', array( __CLASS__, 'ajax_get_attributes' ) );
 			add_action( 'wp_ajax_tcbvm_preview', array( __CLASS__, 'ajax_preview' ) );
@@ -149,6 +150,28 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 				'ids'     => $ids,
 				'items'   => $summary['items'],
 				'message' => sprintf( '%d محصول منطبق یافت شد.', $total ),
+			) );
+		}
+
+		/**
+		 * واکشی صفحه‌ای اطلاعات محصولات جهت تکمیل تدریجی لیست انتخاب.
+		 * صفحهٔ اول (۱۰۰ تای نخست) در پاسخ جستجو ارسال می‌شود و این مسیر
+		 * جزئیات باقی شناسه‌ها را بسته‌به‌بسته می‌آورد تا هیچ سقفی در انتخاب نباشد.
+		 */
+		public static function ajax_products_summary_page() {
+			self::check_auth();
+
+			$ids    = isset( $_POST['ids'] ) ? array_map( 'absint', (array) $_POST['ids'] ) : array();
+			$offset = isset( $_POST['offset'] ) ? absint( $_POST['offset'] ) : 0;
+
+			if ( empty( $ids ) ) {
+				wp_send_json_success( array( 'items' => array() ) );
+			}
+
+			$summary = TCBVM_DB::get_products_summary( $ids, 100, $offset );
+
+			wp_send_json_success( array(
+				'items' => $summary['items'],
 			) );
 		}
 

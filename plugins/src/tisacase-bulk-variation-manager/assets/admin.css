@@ -490,6 +490,24 @@
 	display: block;
 }
 
+.tcbvm-thumb--empty {
+	background: var(--tisa-surface-3, #F6F5F1);
+}
+
+/* سطرهای جایگزین (در انتظار دریافت جزئیات از سرور) */
+.tcbvm-row-stub td {
+	color: var(--tisa-muted, #77828A);
+}
+
+@keyframes tcbvm-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.35; }
+}
+
+.tcbvm-badge--loading {
+	animation: tcbvm-pulse 1.2s ease-in-out infinite;
+}
+
 .tcbvm-btn-remove-row {
 	background: none;
 	border: none;
