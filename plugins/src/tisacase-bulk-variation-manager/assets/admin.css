@@ -837,3 +837,51 @@
 .tcbvm-hidden {
 	display: none !important;
 }
+
+/* ------------------------------------------------------------------
+   ابزار پاکسازی ویژگی
+   ------------------------------------------------------------------ */
+.tcbvm-warning-box {
+	background: var(--tisa-warning-soft, #FCF3D7);
+	border: 1px solid var(--tisa-warning, #8A6116);
+	border-radius: var(--tisa-r-sm);
+	padding: var(--tisa-sp-3) var(--tisa-sp-4);
+	margin: var(--tisa-sp-3) 0;
+	font-size: var(--tisa-fs-control);
+	color: var(--tisa-ink, #1F2A2E);
+	line-height: 1.8;
+}
+
+.tcbvm-warning-box strong {
+	color: var(--tisa-warning, #8A6116);
+}
+
+.tcbvm-purge-summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--tisa-sp-2);
+	margin-bottom: var(--tisa-sp-2);
+}
+
+.tcbvm-global-attr-box {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--tisa-sp-3);
+	margin-top: var(--tisa-sp-4);
+	padding: var(--tisa-sp-3) var(--tisa-sp-4);
+	background: var(--tisa-danger-soft, #FBECEA);
+	border: 1px solid var(--tisa-danger, #B5453A);
+	border-radius: var(--tisa-r-sm);
+}
+
+.tcbvm-global-attr-info {
+	flex: 1 1 320px;
+	font-size: var(--tisa-fs-control);
+}
+
+.tcbvm-global-attr-info strong {
+	color: var(--tisa-danger, #B5453A);
+}

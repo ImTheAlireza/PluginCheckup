@@ -291,6 +291,226 @@ if ( ! class_exists( 'TCBVM_OPS' ) ) {
 		}
 
 		/**
+		 * حذف کامل یک ویژگی از یک محصول همراه با متغیرهای وابسته به آن.
+		 * ابتدا اسنپ‌شات کامل تهیه می‌شود تا عملیات از تاریخچه قابل Rollback باشد.
+		 *
+		 * @param int    $product_id شناسه محصول.
+		 * @param string $run_id     شناسه نشست اجرا.
+		 * @param array  $matches    خروجی TCBVM_DB::resolve_attribute_globally.
+		 * @return array نتیجه عملیات (success, title, message, deleted).
+		 */
+		public static function purge_attribute_from_product( $product_id, $run_id, array $matches ) {
+			// ۱) اسنپ‌شات کامل قبل از هرگونه تغییر
+			TCBVM_Backup::snapshot_product( $run_id, $product_id );
+
+			$product = wc_get_product( $product_id );
+			if ( ! $product ) {
+				return array( 'success' => false, 'title' => "محصول #{$product_id}", 'message' => 'محصول در سیستم یافت نشد.', 'deleted' => 0 );
+			}
+
+			$title    = $product->get_name();
+			$tax_keys = array();
+			foreach ( (array) $matches['taxonomies'] as $t ) {
+				if ( ! empty( $t['key'] ) ) {
+					$tax_keys[] = (string) $t['key'];
+				}
+			}
+			$local      = isset( $matches['local_name'] ) ? trim( (string) $matches['local_name'] ) : '';
+			$local_norm = '' !== $local ? TCBVM_DB::normalize_persian( $local ) : '';
+
+			// ۲) یافتن ویژگی‌های منطبق روی محصول (تاکسونومی یا محلی)
+			$product_attributes = $product->get_attributes();
+			$matched_attrs      = array(); // array_key => attr_name
+
+			foreach ( $product_attributes as $k => $attr_obj ) {
+				$aname = $attr_obj instanceof WC_Product_Attribute ? $attr_obj->get_name() : $k;
+				$hit   = false;
+
+				if ( in_array( $aname, $tax_keys, true ) || in_array( $k, $tax_keys, true ) ) {
+					$hit = true;
+				} elseif ( '' !== $local_norm && TCBVM_DB::normalize_persian( $aname ) === $local_norm ) {
+					$hit = true;
+				} elseif ( '' !== $local && sanitize_title( $aname ) === sanitize_title( $local ) ) {
+					$hit = true;
+				}
+
+				if ( $hit ) {
+					$matched_attrs[ $k ] = $aname;
+				}
+			}
+
+			if ( empty( $matched_attrs ) ) {
+				return array(
+					'success' => true,
+					'title'   => $title,
+					'message' => 'ویژگی هدف روی این محصول نبود؛ بدون تغییر ماند.',
+					'deleted' => 0,
+				);
+			}
+
+			global $wpdb;
+
+			// ۳) کلیدهای متای متغیرها برای این ویژگی‌ها
+			$meta_keys = array();
+			foreach ( $matched_attrs as $aname ) {
+				$meta_keys[] = 'attribute_' . $aname;
+				$st          = sanitize_title( $aname );
+				if ( $st !== $aname ) {
+					$meta_keys[] = 'attribute_' . $st;
+				}
+			}
+			$meta_keys = array_values( array_unique( $meta_keys ) );
+
+			// ۴) حذف متغیرهایی که مقدار صریح برای این ویژگی دارند (متغیرهای وابسته)
+			$children     = (array) $product->get_children();
+			$deleted_vars = 0;
+
+			if ( ! empty( $children ) && ! empty( $meta_keys ) ) {
+				foreach ( array_chunk( $children, 400 ) as $chunk ) {
+					$ph_ids  = implode( ',', array_fill( 0, count( $chunk ), '%d' ) );
+					$ph_keys = implode( ',', array_fill( 0, count( $meta_keys ), '%s' ) );
+
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$linked = (array) $wpdb->get_col(
+						$wpdb->prepare(
+							"SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+							 INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID
+							 WHERE p.post_type = 'product_variation' AND p.ID IN ($ph_ids)
+							   AND pm.meta_key IN ($ph_keys) AND pm.meta_value != ''", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+							array_merge( $chunk, $meta_keys )
+						)
+					);
+
+					if ( ! empty( $linked ) ) {
+						$ids_in = implode( ',', array_map( 'absint', $linked ) );
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						$wpdb->query( "DELETE FROM {$wpdb->postmeta} WHERE post_id IN ({$ids_in})" );
+						// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						$wpdb->query( "DELETE FROM {$wpdb->posts} WHERE ID IN ({$ids_in}) AND post_type = 'product_variation'" );
+						foreach ( $linked as $lv ) {
+							clean_post_cache( (int) $lv );
+						}
+						$deleted_vars += count( $linked );
+					}
+
+					// پاکسازی متاهای باقی‌ماندهٔ این ویژگی روی متغیرهای دیگر (مانند مقدار «any»)
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$wpdb->query(
+						$wpdb->prepare(
+							"DELETE pm FROM {$wpdb->postmeta} pm
+							 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+							 WHERE p.post_type = 'product_variation' AND p.ID IN ($ph_ids) AND pm.meta_key IN ($ph_keys)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+							array_merge( $chunk, $meta_keys )
+						)
+					);
+				}
+			}
+
+			// ۵) برداشتن ویژگی از تعریف محصول و قطع اتصال ترم‌ها
+			$new_attrs = array();
+			foreach ( $product_attributes as $k => $attr_obj ) {
+				if ( array_key_exists( $k, $matched_attrs ) ) {
+					$aname = $matched_attrs[ $k ];
+					if ( taxonomy_exists( $aname ) ) {
+						wp_set_object_terms( $product_id, array(), $aname, false );
+					} elseif ( taxonomy_exists( $k ) ) {
+						wp_set_object_terms( $product_id, array(), $k, false );
+					}
+					continue;
+				}
+				$new_attrs[ $k ] = $attr_obj;
+			}
+
+			$product->set_attributes( $new_attrs );
+			$product->save();
+
+			if ( $product->is_type( 'variable' ) ) {
+				WC_Product_Variable::sync( $product_id );
+			}
+			wc_delete_product_transients( $product_id );
+			clean_post_cache( $product_id );
+
+			return array(
+				'success' => true,
+				'title'   => $title,
+				'message' => sprintf(
+					'ویژگی «%s» از محصول برداشته شد و %d متغیر وابسته پاکسازی گردید.',
+					implode( '، ', array_unique( array_values( $matched_attrs ) ) ),
+					$deleted_vars
+				),
+				'deleted' => $deleted_vars,
+			);
+		}
+
+		/**
+		 * حذف سراسری تعریف ویژگی از ووکامرس: ابتدا تمام ترم‌های تاکسونومی پاک
+		 * و سپس خود رکورد ویژگی (wc_attribute_taxonomies) حذف می‌شود.
+		 *
+		 * @param array $taxonomies لیست ['key'=>..., 'attribute_id'=>...].
+		 * @return array گزارش نتیجه.
+		 */
+		public static function delete_attribute_globally( array $taxonomies ) {
+			self::ensure_all_attribute_taxonomies_registered();
+
+			$report      = array();
+			$total_terms = 0;
+
+			foreach ( $taxonomies as $t ) {
+				$key          = is_array( $t ) && isset( $t['key'] ) ? (string) $t['key'] : (string) $t;
+				$attribute_id = is_array( $t ) && isset( $t['attribute_id'] ) ? (int) $t['attribute_id'] : 0;
+
+				if ( '' === $key || ! taxonomy_exists( $key ) ) {
+					continue;
+				}
+
+				$terms = get_terms( array(
+					'taxonomy'   => $key,
+					'hide_empty' => false,
+					'fields'     => 'ids',
+				) );
+				if ( is_wp_error( $terms ) || ! is_array( $terms ) ) {
+					$terms = array();
+				}
+
+				if ( count( $terms ) > 5000 ) {
+					return array(
+						'success' => false,
+						'message' => sprintf( 'تعداد ترم‌های «%s» (%d) از سقف ایمنی ۵۰۰۰ بیشتر است؛ حذف سراسری متوقف شد.', $key, count( $terms ) ),
+					);
+				}
+
+				$deleted = 0;
+				foreach ( $terms as $tid ) {
+					if ( wp_delete_term( (int) $tid, $key ) ) {
+						$deleted++;
+					}
+				}
+				$total_terms += $deleted;
+
+				if ( $attribute_id > 0 && function_exists( 'wc_delete_attribute' ) ) {
+					wc_delete_attribute( $attribute_id );
+				}
+				delete_transient( 'wc_attribute_taxonomies' );
+
+				$report[] = sprintf( 'تاکسونومی «%s»: %d ترم حذف و تعریف ویژگی پاک شد.', $key, $deleted );
+			}
+
+			if ( empty( $report ) ) {
+				return array(
+					'success' => true,
+					'message' => 'تاکسونومی معتبری برای حذف سراسری یافت نشد (شاید قبلاً پاک شده باشد).',
+					'terms'   => 0,
+				);
+			}
+
+			return array(
+				'success' => true,
+				'message' => implode( ' ', $report ),
+				'terms'   => $total_terms,
+			);
+		}
+
+		/**
 		 * پیش‌نمایش تغییرات و تخمین ترکیب‌ها پیش از اعمال قطعی.
 		 *
 		 * @param array  $product_ids شناسه محصولات.
