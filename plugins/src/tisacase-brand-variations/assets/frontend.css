@@ -284,8 +284,8 @@ select.tcbv-native:focus {
 	position: relative;
 	flex: 1 1 180px;
 	min-width: 0;
-	display: flex;
-	align-items: center;
+	display: block;
+	width: 100%;
 }
 
 .tcbv-input {
@@ -294,7 +294,7 @@ select.tcbv-native:focus {
 	display: block;
 	width: 100%;
 	height: 44px;
-	padding-inline-start: 42px;
+	padding-inline-start: 14px;
 	padding-inline-end: 40px;
 	border: 1px solid var(--tcbv-border) !important;
 	border-radius: 12px !important;
@@ -333,36 +333,28 @@ select.tcbv-native:focus {
 	-webkit-appearance: none !important;
 }
 
-.tcbv-search::before {
-	content: "";
-	position: absolute;
-	inset-inline-end: 14px;
-	inset-block-start: 50%;
-	transform: translateY(-50%);
-	width: 16px;
-	height: 16px;
-	pointer-events: none;
-	background: currentColor;
-	color: var(--tcbv-muted);
-	opacity: .7;
-	z-index: 1;
-	-webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20 20l-4.2-4.2'/></svg>") center/contain no-repeat;
-	mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20 20l-4.2-4.2'/></svg>") center/contain no-repeat;
+.tcbv-search::before,
+.tcbv-search::after {
+	content: none !important;
+	display: none !important;
 }
 
 .tcbv-clear {
 	all: unset;
 	box-sizing: border-box;
 	position: absolute;
-	inset-inline-end: 8px;
+	inset-inline-end: 10px;
+	inset-block-start: 50%;
+	transform: translateY(-50%);
+	z-index: 2;
 	width: 22px;
 	height: 22px;
 	padding: 0;
 	border: 0 !important;
-	border-radius: 50% !important;
-	background: var(--tcbv-hover) !important;
+	border-radius: 6px !important;
+	background: transparent !important;
 	color: var(--tcbv-muted) !important;
-	font-size: 14px;
+	font-size: 18px;
 	line-height: 1;
 	cursor: pointer;
 	box-shadow: none !important;
@@ -378,8 +370,12 @@ select.tcbv-native:focus {
 }
 
 .tcbv-clear:hover {
-	background: var(--tcbv-sel-bg);
-	color: var(--tcbv-sel-text);
+	background: transparent !important;
+	color: var(--tcbv-text) !important;
+}
+
+.tcbv-clear[hidden] {
+	display: none !important;
 }
 
 .tcbv-total,
@@ -769,12 +765,7 @@ select.tcbv-native:focus {
 	border: 0;
 	background: none;
 	font: inherit;
-	color: var(--tcbv-text);
-	cursor: pointer;
-	-webkit-tap-highlight-color: transparent;
-}
-
-.tcbv-sw-dot {
+	color: var(--tcbv-texw-dot {
 	position: relative;
 	display: block;
 	width: var(--tcbv-sw-size);
@@ -908,6 +899,12 @@ td.value > .tcbv-holder:last-child {
 .tcbv-test-badge a {
 	margin-inline-start: auto;
 	font-weight: 700;
+	color: inherit;
+	text-decoration: underline;
+	white-space: nowrap;
+}
+}
+0;
 	color: inherit;
 	text-decoration: underline;
 	white-space: nowrap;
