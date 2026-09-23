@@ -50,7 +50,7 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 			<span class="tisa-hero-mark" aria-hidden="true"><?php echo TSH_View::icon( 'gear' ); // phpcs:ignore WordPress.Security.EscapeOutput ?></span>
 			<div>
 				<h1 class="tisa-hero-title"><?php esc_html_e( 'ظاهر و تنظیمات هاب', 'tisacase-hub' ); ?></h1>
-				<p class="tisa-lead"><?php esc_html_e( 'هر چیزی که اینجا ست می‌شود، روی صفحهٔ هر ۹ افزونه هم اعمال می‌شود — بدون آنکه آن‌ها از وجود هاب باخبر شوند.', 'tisacase-hub' ); ?></p>
+				<p class="tisa-lead"><?php esc_html_e( 'هر چیزی که اینجا ست می‌شود، روی صفحهٔ همهٔ افزونه‌های مجموعه هم اعمال می‌شود — بدون آنکه آن‌ها از وجود هاب باخبر شوند.', 'tisacase-hub' ); ?></p>
 			</div>
 		</div>
 		<div class="tisa-hero-actions">
@@ -200,6 +200,31 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 					?>
 				</p>
 				<p class="tisa-hint"><?php esc_html_e( 'نکته: قلم مونو فقط برای کد (SKU، شناسه، لاگ) است؛ اعداد و مبالغ با قلم رابط و tabular-nums رندر می‌شوند تا رقم فارسی نشکند.', 'tisacase-hub' ); ?></p>
+			</div>
+		</div>
+
+		<h2 class="tisa-h2" style="margin-top:var(--tisa-sp-6)"><?php esc_html_e( 'نصب از مخزن', 'tisacase-hub' ); ?></h2>
+
+		<div class="tisa-setrow">
+			<div class="tisa-setrow__text">
+				<b class="tisa-h3"><?php esc_html_e( 'پایهٔ آدرس زیپ‌های مجموعه', 'tisacase-hub' ); ?></b>
+				<p class="tisa-meta">
+					<?php esc_html_e( 'کارت افزونه‌هایی که روی این سرور نصب نیستند، دکمهٔ «نصب از مخزن» می‌گیرند و زیپ را از همین مسیر می‌خوانند:', 'tisacase-hub' ); ?>
+					<span class="tisa-code" dir="ltr"><?php echo esc_html( TSH_Registry::zip_base() ); ?></span>
+				</p>
+				<p class="tisa-hint">
+					<?php esc_html_e( 'پیش‌فرض روی شاخهٔ main مخزن مجموعه است. اگر سرور به raw.githubusercontent.com دسترسی ندارد یا می‌خواهید شاخهٔ دیگری را تست کنید، همین کادر را عوض کنید. نمونه‌ها:', 'tisacase-hub' ); ?>
+					<br><span class="tisa-code" dir="ltr">https://cdn.jsdelivr.net/gh/ImTheAlireza/TisaCaseHub@main/plugins/dist/</span>
+					<br><span class="tisa-code" dir="ltr">https://tisacap.com/wp-content/uploads/tisacase-zips/</span>
+					<?php esc_html_e( 'برای افزونه‌های بازنشسته (قیمت گروهی و قیمت‌گذاری داینامیک) زیپی وجود ندارد و دکمهٔ نصب نشان داده نمی‌شود.', 'tisacase-hub' ); ?>
+				</p>
+			</div>
+			<div class="tisa-setrow__control">
+				<label class="screen-reader-text" for="tsh-zip-base"><?php esc_html_e( 'پایهٔ آدرس زیپ‌ها', 'tisacase-hub' ); ?></label>
+				<input type="url" id="tsh-zip-base" class="tisa-input tisa-input--code" style="min-width:320px"
+					name="<?php echo esc_attr( $opt ); ?>[zip_base]" dir="ltr" inputmode="url"
+					value="<?php echo esc_attr( (string) $settings['zip_base'] ); ?>"
+					placeholder="<?php echo esc_attr( TSH_Registry::ZIP_BASE ); ?>">
 			</div>
 		</div>
 

@@ -1,11 +1,12 @@
 # 🧩 `tisacase-hub` — ساخته شد
 
-**لینک مستقیم زیپ (نسخهٔ ۱٫۶٫۰):**
+**لینک مستقیم زیپ (نسخهٔ ۱٫۷٫۱):**
 `https://raw.githubusercontent.com/ImTheAlireza/TisaCaseHub/main/plugins/dist/tisacase-hub.zip`
 تا پیش از مرج شاخهٔ کاری: `https://raw.githubusercontent.com/ImTheAlireza/TisaCaseHub/arena/01a0cfce-tisacasehub/plugins/dist/tisacase-hub.zip`
-صفحهٔ ریلیز: `https://github.com/ImTheAlireza/TisaCaseHub/releases/tag/tisacase-hub-1.6.0`
+صفحهٔ ریلیز: `https://github.com/ImTheAlireza/TisaCaseHub/releases/tag/tisacase-hub-1.7.1`
 
 > دو نکته: (۱) لینک قدیمی (مخزن `PluginCheckup`) دیگر وجود ندارد — مخزن به `TisaCaseHub` تغییر نام داده و زیپ هم در ریشه نبود؛ از این پس بستهٔ هاب مثل بقیهٔ افزونه‌ها در `plugins/dist/tisacase-hub.zip` ساخته می‌شود (`./tools/build-plugin-zip.sh tisacase-hub`).
+> (۳) نسخهٔ ۱٫۷٫۱: کارت افزونه‌های نصب‌نشده دکمهٔ **«نصب از مخزن»** گرفت (پایهٔ آدرس در تنظیمات → «نصب از مخزن»)، و کارت «گروه‌بندی متغیرها بر اساس برند» به فهرست داخلی اضافه شد.
 > (۲) برای «شناختن افزونهٔ جدید» هاب نیازی به آپدیت ندارد: هر افزونه‌ای که هدر `TisaCase Hub:` داشته باشد خودکار کارت می‌گیرد (از نسخهٔ ۱٫۲٫۰ به بعد همین‌طور بود).
 
 

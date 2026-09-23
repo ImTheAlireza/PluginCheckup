@@ -21,6 +21,12 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 
 		const FILTER = 'tisacase_hub_items';
 
+		/**
+		 * پایهٔ آدرس زیپ‌های مجموعه (در تنظیمات هاب قابل تغییر است).
+		 * روی شاخهٔ main همان مخزنی است که این افزونه‌ها در آن زندگی می‌کنند.
+		 */
+		const ZIP_BASE = 'https://raw.githubusercontent.com/ImTheAlireza/TisaCaseHub/main/plugins/dist/';
+
 		/** @var array|null آیتم‌های resolve‌شده در همین درخواست. */
 		private static $items = null;
 
@@ -176,7 +182,9 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 			);
 
 			// دو افزونهٔ قدیمی (تا وقتی هنوز نصب‌اند) همچنان شناخته می‌شوند.
+			// دو افزونهٔ بازنشسته (جایشان tisacase-pricing است) در مخزن زیپ ندارند.
 			$items['tcbpm'] = array(
+				'zip'   => false,
 				'title' => __( 'قیمت گروهی', 'tisacase-hub' ),
 				'desc'  => __( 'افزایش/کاهش/set قیمت عادی، فروش ویژه و عمده؛ پیش‌نمایش، لاگ و بازگردانی.', 'tisacase-hub' ),
 				'group' => 'pricing',
@@ -205,6 +213,7 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 			);
 
 			$items['pm'] = array(
+				'zip'   => false,
 				'title' => __( 'قیمت‌گذاری داینامیک', 'tisacase-hub' ),
 				'desc'  => __( 'قوانین درصدی بر اساس نقش کاربر/دسته؛ بدون نوشتن در دیتابیس.', 'tisacase-hub' ),
 				'group' => 'pricing',
@@ -236,6 +245,24 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 						'screen' => 'woocommerce_page_wcsp-settings',
 						'parent' => 'woocommerce',
 						'slug'   => 'wcsp-settings',
+					),
+				),
+			);
+
+			$items['brandvars'] = array(
+				'title' => __( 'گروه‌بندی متغیرها بر اساس برند', 'tisacase-hub' ),
+				'desc'  => __( 'مدل‌های محصول را به برند (آیفون/سامسونگ/شیائومی) دسته‌بندی می‌کند؛ با پنل جستجو، خط جداکننده و سواچ رنگ. فقط نمایش سمت کاربر و در حالت تست فقط روی محصول‌های انتخابی.', 'tisacase-hub' ),
+				'group' => 'products',
+				'icon'  => 'grid',
+				'dir'   => 'tisacase-brand-variations',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(
+					array(
+						'label'  => __( 'باز کردن', 'tisacase-hub' ),
+						'path'   => 'admin.php?page=tisacase-brand-variations',
+						'screen' => 'woocommerce_page_tisacase-brand-variations',
+						'parent' => 'woocommerce',
+						'slug'   => 'tisacase-brand-variations',
 					),
 				),
 			);
@@ -358,6 +385,55 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				$items[ $key ] = isset( $items[ $key ] ) ? array_merge( $items[ $key ], $item ) : $item;
 			}
 			return $items;
+		}
+
+		/**
+		 * پایهٔ نهایی آدرس زیپ‌ها (تنظیمات هاب، وگرنه ZIP_BASE) — با اسلش انتهایی.
+		 *
+		 * @return string
+		 */
+		public static function zip_base() {
+			$base = '';
+			if ( class_exists( 'TSH_UI' ) ) {
+				$base = trim( (string) TSH_UI::setting( 'zip_base', '' ) );
+			}
+			if ( '' === $base ) {
+				$base = self::ZIP_BASE;
+			}
+			return (string) apply_filters( 'tisacase_hub_zip_base', trailingslashit( $base ) );
+		}
+
+		/**
+		 * آدرس زیپ نصب/به‌روزرسانی یک آیتم.
+		 *
+		 * اولویت: مقدار `zip` خود آیتم → پایهٔ تنظیمات هاب → پایهٔ پیش‌فرض (ZIP_BASE).
+		 * با فیلتر `tisacase_hub_zip_url` هم می‌شود برای هر آیتم آدرس دیگری داد.
+		 *
+		 * @param array $item آیتم.
+		 * @return string
+		 */
+		public static function zip_url( $item ) {
+			$dir = isset( $item['dir'] ) ? (string) $item['dir'] : '';
+			if ( '' === $dir ) {
+				return '';
+			}
+			// `'zip' => false` یعنی این آیتم زیپی در مخزن ندارد (مثلاً افزونهٔ بازنشسته).
+			if ( isset( $item['zip'] ) && false === $item['zip'] ) {
+				return '';
+			}
+
+			$base = self::zip_base();
+
+			$custom = isset( $item['zip'] ) ? trim( (string) $item['zip'] ) : '';
+			if ( '' === $custom ) {
+				$url = $base . $dir . '.zip';
+			} elseif ( 0 === strpos( $custom, 'http://' ) || 0 === strpos( $custom, 'https://' ) ) {
+				$url = $custom;
+			} else {
+				$url = $base . ltrim( $custom, '/' ); // آدرس نسبی
+			}
+
+			return (string) apply_filters( 'tisacase_hub_zip_url', $url, $item );
 		}
 
 		/**
@@ -488,6 +564,8 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 			$item['can']        = current_user_can( $cap );
 			$item['can_manage'] = current_user_can( 'activate_plugins' );
 			$item['can_update'] = current_user_can( 'update_plugins' ) && current_user_can( 'upload_plugins' ) && '' !== $dir;
+			$item['zip']        = self::zip_url( $item );
+			$item['can_install'] = current_user_can( 'install_plugins' ) && current_user_can( 'upload_plugins' ) && '' !== $dir && '' !== $item['zip'];
 			$item['screens']    = isset( $item['screens'] ) ? (array) $item['screens'] : array();
 			foreach ( $pages as $page ) {
 				if ( ! empty( $page['screen'] ) && ! in_array( $page['screen'], $item['screens'], true ) ) {
