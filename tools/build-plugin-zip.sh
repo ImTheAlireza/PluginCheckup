@@ -3,7 +3,11 @@
 # زیپ‌های ریشهٔ مخزن منبع‌اند و دست نمی‌خورند.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-src="plugins/src/${1:-}"; [ -d "$src" ] || { echo "پوشه نیست: $src" >&2; exit 2; }
+name="${1:-}"
+# افزونه‌های مجموعه در plugins/src/ هستند؛ خودِ هاب در plugins/<name>/ می‌ماند.
+if [ -d "plugins/src/$name" ]; then src="plugins/src/$name";
+elif [ -d "plugins/$name" ]; then src="plugins/$name";
+else echo "پوشه نیست: plugins/src/$name یا plugins/$name" >&2; exit 2; fi
 top=$(basename "$src")
 
 python3 tools/php-check.py "$src" >/dev/null
@@ -13,7 +17,7 @@ for f in $js; do node --check "$f" >/dev/null || { echo "JS خطا دارد: $f"
 mkdir -p plugins/dist
 out="plugins/dist/$top.zip"
 rm -f "$out"
-( cd plugins/src && zip -qrD "../dist/$top.zip" "$top" -x "*/.DS_Store" "*/__MACOSX/*" )
+( cd "$(dirname "$src")" && zip -qrD "$OLDPWD/$out" "$top" -x "*/.DS_Store" "*/__MACOSX/*" )
 
 files=$(unzip -l "$out" | tail -1 | awk '{print $2}')
 echo "✓ $out ($(du -h "$out" | cut -f1 | tr -d ' ') · $files فایل) — نصب: پیشخوان › افزونه‌ها › بارگذاری (یا حذف و جایگزینی)"

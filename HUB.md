@@ -1,11 +1,15 @@
 # 🧩 `tisacase-hub` — ساخته شد
 
-**لینک مستقیم زیپ (نسخهٔ ۱٫۲٫۰):**
-`https://raw.githubusercontent.com/ImTheAlireza/PluginCheckup/arena/01a09973-plugincheckup/tisacase-hub.zip`
-صفحهٔ ریلیز: `https://github.com/ImTheAlireza/PluginCheckup/releases/tag/v1.2.0`
+**لینک مستقیم زیپ (نسخهٔ ۱٫۶٫۰):**
+`https://raw.githubusercontent.com/ImTheAlireza/TisaCaseHub/main/plugins/dist/tisacase-hub.zip`
+تا پیش از مرج شاخهٔ کاری: `https://raw.githubusercontent.com/ImTheAlireza/TisaCaseHub/arena/01a0cfce-tisacasehub/plugins/dist/tisacase-hub.zip`
+صفحهٔ ریلیز: `https://github.com/ImTheAlireza/TisaCaseHub/releases/tag/tisacase-hub-1.6.0`
+
+> دو نکته: (۱) لینک قدیمی (مخزن `PluginCheckup`) دیگر وجود ندارد — مخزن به `TisaCaseHub` تغییر نام داده و زیپ هم در ریشه نبود؛ از این پس بستهٔ هاب مثل بقیهٔ افزونه‌ها در `plugins/dist/tisacase-hub.zip` ساخته می‌شود (`./tools/build-plugin-zip.sh tisacase-hub`).
+> (۲) برای «شناختن افزونهٔ جدید» هاب نیازی به آپدیت ندارد: هر افزونه‌ای که هدر `TisaCase Hub:` داشته باشد خودکار کارت می‌گیرد (از نسخهٔ ۱٫۲٫۰ به بعد همین‌طور بود).
 
 
-> نصب‌کردنی: `tisacase-hub.zip` (ریشهٔ مخزن) · منبع: `plugins/tisacase-hub/` · استایل مرجع: `design/tisacase-ui.css`
+> نصب‌کردنی: `plugins/dist/tisacase-hub.zip` · منبع: `plugins/tisacase-hub/` · استایل مرجع: `design/tisacase-ui.css`
 > شناخت افزونه‌ها: `PLUGIN_MAP.md` · تصمیم‌ها و قراردادها: `DESIGN_PLAN.md`
 
 یک خط: هاب، **میزبان** زبان طراحی و تنها ورودی ۹ افزونهٔ اختصاصی است — خود افزونه‌ها دست‌نخورده می‌مانند.
