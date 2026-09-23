@@ -101,6 +101,19 @@ if ( ! function_exists( 'tsh_card' ) ) {
 						title="<?php echo esc_attr( sprintf( /* translators: %s: capability */ __( 'این برگهٔ افزونه با دسترسی «%s» قفل شده است.', 'tisacase-hub' ), isset( $item['cap_name'] ) ? $item['cap_name'] : '' ) ); ?>"><?php esc_html_e( 'باز کردن', 'tisacase-hub' ); ?></span>
 				<?php elseif ( 'inactive' === $state && ! empty( $item['can_manage'] ) ) : ?>
 					<a class="tsh-open tsh-open--secondary" href="<?php echo esc_url( $act_url( 'activate' ) ); ?>"><?php esc_html_e( 'فعال‌سازی', 'tisacase-hub' ); ?></a>
+				<?php elseif ( ! empty( $item['can_install'] ) ) : ?>
+					<form class="tsh-install" method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="tisacase_hub_install">
+						<input type="hidden" name="item" value="<?php echo esc_attr( $item['key'] ); ?>">
+						<?php wp_nonce_field( 'tsh_install_' . $item['key'], '_tshnonce' ); ?>
+						<button type="submit" class="tsh-open tsh-open--install"
+							title="<?php echo esc_attr( sprintf( /* translators: %s: zip url */ __( 'نصب از مخزن: %s', 'tisacase-hub' ), $item['zip'] ) ); ?>">
+							<?php esc_html_e( 'نصب از مخزن', 'tisacase-hub' ); ?>
+						</button>
+					</form>
+				<?php elseif ( ! empty( $item['zip'] ) ) : ?>
+					<span class="tsh-na"><?php esc_html_e( 'پوشهٔ افزونه روی این سرور نیست', 'tisacase-hub' ); ?></span>
+					<span class="tsh-na tsh-na--hint" title="<?php echo esc_attr( $item['zip'] ); ?>"><?php esc_html_e( 'برای نصب، دسترسی نصب افزونه لازم است', 'tisacase-hub' ); ?></span>
 				<?php else : ?>
 					<span class="tsh-na"><?php esc_html_e( 'پوشهٔ افزونه روی این سرور نیست', 'tisacase-hub' ); ?></span>
 				<?php endif; ?>

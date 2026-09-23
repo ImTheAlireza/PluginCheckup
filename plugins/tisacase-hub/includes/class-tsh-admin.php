@@ -39,6 +39,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			add_action( 'admin_post_tisacase_hub_action', array( __CLASS__, 'handle_action' ) );
 			add_action( 'admin_post_tisacase_hub_save', array( __CLASS__, 'handle_save' ) );
 			add_action( 'admin_post_tisacase_hub_update', array( __CLASS__, 'handle_update' ) );
+			add_action( 'admin_post_tisacase_hub_install', array( __CLASS__, 'handle_install' ) );
 			// بنرهای افزونه‌های دیگر (آپدیت دیجی‌پی، ووکامرس، …) روی صفحه‌های هاب چاپ نشوند.
 			add_action( 'in_admin_header', array( __CLASS__, 'mute_foreign_notices' ), 999 );
 			add_action( 'admin_bar_menu', array( __CLASS__, 'admin_bar' ), 61 );
@@ -243,6 +244,16 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			$out['menu_position'] = in_array( $pos, $pos_keys, true ) ? $pos : 'top';
 			$custom               = isset( $in['menu_position_custom'] ) ? trim( (string) $in['menu_position_custom'] ) : '';
 			$out['menu_position_custom'] = preg_match( '/^\d{1,2}(\.\d{1,2})?$/', $custom ) ? $custom : '';
+
+			// پایهٔ آدرس زیپ‌های مجموعه (کارت‌های «نصب از مخزن»).
+			$zip_base = isset( $in['zip_base'] ) ? trim( (string) $in['zip_base'] ) : '';
+			if ( '' !== $zip_base ) {
+				$zip_base = esc_url_raw( $zip_base, array( 'http', 'https' ) );
+				if ( $zip_base && '/' !== substr( $zip_base, -1 ) ) {
+					$zip_base .= '/';
+				}
+			}
+			$out['zip_base'] = $zip_base;
 
 			$current = TSH_UI::settings();
 			$hidden  = isset( $in['hidden'] ) ? (array) $in['hidden'] : (array) ( isset( $current['hidden'] ) ? $current['hidden'] : array() );
@@ -529,6 +540,104 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		}
 
 		/**
+		 * نصب افزونه‌ای که روی سرور نیست، مستقیم از مخزن (زیپ روی ZIP_BASE).
+		 *
+		 * امنیت: nonce مخصوص همان کارت + دسترسی `install_plugins`. زیپ قبل از نصب
+		 * باز می‌شود و باید پوشهٔ اولش دقیقاً همان پوشهٔ مورد انتظار باشد؛ بعد
+		 * Plugin_Upgrader نصب می‌کند و در پایان — اگر دسترسی بود — فعال هم می‌شود.
+		 *
+		 * @return void
+		 */
+		public static function handle_install() {
+			$key = isset( $_POST['item'] ) ? sanitize_key( wp_unslash( $_POST['item'] ) ) : '';
+			check_admin_referer( 'tsh_install_' . $key, '_tshnonce' );
+
+			$back = admin_url( 'admin.php?page=' . TSH_SLUG );
+			if ( ! current_user_can( 'install_plugins' ) || ! current_user_can( 'upload_plugins' ) ) {
+				wp_die( esc_html__( 'برای نصب افزونه اجازه ندارید.', 'tisacase-hub' ) );
+			}
+
+			$items = TSH_Registry::items();
+			if ( ! isset( $items[ $key ] ) || empty( $items[ $key ]['dir'] ) ) {
+				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
+				exit;
+			}
+			$dir = (string) $items[ $key ]['dir'];
+			$url = TSH_Registry::zip_url( $items[ $key ] );
+			if ( '' === $url ) {
+				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
+				exit;
+			}
+
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+			require_once ABSPATH . 'wp-admin/includes/misc.php';
+
+			$tmp = download_url( $url, 90 );
+			if ( is_wp_error( $tmp ) ) {
+				wp_safe_redirect(
+					add_query_arg(
+						array(
+							'tsh_msg' => 'inst_failed',
+							'tsh_err' => rawurlencode( $tmp->get_error_message() . ' — ' . $url ),
+						),
+						$back
+					)
+				);
+				exit;
+			}
+
+			// زیپ باید پوشهٔ همین افزونه را داشته باشد؛ نه چیز دیگری.
+			if ( class_exists( 'ZipArchive' ) ) {
+				$zip = new ZipArchive();
+				$top = '';
+				if ( true === $zip->open( $tmp ) ) {
+					$top = strtok( (string) $zip->getNameIndex( 0 ), '/' );
+					$zip->close();
+				}
+				if ( $top !== $dir ) {
+					wp_delete_file( $tmp );
+					wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_wrong', 'tsh_err' => rawurlencode( $top . ' ≠ ' . $dir ) ), $back ) );
+					exit;
+				}
+			}
+
+			$skin     = new Automatic_Upgrader_Skin();
+			$upgrader = new Plugin_Upgrader( $skin );
+			$result   = $upgrader->install( $tmp, array( 'overwrite_package' => false ) );
+			wp_delete_file( $tmp );
+
+			if ( is_wp_error( $result ) || ! $result ) {
+				$err = is_wp_error( $result ) ? $result->get_error_message() : implode( ' ', (array) $skin->get_upgrade_messages() );
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'inst_failed', 'tsh_err' => rawurlencode( $err ) ), $back ) );
+				exit;
+			}
+
+			TSH_UI::flush();
+			wp_clean_plugins_cache( true );
+			self::sweep_temp_write_tests();
+
+			// نصب که تمام شد، اگر اجازهٔ فعال‌سازی هست، همان‌جا فعالش می‌کنیم.
+			$base     = $upgrader->plugin_info();
+			$activated = false;
+			if ( $base && current_user_can( 'activate_plugins' ) && ! is_plugin_active( $base ) ) {
+				$activated = ! is_wp_error( activate_plugin( $base ) );
+			}
+
+			wp_safe_redirect(
+				add_query_arg(
+					array(
+						'tsh_msg'  => $activated ? 'installed' : 'installed_off',
+						'tsh_item' => $key,
+					),
+					$back
+				)
+			);
+			exit;
+		}
+
+		/**
 		 * به‌روزرسانی یک افزونه از روی کارت با فایل زیپ (Plugin_Upgrader با overwrite).
 		 *
 		 * @return void
@@ -779,6 +888,9 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				'updated'     => array( 'success', __( 'افزونه به‌روزرسانی شد.', 'tisacase-hub' ) ),
 				'upd_failed'  => array( 'error', sprintf( /* translators: %s: error */ __( 'به‌روزرسانی نشد: %s', 'tisacase-hub' ), $err ) ),
 				'upd_wrong'   => array( 'error', sprintf( /* translators: %s: dirs */ __( 'این زیپ مال این کارت نیست (%s).', 'tisacase-hub' ), $err ) ),
+				'installed'   => array( 'success', __( 'افزونه از مخزن نصب و فعال شد.', 'tisacase-hub' ) ),
+				'installed_off' => array( 'success', __( 'افزونه از مخزن نصب شد. برای فعال‌سازی، دکمهٔ «فعال‌سازی» روی همان کارت را بزنید.', 'tisacase-hub' ) ),
+				'inst_failed' => array( 'error', sprintf( /* translators: %s: error */ __( 'نصب از مخزن انجام نشد: %s', 'tisacase-hub' ), $err ) ),
 			);
 			if ( ! isset( $texts[ $msg ] ) ) {
 				return;

@@ -42,6 +42,8 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 				'menu_position'         => 'top',
 				'menu_position_custom'  => '',
 				'hidden'         => array(),
+				// پایهٔ آدرس زیپ‌های مجموعه برای دکمهٔ «نصب از مخزن» (خالی = پیش‌فرض هاب).
+				'zip_base'       => '',
 			);
 		}
 

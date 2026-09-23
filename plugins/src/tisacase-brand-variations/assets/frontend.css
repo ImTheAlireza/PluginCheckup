@@ -1,0 +1,661 @@
+/*!
+ * TisaCase — گروه‌بندی متغیرها بر اساس برند | استایل سمت کاربر
+ * ------------------------------------------------------------------
+ * همهٔ رنگ‌ها/اندازه‌ها از متغیرهای CSS می‌آیند که افزونه از تنظیمات پنل
+ * (تب «رنگ‌ها» و «نمایش») چاپ می‌کند. هیچ رنگ هاردکدی جز فالبک نیست.
+ * RTL/LTR با ویژگی‌های منطقی (inline-start/end) پشتیبانی می‌شود.
+ */
+
+.tcbv {
+	--tcbv-accent: #0E7C6B;
+	--tcbv-bg: #FFFFFF;
+	--tcbv-bg-alt: #FAFAF8;
+	--tcbv-border: #E3E1DA;
+	--tcbv-text: #1F2A2E;
+	--tcbv-muted: #77828A;
+	--tcbv-sep: #EAE8E2;
+	--tcbv-hover: #F4F7F6;
+	--tcbv-sel-bg: #0E7C6B;
+	--tcbv-sel-text: #FFFFFF;
+	--tcbv-radius: 14px;
+	--tcbv-fs: 14px;
+	--tcbv-pad: 9px;
+	--tcbv-max-h: 320px;
+	--tcbv-sw-size: 28px;
+	--tcbv-c: var(--tcbv-accent);
+
+	box-sizing: border-box;
+	margin: 6px 0 10px;
+	font-size: var(--tcbv-fs);
+	line-height: 1.6;
+	color: var(--tcbv-text);
+	font-family: inherit;
+	direction: inherit;
+	text-align: start;
+}
+
+.tcbv *,
+.tcbv *::before,
+.tcbv *::after {
+	box-sizing: border-box;
+}
+
+/* select اصلی ووکامرس: در DOM می‌ماند (منطق ووکامرس دست‌نخورده) ولی دیده نمی‌شود */
+select.tcbv-native,
+select.tcbv-native:focus {
+	position: absolute !important;
+	width: 1px !important;
+	height: 1px !important;
+	margin: -1px !important;
+	padding: 0 !important;
+	border: 0 !important;
+	overflow: hidden !important;
+	clip: rect(0 0 0 0) !important;
+	clip-path: inset(50%) !important;
+	white-space: nowrap !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+}
+
+.tcbv-native-sib {
+	display: none !important;
+}
+
+/* اعلان «لطفاً یک گزینه انتخاب کنید» ووکامرس باید دیده بماند */
+.tcbv-holder ~ .woocommerce-variation-availability,
+.tcbv-holder ~ .woocommerce-variation-price {
+	margin-top: 0;
+}
+
+/* ============================================================
+   نوار بالا: جستجو، شمارش، مقدار انتخاب‌شده
+   ============================================================ */
+
+.tcbv-bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.tcbv-label {
+	font-weight: 600;
+	color: var(--tcbv-text);
+}
+
+.tcbv-search {
+	position: relative;
+	flex: 1 1 180px;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+}
+
+.tcbv-input {
+	width: 100%;
+	height: 40px;
+	padding-inline: 34px 30px;
+	border: 1px solid var(--tcbv-border);
+	border-radius: calc(var(--tcbv-radius) - 4px);
+	background: var(--tcbv-bg);
+	color: var(--tcbv-text);
+	font: inherit;
+	font-size: var(--tcbv-fs);
+	outline: none;
+	transition: border-color .15s ease, box-shadow .15s ease;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+.tcbv-input::placeholder {
+	color: var(--tcbv-muted);
+	opacity: .9;
+}
+
+.tcbv-input:focus {
+	border-color: var(--tcbv-accent);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--tcbv-accent) 18%, transparent);
+}
+
+.tcbv-input::-webkit-search-cancel-button {
+	display: none;
+}
+
+.tcbv-search::before {
+	content: "";
+	position: absolute;
+	inset-inline-start: 12px;
+	width: 14px;
+	height: 14px;
+	pointer-events: none;
+	background: currentColor;
+	color: var(--tcbv-muted);
+	opacity: .75;
+	-webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20 20l-4.2-4.2'/></svg>") center/contain no-repeat;
+	mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><path d='M20 20l-4.2-4.2'/></svg>") center/contain no-repeat;
+}
+
+.tcbv-clear {
+	position: absolute;
+	inset-inline-end: 8px;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: var(--tcbv-hover);
+	color: var(--tcbv-muted);
+	font-size: 14px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.tcbv-clear::before {
+	content: "×";
+	display: block;
+	font-size: 16px;
+	line-height: 20px;
+}
+
+.tcbv-clear:hover {
+	background: var(--tcbv-sel-bg);
+	color: var(--tcbv-sel-text);
+}
+
+.tcbv-total,
+.tcbv-selected {
+	font-size: .85em;
+	color: var(--tcbv-muted);
+	white-space: nowrap;
+}
+
+.tcbv-selected:not([hidden]) {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 100%;
+	padding: 2px 10px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--tcbv-accent) 10%, transparent);
+	color: var(--tcbv-accent);
+	font-weight: 600;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ============================================================
+   چیپ‌های فیلتر برند
+   ============================================================ */
+
+.tcbv-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.tcbv-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 11px;
+	border: 1px solid var(--tcbv-border);
+	border-radius: 999px;
+	background: var(--tcbv-bg);
+	color: var(--tcbv-text);
+	font: inherit;
+	font-size: .85em;
+	cursor: pointer;
+	transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.tcbv-chip .tcbv-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--tcbv-c);
+	flex: none;
+}
+
+.tcbv-chip:hover {
+	background: var(--tcbv-hover);
+	border-color: var(--tcbv-c);
+}
+
+.tcbv-chip.is-active {
+	background: var(--tcbv-accent);
+	border-color: var(--tcbv-accent);
+	color: var(--tcbv-sel-text);
+}
+
+.tcbv-chip.is-active .tcbv-dot {
+	background: currentColor;
+}
+
+/* ============================================================
+   پنل
+   ============================================================ */
+
+.tcbv-panel {
+	position: relative;
+	max-height: var(--tcbv-max-h);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 4px;
+	border: 1px solid var(--tcbv-border);
+	border-radius: var(--tcbv-radius);
+	background: var(--tcbv-bg);
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in srgb, var(--tcbv-muted) 45%, transparent) transparent;
+}
+
+.tcbv-panel::-webkit-scrollbar {
+	width: 8px;
+}
+
+.tcbv-panel::-webkit-scrollbar-thumb {
+	background: color-mix(in srgb, var(--tcbv-muted) 40%, transparent);
+	border-radius: 999px;
+}
+
+.tcbv-group {
+	margin: 0;
+	padding: 0;
+}
+
+.tcbv-ghead {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 6px 6px;
+	font-weight: 700;
+	color: var(--tcbv-c);
+}
+
+.tcbv--no-sticky .tcbv-ghead {
+	position: static;
+}
+
+.tcbv-ghead {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--tcbv-bg);
+	border-start-start-radius: calc(var(--tcbv-radius) - 4px);
+	border-start-end-radius: calc(var(--tcbv-radius) - 4px);
+}
+
+.tcbv-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 50%;
+	background: var(--tcbv-c);
+	flex: none;
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--tcbv-c) 16%, transparent);
+}
+
+.tcbv-gicon {
+	font-size: 1em;
+}
+
+.tcbv-gname {
+	font-size: .95em;
+}
+
+.tcbv-gcount {
+	margin-inline-start: auto;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--tcbv-c) 12%, transparent);
+	color: var(--tcbv-c);
+	font-size: .78em;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
+/* گروه به شکل قرص (حالت pill) */
+.tcbv[data-tcbv-group="pill"] .tcbv-ghead {
+	display: inline-flex;
+	margin: 6px 4px 2px;
+	padding: 4px 12px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--tcbv-c) 12%, transparent);
+}
+
+/* ============================================================
+   آیتم‌ها
+   ============================================================ */
+
+.tcbv-items {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 2px 4px 8px;
+}
+
+.tcbv[data-tcbv-layout="list"] .tcbv-items {
+	flex-direction: column;
+	flex-wrap: nowrap;
+}
+
+.tcbv[data-tcbv-layout="grid"] .tcbv-items {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 6px;
+}
+
+@media (max-width: 480px) {
+	.tcbv[data-tcbv-layout="grid"] .tcbv-items {
+		grid-template-columns: 1fr;
+	}
+}
+
+.tcbv-item {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 34px;
+	padding: var(--tcbv-pad) 14px;
+	border: 1px solid var(--tcbv-border);
+	border-radius: calc(var(--tcbv-radius) - 6px);
+	background: var(--tcbv-bg-alt);
+	color: var(--tcbv-text);
+	font: inherit;
+	font-size: .95em;
+	line-height: 1.35;
+	text-align: center;
+	cursor: pointer;
+	transition: background .14s ease, border-color .14s ease, color .14s ease, transform .14s ease;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.tcbv[data-tcbv-layout="list"] .tcbv-item {
+	justify-content: flex-start;
+	width: 100%;
+	border-radius: calc(var(--tcbv-radius) - 8px);
+	background: transparent;
+	border-color: transparent;
+	padding-inline: 10px;
+}
+
+.tcbv-item:hover {
+	background: var(--tcbv-hover);
+	border-color: color-mix(in srgb, var(--tcbv-accent) 45%, var(--tcbv-border));
+}
+
+.tcbv-item:focus-visible {
+	outline: none;
+	border-color: var(--tcbv-accent);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--tcbv-accent) 20%, transparent);
+}
+
+.tcbv-item.is-selected {
+	background: var(--tcbv-sel-bg);
+	border-color: var(--tcbv-sel-bg);
+	color: var(--tcbv-sel-text);
+	font-weight: 600;
+}
+
+.tcbv--hl .tcbv-item.is-selected {
+	box-shadow: 0 2px 8px color-mix(in srgb, var(--tcbv-sel-bg) 30%, transparent);
+}
+
+.tcbv-item.is-selected .tcbv-item-text {
+	color: inherit;
+}
+
+/* رنگ برند روی آیتم‌های همان برند */
+.tcbv--tinted .tcbv-group .tcbv-item {
+	border-color: color-mix(in srgb, var(--tcbv-c) 30%, var(--tcbv-border));
+}
+
+.tcbv--tinted .tcbv-group .tcbv-item:hover {
+	background: color-mix(in srgb, var(--tcbv-c) 8%, var(--tcbv-bg));
+}
+
+.tcbv-item.is-selected:hover {
+	color: var(--tcbv-sel-text);
+}
+
+/* ناموجود (اختیاری) */
+.tcbv-item.is-oos {
+	opacity: .45;
+	text-decoration: line-through;
+	text-decoration-thickness: 1px;
+}
+
+.tcbv-item.is-oos:hover {
+	background: var(--tcbv-bg-alt);
+	border-color: var(--tcbv-border);
+}
+
+.tcbv-empty {
+	padding: 18px 10px;
+	text-align: center;
+	color: var(--tcbv-muted);
+	font-size: .9em;
+}
+
+/* ============================================================
+   جداکننده‌ها
+   ============================================================ */
+
+.tcbv-sep {
+	height: 1px;
+	margin: 4px 6px 10px;
+	background: var(--tcbv-sep);
+	border: 0;
+}
+
+.tcbv[data-tcbv-sep="dashed"] .tcbv-sep {
+	height: 0;
+	border-block-start: 1px dashed var(--tcbv-sep);
+	background: none;
+}
+
+.tcbv[data-tcbv-sep="gradient"] .tcbv-sep {
+	height: 1px;
+	background: linear-gradient(to left, transparent, var(--tcbv-sep) 18%, var(--tcbv-sep) 82%, transparent);
+}
+
+.tcbv[data-tcbv-sep="space"] .tcbv-sep {
+	height: 0;
+	margin: 0;
+	background: none;
+}
+
+.tcbv[data-tcbv-sep="label"] .tcbv-sep {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: auto;
+	margin: 6px 6px 10px;
+	background: none;
+}
+
+.tcbv[data-tcbv-sep="label"] .tcbv-sep::before {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	top: 50%;
+	height: 1px;
+	background: var(--tcbv-sep);
+}
+
+.tcbv-sep-label {
+	position: relative;
+	padding: 0 10px;
+	background: var(--tcbv-bg);
+	color: var(--tcbv-muted);
+	font-size: .78em;
+}
+
+/* ============================================================
+   سواچ رنگ
+   ============================================================ */
+
+.tcbv--swatch {
+	margin: 6px 0 10px;
+}
+
+.tcbv-sw-items {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.tcbv-sw {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 5px;
+	padding: 3px;
+	border: 0;
+	background: none;
+	font: inherit;
+	color: var(--tcbv-text);
+	cursor: pointer;
+	-webkit-tap-highlight-color: transparent;
+}
+
+.tcbv-sw-dot {
+	position: relative;
+	display: block;
+	width: var(--tcbv-sw-size);
+	height: var(--tcbv-sw-size);
+	border-radius: 50%;
+	background: var(--tcbv-c, var(--tcbv-accent));
+	background-clip: padding-box;
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12), 0 1px 3px rgba(0, 0, 0, .10);
+	transition: transform .14s ease, box-shadow .14s ease;
+}
+
+.tcbv[data-tcbv-shape="square"] .tcbv-sw-dot {
+	border-radius: 8px;
+}
+
+.tcbv[data-tcbv-shape="pill"] .tcbv-sw-dot {
+	width: calc(var(--tcbv-sw-size) * 1.8);
+	border-radius: 999px;
+}
+
+.tcbv[data-tcbv-shape="dot"] .tcbv-sw-dot {
+	width: calc(var(--tcbv-sw-size) * .55);
+	height: calc(var(--tcbv-sw-size) * .55);
+}
+
+.tcbv-sw-dot.is-light {
+	filter: brightness(1.12);
+}
+
+.tcbv-sw-dot.is-dark {
+	filter: brightness(.82) saturate(1.1);
+}
+
+.tcbv-sw-dot.is-glossy {
+	background-image: linear-gradient(135deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, 0) 55%);
+}
+
+.tcbv-sw-dot.is-multi {
+	background: conic-gradient(#E23A3A, #F2C744, #2E9E5B, #2F80ED, #7C4DFF, #FF7EB6, #E23A3A);
+}
+
+.tcbv-sw-dot.is-clear,
+.tcbv-sw-dot.is-unknown {
+	background-color: #FFFFFF;
+	background-image:
+		linear-gradient(45deg, #E2E2E2 25%, transparent 25%, transparent 75%, #E2E2E2 75%),
+		linear-gradient(45deg, #E2E2E2 25%, transparent 25%, transparent 75%, #E2E2E2 75%);
+	background-size: 10px 10px;
+	background-position: 0 0, 5px 5px;
+}
+
+.tcbv-sw-label {
+	font-size: .78em;
+	color: var(--tcbv-muted);
+	line-height: 1.2;
+	text-align: center;
+	max-width: 8em;
+}
+
+.tcbv-sw:hover .tcbv-sw-dot {
+	transform: scale(1.06);
+}
+
+.tcbv-sw.is-selected .tcbv-sw-dot {
+	box-shadow:
+		0 0 0 2px var(--tcbv-bg),
+		0 0 0 4px var(--tcbv-sel-bg),
+		inset 0 0 0 1px rgba(0, 0, 0, .12);
+}
+
+.tcbv-sw.is-selected .tcbv-sw-label {
+	color: var(--tcbv-text);
+	font-weight: 600;
+}
+
+.tcbv-sw:focus-visible {
+	outline: none;
+}
+
+.tcbv-sw:focus-visible .tcbv-sw-dot {
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--tcbv-accent) 35%, transparent);
+}
+
+/* ============================================================
+   جزئیات
+   ============================================================ */
+
+.tcbv-item[hidden],
+.tcbv-group[hidden],
+.tcbv-sep[hidden],
+.tcbv-empty[hidden],
+.tcbv-selected[hidden] {
+	display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tcbv * {
+		transition: none !important;
+	}
+}
+
+/* قالب‌هایی که سلکت را با ظرف خودشان قاب می‌گیرند، فاصلهٔ اضافه نگیرند */
+.woocommerce-variation-attribute .tcbv:last-child,
+td.value > .tcbv-holder:last-child {
+	margin-bottom: 0;
+}
+
+/* ------------------------------------------------------------------
+   نشان «حالت تست» — فقط برای مدیر و فقط وقتی حالت تست روشن است.
+   برای بازدیدکنندهٔ عادی این عنصر اصلاً چاپ نمی‌شود.
+   ------------------------------------------------------------------ */
+.tcbv-test-badge {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 0 0 12px;
+	padding: 8px 12px;
+	border: 1px dashed #E0B44C;
+	border-radius: 10px;
+	background: #FFFCF2;
+	color: #7A5806;
+	font-size: 12.5px;
+	line-height: 1.7;
+}
+
+.tcbv-test-badge-ico {
+	font-size: 15px;
+	line-height: 1;
+}
+
+.tcbv-test-badge a {
+	margin-inline-start: auto;
+	font-weight: 700;
+	color: inherit;
+	text-decoration: underline;
+	white-space: nowrap;
+}
