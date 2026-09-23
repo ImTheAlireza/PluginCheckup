@@ -190,7 +190,8 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 				? ( $test_ids ? 'حالت تست · ' . number_format_i18n( count( $test_ids ) ) . ' محصول' : 'حالت تست · بدون محصول' )
 				: 'همهٔ محصولات متغیر';
 			?>
-			<div class="wrap tcbv-wrap tisa-scope" dir="rtl">
+			<div class="wrap tcbv-wrap" dir="rtl">
+				<h1 class="tcbv-sr-only">گروه‌بندی متغیرها بر اساس برند</h1>
 
 				<header class="tcbv-hero">
 					<div class="tcbv-hero-row">
@@ -200,11 +201,13 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 							</svg>
 						</div>
 						<div class="tcbv-hero-text">
-							<h1 class="tcbv-hero-title">گروه‌بندی متغیرها بر اساس برند</h1>
-							<p class="tcbv-hero-sub">لیست تخت مدل‌ها در صفحهٔ محصول → آیفون، خط جداکننده، سامسونگ، خط جداکننده، شیائومی؛ با پنل جستجو و سواچ رنگ. هیچ محصول یا متغیری تغییر نمی‌کند.</p>
+							<p class="tcbv-hero-title">گروه‌بندی متغیرها بر اساس برند</p>
+							<p class="tcbv-hero-sub">مدل‌ها در صفحهٔ محصول به برند جدا می‌شوند — آیفون، سامسونگ، شیائومی — با جستجو و سواچ رنگ. هیچ محصولی تغییر نمی‌کند.</p>
 						</div>
-						<span class="tcbv-hero-ver" dir="ltr">v<?php echo esc_html( TCBV_VERSION ); ?></span>
-						<span class="tcbv-hero-pill<?php echo $test_on ? ' is-test' : ''; ?>" id="tcbv-hero-pill"><?php echo esc_html( $test_pill ); ?></span>
+						<div class="tcbv-hero-meta">
+							<span class="tcbv-hero-ver" dir="ltr">v<?php echo esc_html( TCBV_VERSION ); ?></span>
+							<span class="tcbv-hero-pill<?php echo $test_on ? ' is-test' : ''; ?>" id="tcbv-hero-pill"><?php echo esc_html( $test_pill ); ?></span>
+						</div>
 					</div>
 					<nav class="tcbv-tabs" role="tablist">
 						<?php foreach ( $tabs as $key => $label ) : ?>
@@ -217,22 +220,25 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 					</nav>
 				</header>
 
+				<div class="tcbv-flash" id="tcbv-flash">
 				<?php if ( isset( $_GET['tcbv-saved'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-					<div class="notice notice-success is-dismissible"><p>تنظیمات ذخیره شد.</p></div>
+					<div class="tcbv-notice tcbv-notice--ok">تنظیمات ذخیره شد.</div>
 				<?php endif; ?>
 				<?php if ( isset( $_GET['tcbv-reset'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
-					<div class="notice notice-success is-dismissible"><p>تنظیمات به پیش‌فرض برگشت.</p></div>
+					<div class="tcbv-notice tcbv-notice--ok">تنظیمات به پیش‌فرض برگشت.</div>
 				<?php endif; ?>
 				<?php if ( $test_on && ! $test_ids ) : ?>
-					<div class="notice notice-warning"><p><strong>حالت تست روشن است ولی هنوز محصولی انتخاب نشده؛</strong> بنابراین افزونه فعلاً روی هیچ محصولی در فروشگاه اجرا نمی‌شود. در کارت «حالت تست» زیر، محصول‌های آزمایشی را اضافه کنید.</p></div>
+					<div class="tcbv-notice tcbv-notice--warn"><strong>حالت تست روشن است ولی محصولی انتخاب نشده.</strong> افزونه فعلاً روی فروشگاه اجرا نمی‌شود — در کارت تست محصول اضافه کنید.</div>
 				<?php elseif ( $test_on ) : ?>
-					<div class="notice notice-info"><p><strong>حالت تست روشن است:</strong> افزونه فقط روی <?php echo esc_html( number_format_i18n( count( $test_ids ) ) ); ?> محصول انتخاب‌شده اجرا می‌شود. برای اعمال روی کل فروشگاه، تیک «حالت تست» را بردارید (یا دکمهٔ «روشن‌کردن برای کل فروشگاه» را بزنید).</p></div>
+					<div class="tcbv-notice tcbv-notice--info"><strong>حالت تست:</strong> فقط روی <?php echo esc_html( number_format_i18n( count( $test_ids ) ) ); ?> محصول انتخاب‌شده اجرا می‌شود.</div>
 				<?php endif; ?>
 				<?php if ( ! empty( $settings['advanced']['safe_mode'] ) ) : ?>
-					<div class="notice notice-warning"><p><strong>حالت ایمن روشن است:</strong> فقط مرتب‌سازی سرور (optgroup) انجام می‌شود و پنل جستجوپذیر سمت کاربر خاموش است.</p></div>
+					<div class="tcbv-notice tcbv-notice--warn"><strong>حالت ایمن:</strong> پنل جستجو خاموش است؛ فقط مرتب‌سازی سرور.</div>
 				<?php endif; ?>
+				</div>
 
 				<div class="tcbv-layout">
+					<div class="tcbv-main">
 					<form class="tcbv-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<input type="hidden" name="action" value="tcbv_save">
 						<input type="hidden" name="tab" value="<?php echo esc_attr( $tab ); ?>">
@@ -249,21 +255,25 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 
 						<div class="tcbv-actions">
 							<button type="submit" class="button button-primary button-hero">ذخیرهٔ تنظیمات</button>
-							<span class="tcbv-muted">تغییرات فقط روی نمایش صفحهٔ محصول اثر می‌گذارد.</span>
+							<span class="tcbv-muted">فقط نمایش صفحهٔ محصول عوض می‌شود.</span>
 						</div>
 					</form>
 
 					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="tcbv-reset-form" id="tcbv-reset-form">
 						<input type="hidden" name="action" value="tcbv_reset">
 						<?php wp_nonce_field( 'tcbv_reset' ); ?>
-						<button type="submit" class="button button-link-delete">بازنشانی همهٔ تنظیمات به پیش‌فرض</button>
+						<button type="submit" class="button-link-delete">بازنشانی همهٔ تنظیمات به پیش‌فرض</button>
 					</form>
+					</div>
 
 					<aside class="tcbv-side">
 						<div class="tcbv-card tcbv-card--sticky">
 							<div class="tcbv-card-head">
-								<span class="tcbv-step">پیش‌نمایش زنده</span>
-								<span class="tcbv-hint">با تغییر تنظیمات، همان لحظه به‌روز می‌شود</span>
+								<span class="tcbv-step">◎</span>
+								<div>
+									<h2>پیش‌نمایش زنده</h2>
+									<p class="tcbv-hint">با تغییر تنظیمات همان لحظه به‌روز می‌شود</p>
+								</div>
 							</div>
 							<div class="tcbv-card-body">
 								<div class="tcbv-preview" id="tcbv-preview" data-sample="1">
@@ -378,6 +388,7 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 					</div>
 					<label class="tcbv-switch">
 						<input type="checkbox" name="tcbv[enabled]" value="1" <?php checked( ! empty( $settings['enabled'] ) ); ?>>
+						<span class="tcbv-switch-ui" aria-hidden="true"></span>
 						<span>افزونه فعال باشد</span>
 					</label>
 				</div>

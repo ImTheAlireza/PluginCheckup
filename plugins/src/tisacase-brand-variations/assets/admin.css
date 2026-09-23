@@ -5,15 +5,38 @@
 
 .tcbv-wrap {
 	max-width: var(--tisa-max-w, 1180px);
-	margin-top: var(--tisa-sp-4, 16px);
-	margin-inline-end: auto;
-	margin-inline-start: 0;
+	margin: var(--tisa-sp-5, 24px) auto 0 0;
+	padding: 0 var(--tisa-sp-4, 16px) var(--tisa-sp-7, 48px);
 	font-family: var(--tisa-font, "Vazirmatn", Tahoma, sans-serif);
 	color: var(--tisa-ink, #1F2A2E);
 }
 
 .tcbv-wrap * {
 	box-sizing: border-box;
+}
+
+.tcbv-sr-only {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* وردپرس نوتیس را بعد از اولین h1 می‌چسباند — نباید داخل هیرو دیده شود */
+.tcbv-hero .notice,
+.tcbv-hero .updated,
+.tcbv-hero .error,
+.tcbv-hero .update-nag {
+	display: none !important;
+}
+
+.tcbv-flash .notice {
+	display: none !important;
 }
 
 /* ------------------------------------------------------------------
@@ -35,6 +58,16 @@
 	align-items: center;
 	gap: var(--tisa-sp-4, 16px);
 	padding-bottom: var(--tisa-sp-4, 16px);
+	position: relative;
+	z-index: 1;
+}
+
+.tcbv-hero-meta {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: var(--tisa-sp-2, 8px);
+	flex: none;
 }
 
 .tcbv-hero-mark {
@@ -105,19 +138,23 @@
 
 .tcbv-tabs {
 	display: flex;
+	flex-wrap: wrap;
 	gap: var(--tisa-sp-2, 8px);
-	border-top: 1px solid rgba(255, 255, 255, .12);
-	padding-top: var(--tisa-sp-3, 12px);
+	position: relative;
+	z-index: 1;
+	padding: 0 0 var(--tisa-sp-5, 24px);
+	border: 0;
 	overflow-x: auto;
 }
 
 .tcbv-tab {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	padding: var(--tisa-sp-2, 8px) var(--tisa-sp-4, 16px);
-	border-radius: var(--tisa-r-sm, 10px) var(--tisa-r-sm, 10px) 0 0;
-	color: rgba(255, 255, 255, .8);
+	height: 36px;
+	padding: 0 var(--tisa-sp-4, 16px);
+	border-radius: var(--tisa-r-pill, 999px);
+	background: rgba(255, 255, 255, .12);
+	color: var(--tisa-on-primary, #fff);
 	text-decoration: none;
 	font-size: var(--tisa-fs-control, 13px);
 	font-weight: 600;
@@ -127,13 +164,43 @@
 
 .tcbv-tab:hover {
 	color: var(--tisa-on-primary, #fff);
-	background: rgba(255, 255, 255, .1);
+	background: rgba(255, 255, 255, .22);
 }
 
 .tcbv-tab.is-active {
-	color: var(--tisa-primary-deep, #064E46);
+	color: var(--tisa-primary-ink, #0A5F52);
 	background: var(--tisa-surface, #fff);
-	box-shadow: var(--tisa-shadow-sm, 0 1px 2px rgba(31, 42, 46, .05));
+}
+
+.tcbv-notice {
+	margin: 0 0 var(--tisa-sp-3, 12px);
+	padding: var(--tisa-sp-3, 12px) var(--tisa-sp-4, 16px);
+	border-radius: var(--tisa-r, 14px);
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	font-size: var(--tisa-fs-control, 13px);
+	line-height: 1.7;
+}
+
+.tcbv-notice--ok {
+	background: var(--tisa-success-soft, #E5F4E7);
+	border-color: #B8E0C2;
+	color: var(--tisa-success, #1A7F37);
+}
+
+.tcbv-notice--warn {
+	background: var(--tisa-warning-soft, #FCF3D7);
+	border-color: #EBD39A;
+	color: var(--tisa-warning, #8A6116);
+}
+
+.tcbv-notice--info {
+	background: var(--tisa-info-soft, #F0F6FC);
+	border-color: #C5D9ED;
+	color: var(--tisa-info, #135E96);
+}
+
+.tcbv-flash {
+	margin-bottom: var(--tisa-sp-4, 16px);
 }
 
 /* ------------------------------------------------------------------
