@@ -537,12 +537,12 @@
 		var root = el('div', 'tcbv tcbv--brands tcbv--' + picker);
 		root.setAttribute('data-tcbv-kind', 'brand');
 		root.setAttribute('data-tcbv-picker', picker);
-		root.setAttribute('data-tcbv-layout', CFG.ui.layout);
+		root.setAttribute('data-tcbv-layout', 'chips');
 		root.setAttribute('data-tcbv-sep', CFG.ui.separator);
 
 		var items = [];
 		var drops = [];
-		var state = { query: '', oosSet: null, openId: '' };
+		var state = { query: '', oosSet: null, openId: '', manual: false };
 		var oosMode = CFG.ui.oos;
 
 		var searchWrap = el('div', 'tcbv-search tcbv-search--global');
@@ -561,22 +561,38 @@
 
 		var list = el('div', 'tcbv-dd-list');
 
+		function setDropOpen(drop, on) {
+			drop.pop.hidden = !on;
+			drop.wrap.classList.toggle('is-open', on);
+			drop.trigger.setAttribute('aria-expanded', on ? 'true' : 'false');
+		}
+
 		function closeAll() {
 			if (picker === 'open') { return; }
-			for (var i = 0; i < drops.length; i++) {
-				drops[i].pop.hidden = true;
-				drops[i].wrap.classList.remove('is-open');
-				drops[i].trigger.setAttribute('aria-expanded', 'false');
-			}
+			for (var i = 0; i < drops.length; i++) { setDropOpen(drops[i], false); }
 			state.openId = '';
+			state.manual = false;
 		}
 
 		function openDrop(drop) {
 			closeAll();
-			drop.pop.hidden = false;
-			drop.wrap.classList.add('is-open');
-			drop.trigger.setAttribute('aria-expanded', 'true');
+			setDropOpen(drop, true);
 			state.openId = drop.id;
+			state.manual = true;
+		}
+
+		function openMatches() {
+			if (picker === 'open') { return; }
+			for (var i = 0; i < drops.length; i++) {
+				var drop = drops[i];
+				var shown = 0;
+				for (var j = 0; j < drop.items.length; j++) {
+					if (!drop.items[j].hidden) { shown++; }
+				}
+				setDropOpen(drop, shown > 0 && !!state.query);
+			}
+			state.openId = '';
+			state.manual = false;
 		}
 
 		for (var g = 0; g < groups.length; g++) {
@@ -647,15 +663,15 @@
 					trigger.addEventListener('click', function (event) {
 						event.preventDefault();
 						event.stopPropagation();
-						if (state.openId === drop.id) { closeAll(); } else { openDrop(drop); }
+						if (state.openId === drop.id && state.manual) { closeAll(); } else { openDrop(drop); }
 					});
 				}
 
 				pop.addEventListener('click', function (event) {
 					var target = event.target.closest ? event.target.closest('.tcbv-item') : null;
 					if (!target || target.hidden) { return; }
-					api.setValue(target.getAttribute('data-value'));
-					closeAll();
+				api.setValue(target.getAttribute('data-value'));
+				if (!state.query) { closeAll(); }
 				});
 			})(groups[g]);
 		}
@@ -724,6 +740,11 @@
 				any += shown;
 			}
 			searchClear.hidden = !state.query;
+			searchWrap.classList.toggle('has-query', !!state.query);
+			if (picker !== 'open') {
+				if (state.query) { openMatches(); }
+				else if (!state.manual) { closeAll(); }
+			}
 		}
 
 		searchInput.addEventListener('input', debounce(function () {
@@ -745,10 +766,10 @@
 		});
 
 		document.addEventListener('click', function (event) {
-			if (!root.contains(event.target)) { closeAll(); }
+			if (!root.contains(event.target) && !state.query) { closeAll(); }
 		});
 		document.addEventListener('keydown', function (event) {
-			if (event.key === 'Escape') { closeAll(); }
+			if (event.key === 'Escape' && !state.query) { closeAll(); }
 		});
 
 		return api;
