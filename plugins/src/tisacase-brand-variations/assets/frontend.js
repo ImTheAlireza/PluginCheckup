@@ -532,7 +532,7 @@
 		var groups = groupValues(values);
 		if (!groups.length) { return null; }
 
-		var root = el('div', 'tcbv tcbv--panel');
+		var root = el('div', 'tcbv tcbv--panel tcbv--dropdown');
 		root.setAttribute('data-tcbv-kind', 'brand');
 		root.setAttribute('data-tcbv-layout', CFG.ui.layout);
 		root.setAttribute('data-tcbv-sep', CFG.ui.separator);
@@ -543,13 +543,25 @@
 
 		var label = fieldLabel(select);
 		var total = values.length;
+		var placeholder = (select.options && select.options[0] && !select.options[0].value)
+			? clean(select.options[0].text)
+			: (CFG.ui.searchPlaceholder || 'انتخاب مدل…');
 
-		// — نوار بالا: جستجو + شمارنده
-		if (CFG.ui.search || CFG.ui.counts || CFG.ui.showLabel) {
+		var trigger = el('button', 'tcbv-trigger');
+		trigger.type = 'button';
+		trigger.setAttribute('aria-haspopup', 'listbox');
+		trigger.setAttribute('aria-expanded', 'false');
+		var triggerText = el('span', 'tcbv-trigger-text', placeholder);
+		trigger.appendChild(triggerText);
+		trigger.appendChild(el('span', 'tcbv-trigger-caret'));
+		root.appendChild(trigger);
+
+		var pop = el('div', 'tcbv-pop');
+		pop.hidden = true;
+
+		// — نوار جستجو داخل دراپ‌داون
+		if (CFG.ui.search || CFG.ui.counts) {
 			var bar = el('div', 'tcbv-bar');
-			if (CFG.ui.showLabel && label) {
-				bar.appendChild(el('span', 'tcbv-label', label));
-			}
 			if (CFG.ui.search) {
 				var box = el('div', 'tcbv-search');
 				var input = el('input', 'tcbv-input');
@@ -572,13 +584,8 @@
 			if (CFG.ui.counts) {
 				bar.appendChild(el('span', 'tcbv-total', fa(total) + ' ' + (CFG.i18n.models || 'مدل')));
 			}
-			root.appendChild(bar);
+			pop.appendChild(bar);
 			root.__bar = bar;
-
-			var selected = el('span', 'tcbv-selected');
-			selected.hidden = true;
-			bar.appendChild(selected);
-			select.__tcbvLabel = selected;
 		}
 
 		// — چیپ‌های فیلتر برند
@@ -599,7 +606,7 @@
 				chip.appendChild(el('span', 'tcbv-chip-text', groups[c].label));
 				chipsBar.appendChild(chip);
 			}
-			root.appendChild(chipsBar);
+			pop.appendChild(chipsBar);
 		}
 
 		// — پنل: گروه‌ها + جداکننده‌ها
@@ -659,10 +666,14 @@
 		empty.hidden = true;
 		panel.appendChild(empty);
 
-		root.appendChild(panel);
+		pop.appendChild(panel);
+		root.appendChild(pop);
 		root.__panel = panel;
+		root.__pop = pop;
 		root.__items = items;
 		root.__groups = groups;
+		root.__trigger = trigger;
+		root.__triggerText = triggerText;
 
 		/* ---------- وضعیت ---------- */
 
@@ -681,18 +692,10 @@
 				applySelected();
 			},
 			sync: function () {
-				var val = select.value;
-				if (val && !select.disabled) {
-					var pool = root.__items;
-					for (var i = 0; i < pool.length; i++) {
-						if (pool[i].getAttribute('data-value') === val) {
-							pool[i].scrollIntoView({ block: 'nearest' });
-							break;
-						}
-					}
-				}
 				applySelected();
 			},
+			close: closeDrop,
+			open: openDrop,
 			setOos: function (set) {
 				state.oosSet = set;
 				applyFilter();
@@ -709,10 +712,27 @@
 				if (on) { has = true; }
 			}
 			root.classList.toggle('has-value', has);
-			if (select.__tcbvLabel) {
-				select.__tcbvLabel.textContent = has ? val : '';
-				select.__tcbvLabel.hidden = !has;
+			triggerText.textContent = has ? val : placeholder;
+			trigger.classList.toggle('is-placeholder', !has);
+		}
+
+		function openDrop() {
+			pop.hidden = false;
+			root.classList.add('is-open');
+			trigger.setAttribute('aria-expanded', 'true');
+			if (root.__bar && root.__bar.__search) {
+				window.setTimeout(function () { root.__bar.__search.focus(); }, 20);
 			}
+		}
+
+		function closeDrop() {
+			pop.hidden = true;
+			root.classList.remove('is-open');
+			trigger.setAttribute('aria-expanded', 'false');
+		}
+
+		function toggleDrop() {
+			if (pop.hidden) { openDrop(); } else { closeDrop(); }
 		}
 
 		function matchQuery(item) {
@@ -774,10 +794,21 @@
 
 		/* ---------- رویدادها ---------- */
 
+		trigger.addEventListener('click', function (event) {
+			event.preventDefault();
+			event.stopPropagation();
+			toggleDrop();
+		});
+
+		document.addEventListener('click', function (event) {
+			if (!root.contains(event.target)) { closeDrop(); }
+		});
+
 		panel.addEventListener('click', function (event) {
 			var target = event.target.closest ? event.target.closest('.tcbv-item') : null;
 			if (!target) { return; }
 			api.setValue(target.getAttribute('data-value'));
+			closeDrop();
 		});
 
 		panel.addEventListener('keydown', function (event) {

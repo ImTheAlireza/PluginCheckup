@@ -20,12 +20,16 @@
 	--tcbv-radius: 14px;
 	--tcbv-fs: 14px;
 	--tcbv-pad: 9px;
-	--tcbv-max-h: 320px;
+	--tcbv-max-h: 280px;
 	--tcbv-sw-size: 28px;
 	--tcbv-c: var(--tcbv-accent);
 
+	all: initial;
 	box-sizing: border-box;
+	display: block;
+	position: relative;
 	margin: 6px 0 10px;
+	width: 100%;
 	font-size: var(--tcbv-fs);
 	line-height: 1.6;
 	color: var(--tcbv-text);
@@ -70,6 +74,91 @@ select.tcbv-native:focus {
 /* ============================================================
    نوار بالا: جستجو، شمارش، مقدار انتخاب‌شده
    ============================================================ */
+
+.tcbv-trigger,
+.tcbv-item,
+.tcbv-chip,
+.tcbv-clear,
+.tcbv-sw {
+	all: unset;
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	font-family: inherit;
+	cursor: pointer;
+	-webkit-appearance: none;
+	appearance: none;
+	background: none;
+	border: 0;
+	color: inherit;
+	line-height: 1.35;
+}
+
+.tcbv-trigger {
+	display: flex;
+	width: 100%;
+	min-height: 44px;
+	padding: 0 14px;
+	border: 1px solid var(--tcbv-border);
+	border-radius: calc(var(--tcbv-radius) - 4px);
+	background: var(--tcbv-bg);
+	color: var(--tcbv-text);
+	justify-content: space-between;
+	gap: 10px;
+	font-size: var(--tcbv-fs);
+	font-weight: 600;
+}
+
+.tcbv-trigger.is-placeholder {
+	color: var(--tcbv-muted);
+	font-weight: 500;
+}
+
+.tcbv-trigger:hover,
+.tcbv.is-open .tcbv-trigger {
+	border-color: var(--tcbv-accent);
+}
+
+.tcbv-trigger-text {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	text-align: start;
+}
+
+.tcbv-trigger-caret {
+	flex: none;
+	width: 10px;
+	height: 10px;
+	border-inline-end: 2px solid currentColor;
+	border-block-end: 2px solid currentColor;
+	transform: rotate(45deg);
+	margin-top: -4px;
+	opacity: .55;
+}
+
+.tcbv.is-open .tcbv-trigger-caret {
+	transform: rotate(-135deg);
+	margin-top: 4px;
+}
+
+.tcbv-pop {
+	position: absolute;
+	inset-inline: 0;
+	top: calc(100% + 6px);
+	z-index: 40;
+	padding: 10px;
+	border: 1px solid var(--tcbv-border);
+	border-radius: var(--tcbv-radius);
+	background: var(--tcbv-bg);
+	box-shadow: 0 12px 36px rgba(31, 42, 46, .14);
+}
+
+.tcbv-pop[hidden] {
+	display: none !important;
+}
 
 .tcbv-bar {
 	display: flex;
@@ -242,10 +331,10 @@ select.tcbv-native:focus {
 	max-height: var(--tcbv-max-h);
 	overflow-y: auto;
 	overscroll-behavior: contain;
-	padding: 4px;
-	border: 1px solid var(--tcbv-border);
-	border-radius: var(--tcbv-radius);
-	background: var(--tcbv-bg);
+	padding: 2px 2px 6px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
 	-webkit-overflow-scrolling: touch;
 	scrollbar-width: thin;
 	scrollbar-color: color-mix(in srgb, var(--tcbv-muted) 45%, transparent) transparent;
@@ -358,16 +447,14 @@ select.tcbv-native:focus {
 	justify-content: center;
 	min-height: 34px;
 	padding: var(--tcbv-pad) 14px;
-	border: 1px solid var(--tcbv-border);
+	border: 1px solid var(--tcbv-border) !important;
 	border-radius: calc(var(--tcbv-radius) - 6px);
-	background: var(--tcbv-bg-alt);
-	color: var(--tcbv-text);
-	font: inherit;
+	background: var(--tcbv-bg-alt) !important;
+	color: var(--tcbv-text) !important;
 	font-size: .95em;
-	line-height: 1.35;
 	text-align: center;
-	cursor: pointer;
-	transition: background .14s ease, border-color .14s ease, color .14s ease, transform .14s ease;
+	box-shadow: none !important;
+	transition: background .14s ease, border-color .14s ease, color .14s ease;
 	-webkit-tap-highlight-color: transparent;
 }
 

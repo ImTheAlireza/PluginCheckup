@@ -39,6 +39,12 @@
 	display: none !important;
 }
 
+.tcbv-wrap > .notice {
+	margin: 0 0 var(--tisa-sp-3, 12px) !important;
+	border-radius: var(--tisa-r, 14px);
+	box-shadow: none;
+}
+
 /* ------------------------------------------------------------------
    هیرو
    ------------------------------------------------------------------ */

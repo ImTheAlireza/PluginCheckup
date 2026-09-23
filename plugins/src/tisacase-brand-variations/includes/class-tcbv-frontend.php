@@ -217,7 +217,7 @@ if ( ! class_exists( 'TCBV_Frontend' ) ) {
 			$css .= '}';
 
 			if ( ! empty( $t['shadow'] ) ) {
-				$css .= '.tcbv-panel{box-shadow:0 6px 24px rgba(31,42,46,.07)}';
+				$css .= '.tcbv-pop{box-shadow:0 12px 36px rgba(31,42,46,.14)}';
 			}
 
 			return $css;
