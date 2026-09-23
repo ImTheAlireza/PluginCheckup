@@ -20,7 +20,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'TCBV_VERSION', '1.2.1' );
+define( 'TCBV_VERSION', '1.3.0' );
 define( 'TCBV_FILE', __FILE__ );
 define( 'TCBV_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TCBV_URL', plugin_dir_url( __FILE__ ) );
