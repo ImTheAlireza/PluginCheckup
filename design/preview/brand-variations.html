@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پیش‌نمایش — گروه‌بندی متغیرها بر اساس برند | TisaCase</title>
+<link rel="stylesheet" href="../../plugins/src/tisacase-brand-variations/assets/frontend.css">
+<style>
+	:root { --ink:#1F2A2E; --muted:#6B7680; --line:#E3E1DA; --primary:#0E7C6B; }
+	* { box-sizing: border-box; }
+	body { margin:0; padding:22px; background:#F4F2EC; color:var(--ink);
+		font:15px/1.9 Tahoma, "Vazirmatn", "IRANSans", system-ui, sans-serif; }
+	h1 { font-size:20px; margin:0 0 4px; }
+	h2 { font-size:15px; margin:0 0 10px; }
+	p.lead { margin:0 0 18px; color:var(--muted); font-size:13px; }
+	.bar { background:#fff; border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:18px;
+		display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
+	.bar label { display:flex; flex-direction:column; gap:5px; font-size:12.5px; font-weight:700; }
+	.bar select, .bar input[type=color] { width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:9px; background:#fff; font:inherit; }
+	.bar input[type=color] { height:36px; padding:2px; }
+	.bar .row-inline { display:flex; align-items:center; gap:8px; font-weight:600; }
+	.cols { display:grid; grid-template-columns:minmax(240px,.8fr) minmax(320px,1.2fr); gap:18px; align-items:start; }
+	@media (max-width:900px){ .cols{ grid-template-columns:1fr; } }
+	.card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:16px; }
+	.card .tag { display:inline-block; font-size:11.5px; padding:2px 10px; border-radius:999px; margin-bottom:10px; }
+	.card.before .tag { background:#FBECEA; color:#8A2424; }
+	.card.after .tag { background:#E8F0EE; color:#0A5F52; }
+	.plain { width:100%; padding:9px; border:1px solid var(--line); border-radius:10px; font:inherit; background:#fff; max-height:340px; }
+	.note { color:var(--muted); font-size:12.5px; margin-top:10px; }
+	code { font-family:ui-monospace,Menlo,Consolas,monospace; direction:ltr; display:inline-block; }
+	.demo-field { margin-bottom:12px; }
+	.demo-field > label { display:block; font-size:13px; font-weight:700; margin-bottom:5px; }
+</style>
+</head>
+<body>
+	<h1>گروه‌بندی متغیرها بر اساس برند — پیش‌نمایش زنده</h1>
+	<p class="lead">این صفحه فقط یک نمایش است؛ همان CSS و JS افزونهٔ <code>tisacase-brand-variations</code> را بار می‌کند.
+		لیست مدل‌ها همان <strong>154 مدل واقعی</strong> محصول «قاب اسپیس کد TS184» است. کنترل‌های زیر همان تنظیمات تب «نمایش» و «رنگ‌ها» در پنل وردپرس‌اند.</p>
+
+	<div class="bar">
+		<label>جداکنندهٔ بین برندها
+			<select id="c-sep">
+				<option value="line">خط ساده</option>
+				<option value="dashed">خط‌چین</option>
+				<option value="gradient">خط محو</option>
+				<option value="label">خط با نام برند</option>
+				<option value="space">فقط فاصله</option>
+				<option value="none">بدون جداکننده</option>
+			</select>
+		</label>
+		<label>چیدمان گزینه‌ها
+			<select id="c-layout">
+				<option value="chips">چیپ کنار هم</option>
+				<option value="list">لیست تک‌ستونی</option>
+				<option value="grid">دو ستونه</option>
+			</select>
+		</label>
+		<label>شکل عنوان برند
+			<select id="c-group">
+				<option value="header">سرصفحهٔ چسبان</option>
+				<option value="pill">قرص رنگی</option>
+			</select>
+		</label>
+		<label>ترتیب مدل‌ها
+			<select id="c-sort">
+				<option value="asis">ترتیب فروشگاه</option>
+				<option value="asc">طبیعی صعودی</option>
+				<option value="desc">برعکس</option>
+			</select>
+		</label>
+		<label>رنگ تأکید<input type="color" id="c-accent" value="#0E7C6B"></label>
+		<label>رنگ برند آیفون<input type="color" id="c-apple" value="#111827"></label>
+		<label>شکل سواچ رنگ
+			<select id="c-shape">
+				<option value="circle">دایره</option>
+				<option value="square">مربع گرد</option>
+				<option value="pill">قرص پهن</option>
+				<option value="dot">نقطهٔ کوچک</option>
+			</select>
+		</label>
+		<label class="row-inline"><input type="checkbox" id="c-search" checked> جعبهٔ جستجو</label>
+		<label class="row-inline"><input type="checkbox" id="c-chips" checked> چیپ فیلتر برند</label>
+		<label class="row-inline"><input type="checkbox" id="c-sticky" checked> عنوان چسبان</label>
+		<label class="row-inline"><input type="checkbox" id="c-tinted"> رنگ برند روی گزینه‌ها</label>
+		<label class="row-inline"><input type="checkbox" id="c-fa" checked> اعداد فارسی</label>
+	</div>
+
+	<div class="cols">
+		<section class="card before">
+			<span class="tag">قبل — همان چیزی که الان در سایت هست</span>
+			<h2>یک دراپ‌داون تخت با 154 گزینه</h2>
+			<select class="plain" size="14">
+				<option value="">یک گزینه را انتخاب کنید</option>
+				<option value="iPhone 6">iPhone 6</option>
+				<option value="iPhone 6s">iPhone 6s</option>
+				<option value="iPhone 6 Plus">iPhone 6 Plus</option>
+				<option value="iPhone 6s Plus">iPhone 6s Plus</option>
+				<option value="iPhone 7">iPhone 7</option>
+				<option value="iPhone 8">iPhone 8</option>
+				<option value="iPhone SE">iPhone SE</option>
+				<option value="iPhone SE 2">iPhone SE 2</option>
+				<option value="iPhone 7 Plus">iPhone 7 Plus</option>
+				<option value="iPhone 8 Plus">iPhone 8 Plus</option>
+				<option value="iPhone X">iPhone X</option>
+				<option value="iPhone Xs">iPhone Xs</option>
+				<option value="iPhone Xs Max">iPhone Xs Max</option>
+				<option value="iPhone 11">iPhone 11</option>
+				<option value="iPhone 11 Pro">iPhone 11 Pro</option>
+				<option value="iPhone 11 Pro Max">iPhone 11 Pro Max</option>
+				<option value="iPhone 12">iPhone 12</option>
+				<option value="iPhone 13">iPhone 13</option>
+				<option value="iPhone 14">iPhone 14</option>
+				<option value="iPhone 12 mini">iPhone 12 mini</option>
+				<option value="iPhone 12 Pro">iPhone 12 Pro</option>
+				<option value="iPhone 13 Pro">iPhone 13 Pro</option>
+				<option value="iPhone 14 Pro">iPhone 14 Pro</option>
+				<option value="iPhone 12 Pro Max">iPhone 12 Pro Max</option>
+				<option value="iPhone 13 Pro Max">iPhone 13 Pro Max</option>
+				<option value="iPhone 14 Pro Max">iPhone 14 Pro Max</option>
+				<option value="iPhone 15">iPhone 15</option>
+				<option value="iPhone 15 Pro">iPhone 15 Pro</option>
+				<option value="iPhone 15 Pro Max">iPhone 15 Pro Max</option>
+				<option value="iPhone 16">iPhone 16</option>
+				<option value="iPhone 16 Pro">iPhone 16 Pro</option>
+				<option value="iPhone 16 Pro Max">iPhone 16 Pro Max</option>
+				<option value="iPhone 17">iPhone 17</option>
+				<option value="iPhone 17 Pro">iPhone 17 Pro</option>
+				<option value="iPhone 17 Pro Max">iPhone 17 Pro Max</option>
+				<option value="iPhone 18">iPhone 18</option>
+				<option value="iPhone 18 Pro">iPhone 18 Pro</option>
+				<option value="iPhone 18 Pro Max">iPhone 18 Pro Max</option>
+				<option value="A03s">A03s</option>
+				<option value="A04s">A04s</option>
+				<option value="A05s">A05s</option>
+				<option value="A06">A06</option>
+				<option value="A07">A07</option>
+				<option value="A10">A10</option>
+				<option value="A10s">A10s</option>
+				<option value="A11">A11</option>
+				<option value="A12">A12</option>
+				<option value="A13 4G">A13 4G</option>
+				<option value="A13 5G">A13 5G</option>
+				<option value="A14">A14</option>
+				<option value="A15">A15</option>
+				<option value="A16">A16</option>
+				<option value="A17">A17</option>
+				<option value="A20">A20</option>
+				<option value="A20s">A20s</option>
+				<option value="A21s">A21s</option>
+				<option value="A22 4G">A22 4G</option>
+				<option value="A22 5G">A22 5G</option>
+				<option value="A23 4G">A23 4G</option>
+				<option value="A24">A24</option>
+				<option value="A25">A25</option>
+				<option value="A26">A26</option>
+				<option value="A30">A30</option>
+				<option value="A30s">A30s</option>
+				<option value="A31">A31</option>
+				<option value="A32 4G">A32 4G</option>
+				<option value="A32 5G">A32 5G</option>
+				<option value="A33">A33</option>
+				<option value="A34">A34</option>
+				<option value="A35">A35</option>
+				<option value="A36">A36</option>
+				<option value="A37">A37</option>
+				<option value="A50">A50</option>
+				<option value="A51">A51</option>
+				<option value="A52">A52</option>
+				<option value="A52s">A52s</option>
+				<option value="A53">A53</option>
+				<option value="A54">A54</option>
+				<option value="A55">A55</option>
+				<option value="A56">A56</option>
+				<option value="A57">A57</option>
+				<option value="A70">A70</option>
+				<option value="A71">A71</option>
+				<option value="A72">A72</option>
+				<option value="A73">A73</option>
+				<option value="S20 FE">S20 FE</option>
+				<option value="S21">S21</option>
+				<option value="S21 FE">S21 FE</option>
+				<option value="S21 Ultra">S21 Ultra</option>
+				<option value="S22 Ultra">S22 Ultra</option>
+				<option value="S23">S23</option>
+				<option value="S23 FE">S23 FE</option>
+				<option value="S23 Ultra">S23 Ultra</option>
+				<option value="S24">S24</option>
+				<option value="S24 FE">S24 FE</option>
+				<option value="S24 Ultra">S24 Ultra</option>
+				<option value="S25">S25</option>
+				<option value="S25 FE">S25 FE</option>
+				<option value="S25 Ultra">S25 Ultra</option>
+				<option value="S26">S26</option>
+				<option value="S26 FE">S26 FE</option>
+				<option value="S26 Ultra">S26 Ultra</option>
+				<option value="Redmi Note 8">Redmi Note 8</option>
+				<option value="Redmi Note 8 Pro">Redmi Note 8 Pro</option>
+				<option value="Redmi Note 9">Redmi Note 9</option>
+				<option value="Redmi Note 9S">Redmi Note 9S</option>
+				<option value="Redmi Note 9 Pro">Redmi Note 9 Pro</option>
+				<option value="Redmi Note 10 4G">Redmi Note 10 4G</option>
+				<option value="Redmi Note 10S">Redmi Note 10S</option>
+				<option value="Redmi Note 10 Pro">Redmi Note 10 Pro</option>
+				<option value="Redmi Note 10 Pro Max">Redmi Note 10 Pro Max</option>
+				<option value="Redmi Note 11 4G">Redmi Note 11 4G</option>
+				<option value="Redmi Note 11S">Redmi Note 11S</option>
+				<option value="Redmi Note 11 Pro 4G">Redmi Note 11 Pro 4G</option>
+				<option value="Redmi Note 12 4G">Redmi Note 12 4G</option>
+				<option value="Redmi Note 12 Pro 4G">Redmi Note 12 Pro 4G</option>
+				<option value="Redmi Note 12 Pro 5G">Redmi Note 12 Pro 5G</option>
+				<option value="Redmi Note 13 4G">Redmi Note 13 4G</option>
+				<option value="Redmi Note 13 Pro 4G">Redmi Note 13 Pro 4G</option>
+				<option value="Redmi Note 13 Pro 5G">Redmi Note 13 Pro 5G</option>
+				<option value="Redmi Note 13 Pro Plus 5G">Redmi Note 13 Pro Plus 5G</option>
+				<option value="Redmi Note 14 4G">Redmi Note 14 4G</option>
+				<option value="Redmi Note 14 Pro 4G">Redmi Note 14 Pro 4G</option>
+				<option value="Redmi Note 14 Pro Plus 5G">Redmi Note 14 Pro Plus 5G</option>
+				<option value="Redmi Note 15 4G">Redmi Note 15 4G</option>
+				<option value="Redmi Note 15 Pro 4G">Redmi Note 15 Pro 4G</option>
+				<option value="Redmi A5">Redmi A5</option>
+				<option value="Redmi 10C">Redmi 10C</option>
+				<option value="Redmi 12">Redmi 12</option>
+				<option value="Redmi 12C">Redmi 12C</option>
+				<option value="Redmi 13">Redmi 13</option>
+				<option value="Redmi 13C">Redmi 13C</option>
+				<option value="Redmi 14C">Redmi 14C</option>
+				<option value="Redmi 15">Redmi 15</option>
+				<option value="Redmi 15C">Redmi 15C</option>
+				<option value="Mi 11T">Mi 11T</option>
+				<option value="Mi 11T Pro">Mi 11T Pro</option>
+				<option value="Mi 12T">Mi 12T</option>
+				<option value="Mi 12T Pro">Mi 12T Pro</option>
+				<option value="Mi 13T">Mi 13T</option>
+				<option value="Mi 13T Pro">Mi 13T Pro</option>
+				<option value="Mi 11 Lite">Mi 11 Lite</option>
+				<option value="Mi 12 Lite">Mi 12 Lite</option>
+				<option value="Mi 13 Lite">Mi 13 Lite</option>
+				<option value="Poco X3">Poco X3</option>
+				<option value="Poco X3 GT">Poco X3 GT</option>
+				<option value="Poco X3 Pro">Poco X3 Pro</option>
+				<option value="Poco X4 Pro">Poco X4 Pro</option>
+				<option value="Poco X6">Poco X6</option>
+				<option value="Poco X6 Pro">Poco X6 Pro</option>
+				<option value="Poco X7">Poco X7</option>
+				<option value="Poco M3">Poco M3</option>
+				<option value="Poco F6">Poco F6</option>
+				<option value="Poco F6 Pro">Poco F6 Pro</option>
+			</select>
+			<p class="note">هیچ گروه، هیچ جداکننده و هیچ جستجویی نیست؛ مشتری باید کل لیست را اسکرول کند.</p>
+		</section>
+
+		<section class="card after">
+			<span class="tag">بعد — با افزونه</span>
+			<h2>پنل گروه‌بندی‌شده + جستجو + سواچ رنگ</h2>
+			<form class="variations_form" data-product_variations="">
+				<div class="demo-field">
+					<label for="demo-model">مدل</label>
+					<select id="demo-model" name="attribute_model" data-attribute_name="attribute_model">
+						<option value="">یک گزینه را انتخاب کنید</option>
+				<option value="iPhone 6">iPhone 6</option>
+				<option value="iPhone 6s">iPhone 6s</option>
+				<option value="iPhone 6 Plus">iPhone 6 Plus</option>
+				<option value="iPhone 6s Plus">iPhone 6s Plus</option>
+				<option value="iPhone 7">iPhone 7</option>
+				<option value="iPhone 8">iPhone 8</option>
+				<option value="iPhone SE">iPhone SE</option>
+				<option value="iPhone SE 2">iPhone SE 2</option>
+				<option value="iPhone 7 Plus">iPhone 7 Plus</option>
+				<option value="iPhone 8 Plus">iPhone 8 Plus</option>
+				<option value="iPhone X">iPhone X</option>
+				<option value="iPhone Xs">iPhone Xs</option>
+				<option value="iPhone Xs Max">iPhone Xs Max</option>
+				<option value="iPhone 11">iPhone 11</option>
+				<option value="iPhone 11 Pro">iPhone 11 Pro</option>
+				<option value="iPhone 11 Pro Max">iPhone 11 Pro Max</option>
+				<option value="iPhone 12">iPhone 12</option>
+				<option value="iPhone 13">iPhone 13</option>
+				<option value="iPhone 14">iPhone 14</option>
+				<option value="iPhone 12 mini">iPhone 12 mini</option>
+				<option value="iPhone 12 Pro">iPhone 12 Pro</option>
+				<option value="iPhone 13 Pro">iPhone 13 Pro</option>
+				<option value="iPhone 14 Pro">iPhone 14 Pro</option>
+				<option value="iPhone 12 Pro Max">iPhone 12 Pro Max</option>
+				<option value="iPhone 13 Pro Max">iPhone 13 Pro Max</option>
+				<option value="iPhone 14 Pro Max">iPhone 14 Pro Max</option>
+				<option value="iPhone 15">iPhone 15</option>
+				<option value="iPhone 15 Pro">iPhone 15 Pro</option>
+				<option value="iPhone 15 Pro Max">iPhone 15 Pro Max</option>
+				<option value="iPhone 16">iPhone 16</option>
+				<option value="iPhone 16 Pro">iPhone 16 Pro</option>
+				<option value="iPhone 16 Pro Max">iPhone 16 Pro Max</option>
+				<option value="iPhone 17">iPhone 17</option>
+				<option value="iPhone 17 Pro">iPhone 17 Pro</option>
+				<option value="iPhone 17 Pro Max">iPhone 17 Pro Max</option>
+				<option value="iPhone 18">iPhone 18</option>
+				<option value="iPhone 18 Pro">iPhone 18 Pro</option>
+				<option value="iPhone 18 Pro Max">iPhone 18 Pro Max</option>
+				<option value="A03s">A03s</option>
+				<option value="A04s">A04s</option>
+				<option value="A05s">A05s</option>
+				<option value="A06">A06</option>
+				<option value="A07">A07</option>
+				<option value="A10">A10</option>
+				<option value="A10s">A10s</option>
+				<option value="A11">A11</option>
+				<option value="A12">A12</option>
+				<option value="A13 4G">A13 4G</option>
+				<option value="A13 5G">A13 5G</option>
+				<option value="A14">A14</option>
+				<option value="A15">A15</option>
+				<option value="A16">A16</option>
+				<option value="A17">A17</option>
+				<option value="A20">A20</option>
+				<option value="A20s">A20s</option>
+				<option value="A21s">A21s</option>
+				<option value="A22 4G">A22 4G</option>
+				<option value="A22 5G">A22 5G</option>
+				<option value="A23 4G">A23 4G</option>
+				<option value="A24">A24</option>
+				<option value="A25">A25</option>
+				<option value="A26">A26</option>
+				<option value="A30">A30</option>
+				<option value="A30s">A30s</option>
+				<option value="A31">A31</option>
+				<option value="A32 4G">A32 4G</option>
+				<option value="A32 5G">A32 5G</option>
+				<option value="A33">A33</option>
+				<option value="A34">A34</option>
+				<option value="A35">A35</option>
+				<option value="A36">A36</option>
+				<option value="A37">A37</option>
+				<option value="A50">A50</option>
+				<option value="A51">A51</option>
+				<option value="A52">A52</option>
+				<option value="A52s">A52s</option>
+				<option value="A53">A53</option>
+				<option value="A54">A54</option>
+				<option value="A55">A55</option>
+				<option value="A56">A56</option>
+				<option value="A57">A57</option>
+				<option value="A70">A70</option>
+				<option value="A71">A71</option>
+				<option value="A72">A72</option>
+				<option value="A73">A73</option>
+				<option value="S20 FE">S20 FE</option>
+				<option value="S21">S21</option>
+				<option value="S21 FE">S21 FE</option>
+				<option value="S21 Ultra">S21 Ultra</option>
+				<option value="S22 Ultra">S22 Ultra</option>
+				<option value="S23">S23</option>
+				<option value="S23 FE">S23 FE</option>
+				<option value="S23 Ultra">S23 Ultra</option>
+				<option value="S24">S24</option>
+				<option value="S24 FE">S24 FE</option>
+				<option value="S24 Ultra">S24 Ultra</option>
+				<option value="S25">S25</option>
+				<option value="S25 FE">S25 FE</option>
+				<option value="S25 Ultra">S25 Ultra</option>
+				<option value="S26">S26</option>
+				<option value="S26 FE">S26 FE</option>
+				<option value="S26 Ultra">S26 Ultra</option>
+				<option value="Redmi Note 8">Redmi Note 8</option>
+				<option value="Redmi Note 8 Pro">Redmi Note 8 Pro</option>
+				<option value="Redmi Note 9">Redmi Note 9</option>
+				<option value="Redmi Note 9S">Redmi Note 9S</option>
+				<option value="Redmi Note 9 Pro">Redmi Note 9 Pro</option>
+				<option value="Redmi Note 10 4G">Redmi Note 10 4G</option>
+				<option value="Redmi Note 10S">Redmi Note 10S</option>
+				<option value="Redmi Note 10 Pro">Redmi Note 10 Pro</option>
+				<option value="Redmi Note 10 Pro Max">Redmi Note 10 Pro Max</option>
+				<option value="Redmi Note 11 4G">Redmi Note 11 4G</option>
+				<option value="Redmi Note 11S">Redmi Note 11S</option>
+				<option value="Redmi Note 11 Pro 4G">Redmi Note 11 Pro 4G</option>
+				<option value="Redmi Note 12 4G">Redmi Note 12 4G</option>
+				<option value="Redmi Note 12 Pro 4G">Redmi Note 12 Pro 4G</option>
+				<option value="Redmi Note 12 Pro 5G">Redmi Note 12 Pro 5G</option>
+				<option value="Redmi Note 13 4G">Redmi Note 13 4G</option>
+				<option value="Redmi Note 13 Pro 4G">Redmi Note 13 Pro 4G</option>
+				<option value="Redmi Note 13 Pro 5G">Redmi Note 13 Pro 5G</option>
+				<option value="Redmi Note 13 Pro Plus 5G">Redmi Note 13 Pro Plus 5G</option>
+				<option value="Redmi Note 14 4G">Redmi Note 14 4G</option>
+				<option value="Redmi Note 14 Pro 4G">Redmi Note 14 Pro 4G</option>
+				<option value="Redmi Note 14 Pro Plus 5G">Redmi Note 14 Pro Plus 5G</option>
+				<option value="Redmi Note 15 4G">Redmi Note 15 4G</option>
+				<option value="Redmi Note 15 Pro 4G">Redmi Note 15 Pro 4G</option>
+				<option value="Redmi A5">Redmi A5</option>
+				<option value="Redmi 10C">Redmi 10C</option>
+				<option value="Redmi 12">Redmi 12</option>
+				<option value="Redmi 12C">Redmi 12C</option>
+				<option value="Redmi 13">Redmi 13</option>
+				<option value="Redmi 13C">Redmi 13C</option>
+				<option value="Redmi 14C">Redmi 14C</option>
+				<option value="Redmi 15">Redmi 15</option>
+				<option value="Redmi 15C">Redmi 15C</option>
+				<option value="Mi 11T">Mi 11T</option>
+				<option value="Mi 11T Pro">Mi 11T Pro</option>
+				<option value="Mi 12T">Mi 12T</option>
+				<option value="Mi 12T Pro">Mi 12T Pro</option>
+				<option value="Mi 13T">Mi 13T</option>
+				<option value="Mi 13T Pro">Mi 13T Pro</option>
+				<option value="Mi 11 Lite">Mi 11 Lite</option>
+				<option value="Mi 12 Lite">Mi 12 Lite</option>
+				<option value="Mi 13 Lite">Mi 13 Lite</option>
+				<option value="Poco X3">Poco X3</option>
+				<option value="Poco X3 GT">Poco X3 GT</option>
+				<option value="Poco X3 Pro">Poco X3 Pro</option>
+				<option value="Poco X4 Pro">Poco X4 Pro</option>
+				<option value="Poco X6">Poco X6</option>
+				<option value="Poco X6 Pro">Poco X6 Pro</option>
+				<option value="Poco X7">Poco X7</option>
+				<option value="Poco M3">Poco M3</option>
+				<option value="Poco F6">Poco F6</option>
+				<option value="Poco F6 Pro">Poco F6 Pro</option>
+					</select>
+				</div>
+				<div class="demo-field">
+					<label for="demo-color">رنگ</label>
+					<select id="demo-color" name="attribute_color" data-attribute_name="attribute_color">
+						<option value="">یک گزینه را انتخاب کنید</option>
+				<option value="صورتی">صورتی</option>
+				<option value="آبی">آبی</option>
+					</select>
+				</div>
+			</form>
+			<p class="note">select اصلی ووکامرس زیر همین پنل در DOM باقی می‌ماند؛ قیمت، تصویر، سبد خرید و «ناموجود» دقیقاً مثل قبل کار می‌کند.</p>
+		</section>
+	</div>
+
+	<script>
+	window.TCBV_CFG = {
+		brands: [
+			{ id:'apple', label:'آیفون', color:'#111827', icon:'', enabled:1,
+			  keywords:['iphone','ipad','ipod','apple','آیفون','اپل'], regex:[], exact:[] },
+			{ id:'samsung', label:'سامسونگ', color:'#1428A0', icon:'', enabled:1,
+			  keywords:['galaxy','samsung','سامسونگ','گلکسی'],
+			  regex:['^(?:galaxy[\\s\\-]*)?(?:[asmjz]\\s?\\d{1,2}[a-z]{0,3}|z\\s?(?:flip|fold)\\s?\\d?)(?:\\s.*)?$'], exact:[] },
+			{ id:'xiaomi', label:'شیائومی', color:'#FF6900', icon:'', enabled:1,
+			  keywords:['redmi','poco','mi','xiaomi','ردمی','پوکو','شیائومی'], regex:[], exact:[] }
+		],
+		unknown: { label:'سایر مدل‌ها', color:'#94A3B8', enabled:1, position:'last' },
+		groupScope: 'auto',
+		groupAttrs: ['مدل','model'],
+		skipAttrs: ['رنگ','color'],
+		swatchAttrs: ['رنگ','color'],
+		minBrands: 2,
+		minOptions: 6,
+		ui: { mode:'panel', layout:'chips', separator:'line', group_style:'header', sort:'asis',
+			search:1, search_placeholder:'جستجوی مدل… (مثلاً A55 یا Redmi)', counts:1, sticky:1,
+			chips:1, max_height:340, colors_on_items:0, show_label:0, highlight:1, oos:0, fa_digits:1 },
+		theme: { accent:'#0E7C6B', bg:'#FFFFFF', bg_alt:'#FAFAF8', border:'#E3E1DA', text:'#1F2A2E',
+			muted:'#77828A', sep:'#EAE8E2', hover:'#F4F7F6', sel_bg:'#0E7C6B', sel_text:'#FFFFFF' },
+		swatch: { enabled:1, shape:'circle', size:30, showLabel:1, fallback:'#CBD5E1' },
+		colorMap: [
+			['مشکی','#111111'],['سیاه','#111111'],['سفید','#FFFFFF'],['آبی','#2F80ED'],['ابی','#2F80ED'],
+			['صورتی','#FF7EB6'],['صورتی روشن','#FFB3D4'],['قرمز','#E23A3A'],['سبز','#2E9E5B'],
+			['زرد','#F2C744'],['نارنجی','#F2994A'],['بنفش','#7C4DFF'],['قهوه‌ای','#8B5A2B'],
+			['خاکستری','#9AA3A9'],['طوسی','#9AA3A9'],['نقره‌ای','#C7CCD4'],['طلایی','#D4AF37'],
+			['سرمه‌ای','#1E3A8A'],['فیروزه‌ای','#2AA7A0'],['بژ','#E8DCC8'],['کرم','#F3E7CF'],
+			['طرح‌دار','@multi'],['چندرنگ','@multi'],['شفاف','@clear']
+		],
+		i18n: { search:'جستجوی مدل…', all:'همه', noResult:'چیزی پیدا نشد', clear:'پاک کردن جستجو',
+			models:'مدل', outOfStock:'ناموجود', selected:'انتخاب‌شده' },
+		debug: 0
+	};
+
+	(function () {
+		var form = document.querySelector('form.variations_form');
+		var sels = {
+			sep: document.getElementById('c-sep'),
+			layout: document.getElementById('c-layout'),
+			group: document.getElementById('c-group'),
+			sort: document.getElementById('c-sort'),
+			accent: document.getElementById('c-accent'),
+			apple: document.getElementById('c-apple'),
+			shape: document.getElementById('c-shape'),
+			search: document.getElementById('c-search'),
+			chips: document.getElementById('c-chips'),
+			sticky: document.getElementById('c-sticky'),
+			tinted: document.getElementById('c-tinted'),
+			fa: document.getElementById('c-fa')
+		};
+
+		function apply() {
+			var cfg = window.TCBV_CFG;
+			cfg.ui.separator = sels.sep.value;
+			cfg.ui.layout = sels.layout.value;
+			cfg.ui.group_style = sels.group.value;
+			cfg.ui.sort = sels.sort.value;
+			cfg.ui.search = sels.search.checked ? 1 : 0;
+			cfg.ui.chips = sels.chips.checked ? 1 : 0;
+			cfg.ui.sticky = sels.sticky.checked ? 1 : 0;
+			cfg.ui.colors_on_items = sels.tinted.checked ? 1 : 0;
+			cfg.ui.fa_digits = sels.fa.checked ? 1 : 0;
+			cfg.swatch.shape = sels.shape.value;
+			cfg.theme.accent = sels.accent.value;
+
+			for (var i = 0; i < cfg.brands.length; i++) {
+				if (cfg.brands[i].id === 'apple') { cfg.brands[i].color = sels.apple.value; }
+			}
+
+			window.TCBV.config(cfg);
+			window.TCBV.rebuild(document);
+			window.TCBV.destroy(document.querySelector('.card.before .plain'));
+		}
+
+		Object.keys(sels).forEach(function (key) {
+			sels[key].addEventListener('change', apply);
+		});
+	})();
+	</script>
+	<script src="../../plugins/src/tisacase-brand-variations/assets/frontend.js"></script>
+</body>
+</html>

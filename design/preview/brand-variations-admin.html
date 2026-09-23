@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ماکت پنل — حالت تست | TisaCase</title>
+<!-- همان CSS/JS واقعی افزونه؛ فقط یک «فرم» ساختگی جای وردپرس نشسته است. -->
+<link rel="stylesheet" href="../../plugins/src/tisacase-brand-variations/assets/admin.css">
+<style>
+	body {
+		margin: 0;
+		padding: 24px 18px 60px;
+		background: #F0EFEB;
+		font-family: Tahoma, "Segoe UI", system-ui, sans-serif;
+		direction: rtl;
+	}
+	.mock-note {
+		max-width: 1180px;
+		margin: 0 auto 14px;
+		padding: 12px 16px;
+		border: 1px dashed #9DB9B2;
+		border-radius: 12px;
+		background: #F6FBFA;
+		color: #33514B;
+		font-size: 13px;
+		line-height: 1.9;
+	}
+	.mock-note b { color: #0A5F52; }
+	.mock-links { margin-top: 6px; }
+	.mock-links a { color: #0E7C6B; }
+	.tcbv-wrap { margin-top: 0; }
+	/* دکمه‌های وردپرسی در ماکت */
+	.button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 32px;
+		padding: 0 14px;
+		border: 1px solid #C8C6BE;
+		border-radius: 8px;
+		background: #FBFBF9;
+		color: #1F2A2E;
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.button:hover { border-color: #0E7C6B; color: #0A5F52; }
+	.button-primary {
+		background: #0E7C6B;
+		border-color: #0E7C6B;
+		color: #fff;
+	}
+	.button-primary:hover { background: #0A5F52; color: #fff; }
+	.notice {
+		margin: 0 0 14px;
+		padding: 10px 14px;
+		border: 1px solid #C8C6BE;
+		border-inline-start: 4px solid #D9B23F;
+		border-radius: 6px;
+		background: #fff;
+		font-size: 13px;
+	}
+	.notice.notice-warning { border-inline-start-color: #D9B23F; background: #FFFDF5; }
+	.notice.notice-info { border-inline-start-color: #4B9BC4; background: #F7FBFD; }
+	.tcbv-actions { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+	.tcbv-mock-tabs { display: flex; gap: 8px; margin: 18px 0; flex-wrap: wrap; }
+	.tcbv-mock-tabs a {
+		padding: 7px 14px;
+		border-radius: 999px;
+		background: #fff;
+		border: 1px solid #E3E1DA;
+		color: #77828A;
+		text-decoration: none;
+		font-size: 12.5px;
+	}
+	.tcbv-mock-tabs a.is-active { background: #E8F0EE; border-color: #BFD8D1; color: #0A5F52; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<p class="mock-note">
+	<b>ماکت استاتیک پنل مدیریت</b> — همان <code>admin.css</code> و <code>admin.js</code> واقعی افزونه اجرا می‌شوند؛ فقط ذخیره‌سازی وردپرس شبیه‌سازی شده است.
+	تیک «حالت تست» را بزنید، محصولی جستجو و اضافه کنید و «×» بزنید تا رفتار واقعی کارت را ببینید.
+	<div class="mock-links">
+		پیش‌نمایش سمت کاربر (صفحهٔ محصول): <a href="./brand-variations.html">brand-variations.html</a>
+	</div>
+</p>
+
+<div class="wrap tcbv-wrap" dir="rtl">
+
+	<header class="tcbv-hero">
+		<div class="tcbv-hero-row">
+			<div class="tcbv-hero-mark" aria-hidden="true">
+				<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="11" cy="18" r="1.6" fill="currentColor" stroke="none"/>
+				</svg>
+			</div>
+			<div class="tcbv-hero-text">
+				<h1 class="tcbv-hero-title">گروه‌بندی متغیرها بر اساس برند</h1>
+				<p class="tcbv-hero-sub">لیست تخت مدل‌ها در صفحهٔ محصول → آیفون، خط جداکننده، سامسونگ، خط جداکننده، شیائومی؛ با پنل جستجو و سواچ رنگ. هیچ محصول یا متغیری تغییر نمی‌کند.</p>
+			</div>
+			<span class="tcbv-hero-ver" dir="ltr">v1.1.0</span>
+			<span class="tcbv-hero-pill is-test" id="tcbv-hero-pill">حالت تست · ۱ محصول</span>
+		</div>
+	</header>
+
+	<div class="notice notice-info" id="tcbv-mock-notice"><p><strong>حالت تست روشن است:</strong> افزونه فقط روی ۱ محصول انتخاب‌شده اجرا می‌شود. برای اعمال روی کل فروشگاه، تیک «حالت تست» را بردارید (یا دکمهٔ «روشن‌کردن برای کل فروشگاه» را بزنید).</p></div>
+
+	<nav class="tcbv-mock-tabs">
+		<a class="is-active" href="#tcbv-test-card">تست</a>
+		<a href="#tcbv-test-card">برندها</a>
+		<a href="#tcbv-test-card">نمایش</a>
+		<a href="#tcbv-test-card">رنگ‌ها</a>
+		<a href="#tcbv-test-card">پیشرفته</a>
+	</nav>
+
+	<form class="tcbv-form" method="post" action="#" onsubmit="return false;">
+
+		<section class="tcbv-card tcbv-card--test is-on" id="tcbv-test-card" data-tab="test">
+			<div class="tcbv-card-head">
+				<span class="tcbv-step tcbv-step--test">تست</span>
+				<div class="tcbv-test-head">
+					<h2>حالت تست — فعلاً فقط روی محصول‌هایی که خودتان انتخاب می‌کنید</h2>
+					<p class="tcbv-hint">تا وقتی این حالت روشن است، افزونه روی هیچ محصول دیگری اثر نمی‌گذارد — نه پنل سمت کاربر، نه مرتب‌سازی سرور. محصول‌های آزمایشی را پایین اضافه کنید و نتیجه را همان‌جا ببینید؛ هر وقت راضی بودید، با یک کلیک برای کل فروشگاه روشن کنید.</p>
+				</div>
+				<span class="tcbv-status" id="tcbv-test-status" data-on="1">…</span>
+			</div>
+			<div class="tcbv-card-body">
+				<div class="tcbv-test-top">
+					<label class="tcbv-switch">
+						<input type="checkbox" id="tcbv-test-enabled" name="tcbv[test][enabled]" value="1" checked>
+						<span class="tcbv-switch-ui" aria-hidden="true"></span>
+						<span class="tcbv-switch-text">حالت تست</span>
+					</label>
+					<label class="tcbv-check">
+						<input type="checkbox" name="tcbv[test][badge]" value="1" checked>
+						<span>نشان «حالت تست» روی صفحهٔ محصول (فقط برای مدیر، بازدیدکنندهٔ عادی نمی‌بیند)</span>
+					</label>
+					<button type="button" class="button" id="tcbv-test-all">روشن‌کردن برای کل فروشگاه</button>
+				</div>
+
+				<div class="tcbv-row tcbv-test-search">
+					<input type="search" id="tcbv-test-search" class="tcbv-input" placeholder="نام محصول آزمایشی (مثلاً قاب TS184)…">
+					<button type="button" class="button" id="tcbv-test-search-btn">جستجوی محصول</button>
+				</div>
+				<div id="tcbv-test-results" class="tcbv-results" hidden></div>
+
+				<div class="tcbv-test-chips" id="tcbv-test-chips">
+					<span class="tcbv-test-chip" data-id="271672">
+						<input type="hidden" name="tcbv[test][products][]" value="271672">
+						<span class="tcbv-test-chip-t">قاب اسپیس کد TS184<em dir="ltr">#271672</em></span>
+						<a class="tcbv-test-link" href="#" rel="noopener noreferrer">مشاهده</a>
+						<button type="button" class="tcbv-test-del" aria-label="حذف محصول">×</button>
+					</span>
+				</div>
+				<p class="tcbv-muted" id="tcbv-test-empty">برای حذف یک محصول، روی × همان چیپ بزنید.</p>
+			</div>
+		</section>
+
+		<div class="tcbv-card" style="padding:16px 18px">
+			<p class="tcbv-hint" style="margin:0">
+				بعد از کارت بالا، تب‌های <b>برندها / نمایش / رنگ‌ها / پیشرفته</b> و پیش‌نمایش زندهٔ سمت چپ می‌آیند (در ماکت حذف شده‌اند تا فقط رفتار «حالت تست» را ببینید).
+				کاری که این تیک می‌کند: در سرور، تابع دامنهٔ فعال‌بودن افزونه اول از همه چک می‌کند که محصول جاری در فهرست تست باشد؛ اگر نباشد نه پنل می‌سازد، نه `<optgroup>` و نه حتی CSS/JS را صادر می‌کند.
+			</p>
+		</div>
+
+		<div class="tcbv-actions">
+			<button type="submit" class="button button-primary">ذخیرهٔ تنظیمات</button>
+			<span class="tcbv-muted">تغییرات فقط روی نمایش صفحهٔ محصول اثر می‌گذارد.</span>
+		</div>
+	</form>
+</div>
+
+<script>
+	/* --- شبیه‌سازی محیط وردپرس برای admin.js --- */
+	window.TCBV_ADMIN = {
+		ajax: '#mock-ajax',
+		nonce: 'mock',
+		strings: { loading: 'در حال جستجو…', noProduct: 'محصولی پیدا نشد.', error: 'خطا در ارتباط.' },
+		presets: {}
+	};
+
+	/* محصولات ساختگی (به‌جای پاسخ AJAX وردپرس) */
+	window.fetch = function () {
+		return Promise.resolve({
+			json: function () {
+				return Promise.resolve({
+					success: true,
+					data: {
+						products: [
+							{ id: 271672, title: 'قاب اسپیس کد TS184', link: '#', edit: '#' },
+							{ id: 271900, title: 'قاب اسپیس کد TS337', link: '#', edit: '#' },
+							{ id: 272014, title: 'قاب شفاف مگ‌سیف TS410', link: '#', edit: '#' }
+						]
+					}
+				});
+			}
+		});
+	};
+
+	/* دکمهٔ «روشن‌کردن برای کل فروشگاه» در ماکت صفحه را ریلود نمی‌کند */
+	var mockForm = document.querySelector('.tcbv-form');
+	if (mockForm) {
+		mockForm.submit = function () {
+			var notice = document.getElementById('tcbv-mock-notice');
+			if (notice) {
+				notice.className = 'notice notice-warning';
+				notice.innerHTML = '<p><strong>در نسخهٔ واقعی:</strong> فرم ذخیره می‌شود، حالت تست خاموش می‌ماند و افزونه از این لحظه روی همهٔ محصولات متغیر فروشگاه اعمال می‌شود.</p>';
+			}
+			window.alert('در نسخهٔ واقعی: تنظیمات ذخیره شد و حالت تست خاموش شد.');
+		};
+	}
+</script>
+<script src="../../plugins/src/tisacase-brand-variations/assets/admin.js"></script>
+<script>
+	/* وضعیت اولیهٔ چیپ‌ها/شمارنده‌ها را با محتوای واقعی فرم هم‌گام کن */
+	window.addEventListener('load', function () {
+		var toggle = document.getElementById('tcbv-test-enabled');
+		if (toggle) { toggle.dispatchEvent(new Event('change', { bubbles: true })); }
+
+		/* دکمهٔ «مشاهده» در ماکت جایی نمی‌رود */
+		var chips = document.getElementById('tcbv-test-chips');
+		if (chips) {
+			chips.addEventListener('click', function (event) {
+				if (event.target.classList.contains('tcbv-test-link')) { event.preventDefault(); }
+			});
+		}
+	});
+</script>
+</body>
+</html>
