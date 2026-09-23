@@ -554,7 +554,7 @@ select.tcbv-native:focus {
 	padding: 2px 4px 8px;
 }
 
-.tcbv[data-tcbv-layout="list"] .tcbv-items {
+.tcbv[data-tcbv-layout="list"]:not(.tcbv--brands) .tcbv-items {
 	flex-direction: column;
 	flex-wrap: nowrap;
 }
@@ -588,39 +588,49 @@ select.tcbv-native:focus {
 	-webkit-tap-highlight-color: transparent;
 }
 
-.tcbv[data-tcbv-layout="list"] .tcbv-item {
+.tcbv[data-tcbv-layout="list"]:not(.tcbv--brands) .tcbv-item {
 	justify-content: flex-start;
 	width: 100%;
 }
 
-.tcbv--brands .tcbv-items {
-	display: flex;
-	flex-wrap: wrap;
+.tcbv--brands .tcbv-items,
+.tcbv--brands[data-tcbv-layout="list"] .tcbv-items,
+.tcbv--brands[data-tcbv-layout="grid"] .tcbv-items {
+	display: flex !important;
+	flex-direction: row !important;
+	flex-wrap: wrap !important;
 	gap: 8px;
-	padding: 4px 2px 8px;
+	padding: 8px 2px 10px;
 }
 
-.tcbv--brands .tcbv-item {
+.tcbv--brands .tcbv-item,
+.tcbv--brands[data-tcbv-layout="list"] .tcbv-item,
+.tcbv--brands[data-tcbv-layout="grid"] .tcbv-item {
+	flex: 0 0 auto !important;
 	width: auto !important;
+	max-width: 100%;
 	justify-content: center !important;
-	min-height: 36px;
-	padding: 7px 14px !important;
-	border: 1px solid var(--tcbv-border) !important;
-	border-radius: 12px !important;
-	background: var(--tcbv-bg) !important;
-	color: var(--tcbv-text) !important;
+	min-height: 34px;
+	padding: 6px 12px !important;
+	border: 1px solid #2b2b2b !important;
+	border-radius: 10px !important;
+	background: #fff !important;
+	color: #1a1a1a !important;
+	font-size: 13px;
+	font-weight: 500;
 	box-shadow: none !important;
 }
 
 .tcbv--brands .tcbv-item:hover {
-	background: var(--tcbv-hover) !important;
-	border-color: color-mix(in srgb, var(--tcbv-accent) 45%, var(--tcbv-border)) !important;
+	background: #fff !important;
+	border-color: #111 !important;
 }
 
 .tcbv--brands .tcbv-item.is-selected {
-	background: var(--tcbv-sel-bg) !important;
-	border-color: var(--tcbv-sel-bg) !important;
-	color: var(--tcbv-sel-text) !important;
+	background: #fff !important;
+	border-color: #4a7dff !important;
+	color: #1a1a1a !important;
+	font-weight: 600;
 }
 
 .tcbv-item:hover {
