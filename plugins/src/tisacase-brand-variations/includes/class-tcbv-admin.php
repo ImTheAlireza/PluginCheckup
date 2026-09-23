@@ -63,7 +63,12 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 
 			$settings = TCBV_Settings::get();
 
-			wp_enqueue_style( 'tcbv-admin', TCBV_URL . 'assets/admin.css', array(), TCBV_VERSION );
+			$deps = array();
+			if ( wp_style_is( 'tisacase-ui', 'registered' ) || wp_style_is( 'tisacase-ui', 'enqueued' ) ) {
+				$deps[] = 'tisacase-ui';
+				wp_enqueue_style( 'tisacase-ui' );
+			}
+			wp_enqueue_style( 'tcbv-admin', TCBV_URL . 'assets/admin.css', $deps, TCBV_VERSION );
 			wp_enqueue_script( 'tcbv-admin', TCBV_URL . 'assets/admin.js', array(), TCBV_VERSION, true );
 
 			// همان CSS/JS صفحهٔ محصول برای پیش‌نمایش زنده.
@@ -185,7 +190,7 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 				? ( $test_ids ? 'حالت تست · ' . number_format_i18n( count( $test_ids ) ) . ' محصول' : 'حالت تست · بدون محصول' )
 				: 'همهٔ محصولات متغیر';
 			?>
-			<div class="wrap tcbv-wrap" dir="rtl">
+			<div class="wrap tcbv-wrap tisa-scope" dir="rtl">
 
 				<header class="tcbv-hero">
 					<div class="tcbv-hero-row">
