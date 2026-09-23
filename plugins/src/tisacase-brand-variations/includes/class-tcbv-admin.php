@@ -72,7 +72,13 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 			wp_enqueue_script( 'tcbv-admin', TCBV_URL . 'assets/admin.js', array(), TCBV_VERSION, true );
 
 			// همان CSS/JS صفحهٔ محصول برای پیش‌نمایش زنده.
-			wp_enqueue_style( 'tcbv-preview', TCBV_URL . 'assets/frontend.css', array(), TCBV_VERSION );
+			wp_enqueue_style(
+				'tcbv-vazir',
+				'https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css',
+				array(),
+				'33.003'
+			);
+			wp_enqueue_style( 'tcbv-preview', TCBV_URL . 'assets/frontend.css', array( 'tcbv-vazir' ), TCBV_VERSION );
 			wp_add_inline_style( 'tcbv-preview', TCBV_Frontend::css_vars( $settings ) );
 			wp_enqueue_script( 'tcbv-frontend', TCBV_URL . 'assets/frontend.js', array(), TCBV_VERSION, true );
 			wp_add_inline_script( 'tcbv-frontend', 'window.TCBV_CFG = ' . wp_json_encode( TCBV_Rules::js_config( $settings ) ) . ';', 'before' );

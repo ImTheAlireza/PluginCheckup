@@ -33,9 +33,29 @@
 	font-size: var(--tcbv-fs);
 	line-height: 1.6;
 	color: var(--tcbv-text);
-	font-family: inherit;
+	font-family: Vazirmatn, Tahoma, sans-serif !important;
 	direction: inherit;
 	text-align: start;
+}
+
+.tcbv *,
+.tcbv *::before,
+.tcbv *::after {
+	font-family: Vazirmatn, Tahoma, sans-serif !important;
+}
+
+.tcbv-dd-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.tcbv-dd {
+	position: relative;
+}
+
+.tcbv-search--global {
+	margin-bottom: 10px;
 }
 
 .tcbv *,
@@ -104,9 +124,27 @@ select.tcbv-native:focus {
 	background: var(--tcbv-bg);
 	color: var(--tcbv-text);
 	justify-content: space-between;
+	align-items: center;
 	gap: 10px;
 	font-size: var(--tcbv-fs);
 	font-weight: 600;
+}
+
+.tcbv-trigger-brand {
+	flex: none;
+	font-weight: 800;
+	color: var(--tcbv-c, var(--tcbv-accent));
+}
+
+.tcbv-trigger-count {
+	flex: none;
+	margin-inline-start: auto;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--tcbv-c, var(--tcbv-accent)) 12%, transparent);
+	color: var(--tcbv-c, var(--tcbv-accent));
+	font-size: .78em;
+	font-weight: 700;
 }
 
 .tcbv-trigger.is-placeholder {
@@ -115,8 +153,10 @@ select.tcbv-native:focus {
 }
 
 .tcbv-trigger:hover,
-.tcbv.is-open .tcbv-trigger {
-	border-color: var(--tcbv-accent);
+.tcbv.is-open .tcbv-trigger,
+.tcbv-dd.is-open .tcbv-trigger,
+.tcbv-dd.has-value .tcbv-trigger {
+	border-color: var(--tcbv-c, var(--tcbv-accent));
 }
 
 .tcbv-trigger-text {
@@ -139,7 +179,8 @@ select.tcbv-native:focus {
 	opacity: .55;
 }
 
-.tcbv.is-open .tcbv-trigger-caret {
+.tcbv.is-open .tcbv-trigger-caret,
+.tcbv-dd.is-open .tcbv-trigger-caret {
 	transform: rotate(-135deg);
 	margin-top: 4px;
 }
@@ -149,7 +190,11 @@ select.tcbv-native:focus {
 	inset-inline: 0;
 	top: calc(100% + 6px);
 	z-index: 40;
-	padding: 10px;
+	display: flex;
+	flex-direction: column;
+	max-height: min(280px, 50vh);
+	overflow-y: auto;
+	padding: 6px;
 	border: 1px solid var(--tcbv-border);
 	border-radius: var(--tcbv-radius);
 	background: var(--tcbv-bg);
@@ -458,13 +503,14 @@ select.tcbv-native:focus {
 	-webkit-tap-highlight-color: transparent;
 }
 
+.tcbv--brands .tcbv-item,
 .tcbv[data-tcbv-layout="list"] .tcbv-item {
 	justify-content: flex-start;
 	width: 100%;
 	border-radius: calc(var(--tcbv-radius) - 8px);
-	background: transparent;
-	border-color: transparent;
-	padding-inline: 10px;
+	background: transparent !important;
+	border-color: transparent !important;
+	padding: 8px 10px;
 }
 
 .tcbv-item:hover {

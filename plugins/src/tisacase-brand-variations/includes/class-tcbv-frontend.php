@@ -166,7 +166,13 @@ if ( ! class_exists( 'TCBV_Frontend' ) ) {
 
 			$settings = self::settings();
 
-			wp_enqueue_style( 'tcbv-frontend', TCBV_URL . 'assets/frontend.css', array(), TCBV_VERSION );
+			wp_enqueue_style(
+				'tcbv-vazir',
+				'https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css',
+				array(),
+				'33.003'
+			);
+			wp_enqueue_style( 'tcbv-frontend', TCBV_URL . 'assets/frontend.css', array( 'tcbv-vazir' ), TCBV_VERSION );
 			wp_add_inline_style( 'tcbv-frontend', self::css_vars( $settings ) );
 
 			$panel_on = ( 'panel' === $settings['ui']['mode'] ) && empty( $settings['advanced']['safe_mode'] );
