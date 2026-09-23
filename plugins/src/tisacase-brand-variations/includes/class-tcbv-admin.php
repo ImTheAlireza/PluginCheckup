@@ -544,6 +544,13 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 							</select>
 						</label>
 						<label class="tcbv-field">
+							<span>شکل انتخاب مدل</span>
+							<select class="tcbv-input" name="tcbv[ui][picker]">
+								<option value="accordion" <?php selected( 'accordion', isset( $ui['picker'] ) ? $ui['picker'] : 'accordion' ); ?>>آکاردئون — یک دراپ‌داون برای هر برند</option>
+								<option value="open" <?php selected( 'open', isset( $ui['picker'] ) ? $ui['picker'] : '' ); ?>>همه باز — عنوان برند، خط جداکننده، مدل‌ها روی صفحه</option>
+							</select>
+						</label>
+						<label class="tcbv-field">
 							<span>چیدمان گزینه‌ها</span>
 							<select class="tcbv-input" name="tcbv[ui][layout]">
 								<option value="chips" <?php selected( 'chips', $ui['layout'] ); ?>>چیپ‌های کنار هم (پیشنهادی)</option>

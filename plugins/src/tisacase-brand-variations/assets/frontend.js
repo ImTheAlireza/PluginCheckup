@@ -36,8 +36,9 @@
 			colorMap: raw.colorMap || [],
 			i18n: raw.i18n || {},
 			ui: {
-				mode: ui.mode || 'panel',
-				layout: ui.layout || 'chips',
+			mode: ui.mode || 'panel',
+			picker: ui.picker || 'accordion',
+			layout: ui.layout || 'chips',
 				separator: ui.separator || 'line',
 				groupStyle: ui.group_style || ui.groupStyle || 'header',
 				sort: ui.sort || 'asis',
@@ -532,8 +533,12 @@
 		var groups = groupValues(values);
 		if (!groups.length) { return null; }
 
-		var root = el('div', 'tcbv tcbv--brands');
+		var picker = CFG.ui.picker === 'open' ? 'open' : 'accordion';
+		var root = el('div', 'tcbv tcbv--brands tcbv--' + picker);
 		root.setAttribute('data-tcbv-kind', 'brand');
+		root.setAttribute('data-tcbv-picker', picker);
+		root.setAttribute('data-tcbv-layout', CFG.ui.layout);
+		root.setAttribute('data-tcbv-sep', CFG.ui.separator);
 
 		var items = [];
 		var drops = [];
@@ -557,6 +562,7 @@
 		var list = el('div', 'tcbv-dd-list');
 
 		function closeAll() {
+			if (picker === 'open') { return; }
 			for (var i = 0; i < drops.length; i++) {
 				drops[i].pop.hidden = true;
 				drops[i].wrap.classList.remove('is-open');
@@ -593,11 +599,12 @@
 				wrap.appendChild(trigger);
 
 				var pop = el('div', 'tcbv-pop');
-				pop.hidden = true;
+				if (picker !== 'open') { pop.hidden = true; }
 				pop.setAttribute('role', 'listbox');
 				pop.setAttribute('aria-label', group.label);
 
 				var dropItems = [];
+				var itemWrap = el('div', 'tcbv-items');
 				for (var v = 0; v < group.values.length; v++) {
 					var value = group.values[v];
 					var item = el('button', 'tcbv-item');
@@ -608,10 +615,11 @@
 					item.setAttribute('data-key', keyOf(value));
 					item.setAttribute('aria-selected', 'false');
 					item.appendChild(el('span', 'tcbv-item-text', value));
-					pop.appendChild(item);
+					itemWrap.appendChild(item);
 					dropItems.push(item);
 					items.push(item);
 				}
+				pop.appendChild(itemWrap);
 
 				var empty = el('div', 'tcbv-empty', CFG.i18n.noResult || 'چیزی پیدا نشد');
 				empty.hidden = true;
@@ -632,11 +640,16 @@
 				};
 				drops.push(drop);
 
-				trigger.addEventListener('click', function (event) {
-					event.preventDefault();
-					event.stopPropagation();
-					if (state.openId === drop.id) { closeAll(); } else { openDrop(drop); }
-				});
+				if (picker === 'open') {
+					trigger.setAttribute('aria-expanded', 'true');
+					wrap.classList.add('is-open');
+				} else {
+					trigger.addEventListener('click', function (event) {
+						event.preventDefault();
+						event.stopPropagation();
+						if (state.openId === drop.id) { closeAll(); } else { openDrop(drop); }
+					});
+				}
 
 				pop.addEventListener('click', function (event) {
 					var target = event.target.closest ? event.target.closest('.tcbv-item') : null;

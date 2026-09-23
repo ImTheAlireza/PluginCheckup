@@ -80,6 +80,7 @@ if ( ! class_exists( 'TCBV_Settings' ) ) {
 				),
 				'ui'          => array(
 					'mode'               => 'panel', // panel | native | off
+					'picker'             => 'accordion', // accordion | open
 					'layout'             => 'chips', // chips | list | grid
 					'separator'          => 'line',  // line | dashed | gradient | space | label
 					'group_style'        => 'header', // header | pill
@@ -349,6 +350,7 @@ if ( ! class_exists( 'TCBV_Settings' ) ) {
 			if ( isset( $raw['ui'] ) && is_array( $raw['ui'] ) ) {
 				$ui                 = $raw['ui'];
 				$out['ui']['mode']  = self::pick( isset( $ui['mode'] ) ? $ui['mode'] : '', array( 'panel', 'native', 'off' ), 'panel' );
+				$out['ui']['picker'] = self::pick( isset( $ui['picker'] ) ? $ui['picker'] : '', array( 'accordion', 'open' ), 'accordion' );
 				$out['ui']['layout'] = self::pick( isset( $ui['layout'] ) ? $ui['layout'] : '', array( 'chips', 'list', 'grid' ), 'chips' );
 				$out['ui']['separator'] = self::pick( isset( $ui['separator'] ) ? $ui['separator'] : '', array( 'line', 'dashed', 'gradient', 'space', 'label', 'none' ), 'line' );
 				$out['ui']['group_style'] = self::pick( isset( $ui['group_style'] ) ? $ui['group_style'] : '', array( 'header', 'pill' ), 'header' );
