@@ -20,14 +20,10 @@
 
 defined( 'ABSPATH' ) || exit;
 
-<<<<<<< HEAD
-define( 'TCBV_VERSION', '1.3.2' );
-=======
 if ( ! defined( 'TCBV_VERSION' ) ) {
 	$tcbv_header = get_file_data( __FILE__, array( 'Version' => 'Version' ) );
 	define( 'TCBV_VERSION', ! empty( $tcbv_header['Version'] ) ? $tcbv_header['Version'] : '1.3.5' );
 }
->>>>>>> f7d4dda (fix(tcbv): read plugin version from header so admin card cannot drift)
 define( 'TCBV_FILE', __FILE__ );
 define( 'TCBV_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TCBV_URL', plugin_dir_url( __FILE__ ) );
