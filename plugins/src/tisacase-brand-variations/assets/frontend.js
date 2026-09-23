@@ -547,7 +547,7 @@
 
 		var searchWrap = el('div', 'tcbv-search tcbv-search--global');
 		var searchInput = el('input', 'tcbv-input');
-		searchInput.type = 'search';
+		searchInput.type = 'text';
 		searchInput.placeholder = CFG.ui.searchPlaceholder || 'جستجوی مدل…';
 		searchInput.setAttribute('aria-label', searchInput.placeholder);
 		searchInput.autocomplete = 'off';
