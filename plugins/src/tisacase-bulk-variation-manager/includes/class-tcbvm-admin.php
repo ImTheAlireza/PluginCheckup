@@ -166,6 +166,11 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 						'completedText'        => 'عملیات تولید و بازسازی متغیرها با موفقیت پایان یافت.',
 						'confirmDeletePreset'  => 'آیا از حذف این الگو مطمئن هستید؟',
 						'productAdded'         => 'محصول به لیست اضافه شد.',
+						'purgeConfirmStart'    => 'آیا از حذف ویژگی «{attr}» از {n} محصول و پاکسازی متغیرهای وابسته به آن مطمئن هستید؟ پیش از اجرا از همهٔ محصولات اسنپ‌شات گرفته می‌شود و نتیجه در تاریخچه قابل بازگردانی است.',
+						'purgeConfirmGlobal'   => 'تعریف سراسری ویژگی «{attr}» و تمام ترم‌هایش برای همیشه از فروشگاه پاک می‌شود و این بخش با بازگردانی (Rollback) برنمی‌گردد. ادامه می‌دهید؟',
+						'purgeDoneText'        => 'پاکسازی ویژگی از محصولات با موفقیت پایان یافت.',
+						'cancelRunConfirm'     => 'عملیات پس از پایان بستهٔ در حال اجرا متوقف می‌شود. تغییراتی که تا این لحظه انجام شده باقی می‌ماند و برای برگرداندنشان باید بعداً از تب «تاریخچه» دکمه بازگردانی (Rollback) را بزنید. لغو کنید؟',
+						'cancelledText'        => 'عملیات توسط کاربر لغو شد و جزئیات پردازش‌های انجام‌شده در تاریخچه ثبت گردید.',
 					),
 				)
 			);
@@ -177,13 +182,14 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 			}
 
 			$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'bulk'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			if ( ! in_array( $tab, array( 'bulk', 'presets', 'runs', 'settings' ), true ) ) {
+			if ( ! in_array( $tab, array( 'bulk', 'purge', 'presets', 'runs', 'settings' ), true ) ) {
 				$tab = 'bulk';
 			}
 
 			$base = admin_url( 'admin.php?page=' . TCBVM_Core::PAGE_SLUG );
 			$tabs = array(
 				'bulk'     => 'تولید و بازسازی انبوه متغیرها',
+				'purge'    => 'پاکسازی ویژگی از محصولات',
 				'presets'  => 'الگوهای آماده مدل‌ها',
 				'runs'     => 'تاریخچه و بازگردانی (Rollback)',
 				'settings' => 'تنظیمات و ابزارها',
@@ -361,9 +367,14 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 														<td><strong><?php echo esc_html( $r_op ); ?></strong></td>
 														<td><?php echo number_format_i18n( $r_total ); ?> محصول</td>
 														<td>
-															<span class="tcbvm-badge tcbvm-badge--success">+<?php echo number_format_i18n( $r_created ); ?> متغیر</span>
+															<?php if ( $r_created > 0 ) : ?>
+																<span class="tcbvm-badge tcbvm-badge--success">+<?php echo number_format_i18n( $r_created ); ?> متغیر</span>
+															<?php endif; ?>
 															<?php if ( $r_deleted > 0 ) : ?>
-																<span class="tcbvm-badge tcbvm-badge--danger">-<?php echo number_format_i18n( $r_deleted ); ?> قبلی</span>
+																<span class="tcbvm-badge tcbvm-badge--danger">-<?php echo number_format_i18n( $r_deleted ); ?> حذف‌شده</span>
+															<?php endif; ?>
+															<?php if ( 0 === $r_created && 0 === $r_deleted ) : ?>
+																<span class="tcbvm-muted">—</span>
 															<?php endif; ?>
 														</td>
 														<td>
@@ -371,6 +382,10 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 																<span class="tcbvm-badge tcbvm-badge--muted">بازگردانی شده</span>
 															<?php elseif ( 'completed' === $r_status ) : ?>
 																<span class="tcbvm-badge tcbvm-badge--success">تکمیل شده</span>
+															<?php elseif ( 'cancelled' === $r_status ) : ?>
+																<span class="tcbvm-badge tcbvm-badge--warn">لغو شده توسط کاربر</span>
+															<?php elseif ( 'in_progress' === $r_status ) : ?>
+																<span class="tcbvm-badge tcbvm-badge--info">ناتمام (متوقف‌شده)</span>
 															<?php elseif ( 'completed_with_errors' === $r_status ) : ?>
 																<span class="tcbvm-badge tcbvm-badge--warn">با خطا</span>
 															<?php else : ?>
@@ -432,6 +447,153 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 										</table>
 									</div>
 								<?php endif; ?>
+							</div>
+						</section>
+
+					<?php elseif ( 'purge' === $tab ) : ?>
+						<!-- تب پاکسازی ویژگی از محصولات -->
+						<div class="tcbvm-lead-box">
+							<p class="tcbvm-lead">
+								عنوان یک ویژگی (مثلاً «مدل گوشی») را وارد کنید تا همهٔ محصولات دارای آن پیدا و لیست شوند؛ سپس با تایید شما، آن ویژگی به‌همراه متغیرهای وابسته‌اش از محصولات حذف می‌شود. قبل از هر حذفی، پشتیبان کامل گرفته می‌شود و نتیجه در تب تاریخچه با قابلیت بازگردانی (Rollback) ثبت می‌گردد.
+							</p>
+						</div>
+
+						<!-- گام ۱: جستجوی ویژگی -->
+						<section class="tcbvm-card">
+							<div class="tcbvm-card-head">
+								<span class="tcbvm-step">۱</span>
+								<div>
+									<h2>جستجوی ویژگی در کل فروشگاه</h2>
+									<p>هم ویژگی‌های سراسری ووکامرس و هم ویژگی‌های محلیِ تعریف‌شده روی خود محصولات پوشش داده می‌شوند.</p>
+								</div>
+							</div>
+							<div class="tcbvm-card-body">
+								<div class="tcbvm-field">
+									<label class="tcbvm-label" for="tcbvm-purge-attr-name">عنوان ویژگی موردنظر برای حذف</label>
+									<input type="text" id="tcbvm-purge-attr-name" class="tcbvm-input" list="tcbvm-purge-attr-datalist" placeholder="مثلاً: مدل گوشی، مدل، جنس">
+									<datalist id="tcbvm-purge-attr-datalist">
+										<option value="مدل گوشی"></option>
+										<option value="مدل"></option>
+										<option value="رنگ"></option>
+										<option value="جنس"></option>
+										<?php foreach ( $attributes as $a ) : ?>
+											<option value="<?php echo esc_attr( $a['label'] ); ?>"><?php echo esc_html( $a['name'] ); ?></option>
+										<?php endforeach; ?>
+									</datalist>
+									<p class="tcbvm-muted">عنوان دقیق ویژگی را بنویسید؛ تطبیق با نام، برچسب و اسلاگ تاکسونومی انجام می‌شود.</p>
+								</div>
+								<div class="tcbvm-actions">
+									<button type="button" class="tisa-btn tisa-btn--soft" id="tcbvm-btn-purge-search">
+										<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+										<span>جستجو در تمام محصولات</span>
+									</button>
+									<span id="tcbvm-purge-search-counter" class="tcbvm-counter-text"></span>
+								</div>
+
+								<!-- حذف سراسری تعریف ویژگی (مستقل از پاکسازی محصولات) -->
+								<div id="tcbvm-global-attr-box" class="tcbvm-global-attr-box tcbvm-hidden">
+									<div class="tcbvm-global-attr-info">
+										<strong>ویژگی‌های سراسری منطبق با این عنوان در فروشگاه:</strong>
+										<span id="tcbvm-global-attr-chips"></span>
+										<p class="tcbvm-muted">حتی اگر محصولی این ویژگی را نداشته باشد (مثلاً چون اجرای قبلی را بازگردانی کرده‌اید)، تعریف و ترم‌های آن ممکن است هنوز در ووکامرس مانده باشد.</p>
+									</div>
+									<button type="button" class="tisa-btn tisa-btn--danger" id="tcbvm-btn-purge-global">
+										<span>حذف سراسری تعریف ویژگی و تمام ترم‌هایش</span>
+									</button>
+								</div>
+							</div>
+						</section>
+
+						<!-- گام ۲: نتایج و اجرای پاکسازی -->
+						<section class="tcbvm-card tcbvm-hidden" id="tcbvm-purge-results">
+							<div class="tcbvm-card-head">
+								<span class="tcbvm-step">۲</span>
+								<div>
+									<h2>محصولات دارای این ویژگی</h2>
+									<p id="tcbvm-purge-results-sub">فهرست محصولات یافت‌شده — موارد دلخواه را تیک بزنید یا همه را با هم پاکسازی کنید.</p>
+								</div>
+							</div>
+							<div class="tcbvm-card-body">
+								<div id="tcbvm-purge-summary" class="tcbvm-purge-summary"></div>
+
+								<div class="tcbvm-warning-box">
+									<strong>هشدار:</strong> متغیرهایی که برای این ویژگی مقدار مشخص دارند، به‌طور کامل حذف می‌شوند و خودِ ویژگی نیز از محصول برداشته می‌گردد. این عملیات پیش از اجرا اسنپ‌شات می‌گیرد و از تب «تاریخچه» قابل بازگردانی است.
+								</div>
+
+								<div class="tcbvm-table-scroll" style="max-height: 380px;">
+									<table class="tisa-table tcbvm-table">
+										<thead>
+											<tr>
+												<th class="tcbvm-col-w38 tcbvm-center"><input type="checkbox" id="tcbvm-purge-select-all" checked></th>
+												<th>نام محصول</th>
+												<th>شناسه</th>
+												<th class="tcbvm-center">متغیرهای وابسته</th>
+												<th class="tcbvm-center">ترم‌های متصل</th>
+											</tr>
+										</thead>
+										<tbody id="tcbvm-purge-tbody"></tbody>
+									</table>
+								</div>
+
+								<div class="tcbvm-field" style="margin-top: 14px;">
+									<div class="tcbvm-switch-card">
+										<label class="tisa-switch tcbvm-toggle">
+											<input type="checkbox" id="tcbvm-purge-global-delete">
+											<span class="tisa-switch__track" aria-hidden="true"></span>
+											<span>پس از پاکسازی، تعریف سراسری ویژگی و تمام ترم‌هایش هم از فروشگاه حذف شود</span>
+										</label>
+										<p class="tcbvm-muted">مناسب برای زمانی است که یک ویژگی اشتباه (مثل «مدل گوشی») تازه ساخته شده و می‌خواهید کلاً از ووکامرس پاک شود. این بخش با Rollback برنمی‌گردد.</p>
+									</div>
+								</div>
+
+								<div class="tcbvm-actions">
+									<button type="button" class="tisa-btn tisa-btn--danger tisa-btn--lg" id="tcbvm-btn-purge-run">
+										<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+										<span>حذف ویژگی از محصولات تیک‌خورده</span>
+									</button>
+								</div>
+
+								<!-- نوار پیشرفت و گزارش زنده پاکسازی -->
+								<div id="tcbvm-purge-progress-wrap" class="tcbvm-progress-wrap tcbvm-hidden">
+									<div class="tcbvm-progress-header">
+										<span id="tcbvm-purge-progress-text" class="tcbvm-progress-text">در حال آماده‌سازی…</span>
+										<span id="tcbvm-purge-progress-percent" class="tcbvm-progress-percent">0%</span>
+										<button type="button" class="tisa-btn tisa-btn--danger tisa-btn--sm" id="tcbvm-btn-cancel-purge-run">لغو عملیات</button>
+									</div>
+									<div class="tcbvm-bar-track">
+										<div id="tcbvm-purge-bar-fill" class="tcbvm-bar-fill"></div>
+									</div>
+
+									<div class="tcbvm-kpis">
+										<div class="tcbvm-kpi">
+											<span class="tcbvm-kpi-val" id="tcbvm-purge-stat-total">0</span>
+											<span class="tcbvm-kpi-label">کل محصولات</span>
+										</div>
+										<div class="tcbvm-kpi">
+											<span class="tcbvm-kpi-val" id="tcbvm-purge-stat-processed">0</span>
+											<span class="tcbvm-kpi-label">پردازش‌شده</span>
+										</div>
+										<div class="tcbvm-kpi tcbvm-kpi--success">
+											<span class="tcbvm-kpi-val" id="tcbvm-purge-stat-success">0</span>
+											<span class="tcbvm-kpi-label">موفق</span>
+										</div>
+										<div class="tcbvm-kpi tcbvm-kpi--danger">
+											<span class="tcbvm-kpi-val" id="tcbvm-purge-stat-failed">0</span>
+											<span class="tcbvm-kpi-label">خطا</span>
+										</div>
+									</div>
+
+									<div class="tcbvm-log-box">
+										<div class="tcbvm-log-head">
+											<div class="tcbvm-log-title-wrap">
+												<span class="tcbvm-log-dot"></span>
+												<span>گزارش زنده پاکسازی ویژگی</span>
+											</div>
+											<span class="tcbvm-log-status">اتصال فعال</span>
+										</div>
+										<pre id="tcbvm-purge-log-console" class="tcbvm-log-console"></pre>
+									</div>
+								</div>
 							</div>
 						</section>
 
@@ -684,11 +846,11 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 										<label class="tcbvm-label">حالت ترکیب با سایر ویژگی‌ها</label>
 										<div class="tcbvm-switch-card">
 											<label class="tisa-switch tcbvm-toggle">
-												<input type="checkbox" id="tcbvm-combine-other" checked>
-												<span class="tisa-switch__track" aria-hidden="true"></span>
-												<span>ترکیب خودکار با سایر ویژگی‌های محصول</span>
-											</label>
-											<p class="tcbvm-muted">اگر محصول دارای ویژگی‌های متغیر دیگری (مثل رنگ یا جنس) باشد، تمامی ترکیب‌ها به صورت خودکار ضرب و جنریت خواهند شد.</p>
+													<input type="checkbox" id="tcbvm-combine-other">
+													<span class="tisa-switch__track" aria-hidden="true"></span>
+													<span>ترکیب خودکار با سایر ویژگی‌های محصول</span>
+												</label>
+												<p class="tcbvm-muted">پیش‌فرض خاموش است تا دقیقاً «یک متغیر به‌ازای هر مقدار» ساخته شود. فقط اگر محصول واقعاً چند ویژگی متغیر دارد (مثل رنگ یا جنس) آن را روشن کنید؛ در آن صورت تمام ترکیب‌ها ضرب و جنریت می‌شوند و سقف ۳۰۰۰ ترکیب به ازای هر محصول اعمال است.</p>
 										</div>
 									</div>
 								</div>
@@ -791,6 +953,7 @@ if ( ! class_exists( 'TCBVM_Admin' ) ) {
 									<div class="tcbvm-progress-header">
 										<span id="tcbvm-progress-text" class="tcbvm-progress-text">در حال آماده‌سازی و تهیه اسنپ‌شات…</span>
 										<span id="tcbvm-progress-percent" class="tcbvm-progress-percent">0%</span>
+										<button type="button" class="tisa-btn tisa-btn--danger tisa-btn--sm" id="tcbvm-btn-cancel-run">لغو عملیات</button>
 									</div>
 									<div class="tcbvm-bar-track">
 										<div id="tcbvm-bar-fill" class="tcbvm-bar-fill"></div>

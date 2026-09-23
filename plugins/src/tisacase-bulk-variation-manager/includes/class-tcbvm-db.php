@@ -317,6 +317,260 @@ if ( ! class_exists( 'TCBVM_DB' ) ) {
 		}
 
 		/**
+		 * حل سراسری عنوان ویژگی: یافتن همهٔ تاکسونومی‌های ویژگی منطبق با نام، برچسب یا اسلاگ.
+		 * همواره نام ورودی به‌عنوان نامزد «ویژگی محلی» نیز نگهداری می‌شود تا جستجو
+		 * ویژگی‌های غیرتاکسونومی ذخیره‌شده در _product_attributes را هم پوشش دهد.
+		 *
+		 * @param string $label عنوان ویژگی واردشده توسط کاربر (مثلاً «مدل گوشی»).
+		 * @return array آرایه حاوی taxonomies (key, attribute_id, label) و local_name.
+		 */
+		public static function resolve_attribute_globally( $label ) {
+			$label   = trim( (string) $label );
+			$matches = array(
+				'taxonomies' => array(),
+				'local_name' => $label,
+			);
+
+			if ( '' === $label ) {
+				return $matches;
+			}
+
+			if ( function_exists( 'wc_get_attribute_taxonomies' ) ) {
+				$norm = self::normalize_persian( $label );
+				foreach ( (array) wc_get_attribute_taxonomies() as $tax ) {
+					if ( empty( $tax->attribute_name ) ) {
+						continue;
+					}
+					$tax_name = wc_attribute_taxonomy_name( $tax->attribute_name );
+					$tax_slug_readable = str_replace( array( 'pa_', '-', '_' ), array( '', ' ', ' ' ), $tax_name );
+					$cands = array(
+						(string) $tax->attribute_name,
+						urldecode( (string) $tax->attribute_name ),
+						isset( $tax->attribute_label ) ? (string) $tax->attribute_label : '',
+						$tax_name,
+						$tax_slug_readable,
+					);
+					$hit = false;
+					foreach ( $cands as $c ) {
+						if ( '' === $c ) {
+							continue;
+						}
+						if ( self::normalize_persian( $c ) === $norm ) {
+							$hit = true;
+							break;
+						}
+						if ( sanitize_title( $c ) === sanitize_title( $label ) ) {
+							$hit = true;
+							break;
+						}
+					}
+					if ( $hit ) {
+						$matches['taxonomies'][] = array(
+							'key'          => $tax_name,
+							'attribute_id' => isset( $tax->attribute_id ) ? (int) $tax->attribute_id : 0,
+							'label'        => ! empty( $tax->attribute_label ) ? $tax->attribute_label : $tax->attribute_name,
+						);
+					}
+				}
+			}
+
+			// اگر خود ورودی مستقیماً نام یک تاکسونومی ویژگی معتبر باشد
+			if ( empty( $matches['taxonomies'] ) && taxonomy_exists( $label ) && 0 === strpos( $label, 'pa_' ) ) {
+				$matches['taxonomies'][] = array(
+					'key'          => $label,
+					'attribute_id' => 0,
+					'label'        => $label,
+				);
+			}
+
+			return $matches;
+		}
+
+		/**
+		 * یافتن همهٔ محصولاتی که یک ویژگی مشخص را دارند (هم از مسیر ترم‌ها و هم متا).
+		 *
+		 * @param array $matches خروجی resolve_attribute_globally.
+		 * @return array لیست یکتای شناسه‌های محصولات.
+		 */
+		public static function query_products_with_attribute( array $matches ) {
+			global $wpdb;
+
+			$tax_keys = array();
+			foreach ( (array) $matches['taxonomies'] as $t ) {
+				if ( ! empty( $t['key'] ) ) {
+					$tax_keys[] = (string) $t['key'];
+				}
+			}
+			$local = isset( $matches['local_name'] ) ? trim( (string) $matches['local_name'] ) : '';
+
+			$ids = array();
+
+			if ( ! empty( $tax_keys ) ) {
+				$ph = implode( ',', array_fill( 0, count( $tax_keys ), '%s' ) );
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$sql  = $wpdb->prepare(
+					"SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+					 INNER JOIN {$wpdb->term_relationships} tr ON tr.object_id = p.ID
+					 INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+					 WHERE p.post_type = 'product' AND p.post_status NOT IN ('trash','auto-draft') AND tt.taxonomy IN ($ph)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$tax_keys
+				);
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$ids = array_merge( $ids, (array) $wpdb->get_col( $sql ) );
+
+				// محصولاتی که ویژگی در متا دارند ولی ترمی (دیگر) به آن‌ها متصل نیست
+				foreach ( $tax_keys as $tk ) {
+					$like = '%' . $wpdb->esc_like( '"' . $tk . '"' ) . '%';
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$ids = array_merge(
+						$ids,
+						(array) $wpdb->get_col(
+							$wpdb->prepare(
+								"SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+								 INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID
+								 WHERE p.post_type = 'product' AND p.post_status NOT IN ('trash','auto-draft')
+								   AND pm.meta_key = '_product_attributes' AND pm.meta_value LIKE %s",
+								$like
+							)
+						)
+					);
+				}
+			}
+
+			if ( '' !== $local ) {
+				// الگوی سریالایز: "name";s:N:"<عنوان>"
+				$pattern = 's:[0-9]+:"name";s:[0-9]+:"' . preg_quote( $local, '/' ) . '"';
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$ids = array_merge(
+					$ids,
+					(array) $wpdb->get_col(
+						$wpdb->prepare(
+							"SELECT DISTINCT p.ID FROM {$wpdb->posts} p
+							 INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID
+							 WHERE p.post_type = 'product' AND p.post_status NOT IN ('trash','auto-draft')
+							   AND pm.meta_key = '_product_attributes' AND pm.meta_value REGEXP %s",
+							$pattern
+						)
+					)
+				);
+			}
+
+			$ids = array_values( array_unique( array_filter( array_map( 'absint', $ids ) ) ) );
+			return $ids;
+		}
+
+		/**
+		 * شمارش مختصر مصرف یک ویژگی: تعداد متغیرهای وابسته (دارای مقدار صریح)
+		 * و تعداد ترم‌های متصل‌شده به هر محصول.
+		 *
+		 * @param array $product_ids شناسه‌های محصول.
+		 * @param array $matches     خروجی resolve_attribute_globally.
+		 * @return array نگاشت pid => ['linked_vars'=>int, 'terms'=>int].
+		 */
+		public static function attribute_usage_summary( array $product_ids, array $matches ) {
+			global $wpdb;
+			$summary = array();
+			if ( empty( $product_ids ) ) {
+				return $summary;
+			}
+
+			$tax_keys = array();
+			foreach ( (array) $matches['taxonomies'] as $t ) {
+				if ( ! empty( $t['key'] ) ) {
+					$tax_keys[] = (string) $t['key'];
+				}
+			}
+			$local = isset( $matches['local_name'] ) ? trim( (string) $matches['local_name'] ) : '';
+
+			$variation_meta_keys = array();
+			foreach ( $tax_keys as $tk ) {
+				$variation_meta_keys[] = 'attribute_' . $tk;
+			}
+			if ( '' !== $local ) {
+				$variation_meta_keys[] = 'attribute_' . sanitize_title( $local );
+			}
+			$variation_meta_keys = array_values( array_unique( $variation_meta_keys ) );
+
+			$chunks = array_chunk( $product_ids, 400 );
+
+			if ( ! empty( $variation_meta_keys ) ) {
+				foreach ( $chunks as $chunk ) {
+					$ph_ids  = implode( ',', array_fill( 0, count( $chunk ), '%d' ) );
+					$ph_keys = implode( ',', array_fill( 0, count( $variation_meta_keys ), '%s' ) );
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$rows = (array) $wpdb->get_results(
+						$wpdb->prepare(
+							"SELECT p.post_parent AS pid, COUNT(*) AS c FROM {$wpdb->posts} p
+							 INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID
+							 WHERE p.post_type = 'product_variation' AND pm.meta_key IN ($ph_keys)
+							   AND pm.meta_value != '' AND p.post_parent IN ($ph_ids)
+							 GROUP BY p.post_parent", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+							array_merge( $variation_meta_keys, $chunk )
+						)
+					);
+					foreach ( $rows as $row ) {
+						$pid = (int) $row->pid;
+						if ( ! isset( $summary[ $pid ] ) ) {
+							$summary[ $pid ] = array( 'linked_vars' => 0, 'terms' => 0 );
+						}
+						$summary[ $pid ]['linked_vars'] += (int) $row->c;
+					}
+				}
+			}
+
+			if ( ! empty( $tax_keys ) ) {
+				foreach ( $chunks as $chunk ) {
+					$ph_ids = implode( ',', array_fill( 0, count( $chunk ), '%d' ) );
+					$ph_tax = implode( ',', array_fill( 0, count( $tax_keys ), '%s' ) );
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					$rows = (array) $wpdb->get_results(
+						$wpdb->prepare(
+							"SELECT tr.object_id AS pid, COUNT(DISTINCT tt.term_id) AS c FROM {$wpdb->term_relationships} tr
+							 INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+							 WHERE tt.taxonomy IN ($ph_tax) AND tr.object_id IN ($ph_ids)
+							 GROUP BY tr.object_id", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+							array_merge( $tax_keys, $chunk )
+						)
+					);
+					foreach ( $rows as $row ) {
+						$pid = (int) $row->pid;
+						if ( ! isset( $summary[ $pid ] ) ) {
+							$summary[ $pid ] = array( 'linked_vars' => 0, 'terms' => 0 );
+						}
+						$summary[ $pid ]['terms'] += (int) $row->c;
+					}
+				}
+			}
+
+			return $summary;
+		}
+
+		/**
+		 * دریافت نقشه سبک id => post_title برای لیست نتایج.
+		 */
+		public static function get_products_name_map( array $ids ) {
+			global $wpdb;
+			$map = array();
+			if ( empty( $ids ) ) {
+				return $map;
+			}
+			foreach ( array_chunk( $ids, 500 ) as $chunk ) {
+				$ph = implode( ',', array_fill( 0, count( $chunk ), '%d' ) );
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$rows = (array) $wpdb->get_results(
+					$wpdb->prepare(
+						"SELECT ID, post_title FROM {$wpdb->posts} WHERE ID IN ($ph)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						$chunk
+					)
+				);
+				foreach ( $rows as $row ) {
+					$map[ (int) $row->ID ] = (string) $row->post_title;
+				}
+			}
+			return $map;
+		}
+
+		/**
 		 * دریافت اطلاعات کامل یک لیست از محصولات برای نمایش جدول زنده در فرانت‌اند.
 		 */
 		public static function get_products_summary( array $ids, $limit = 50, $offset = 0 ) {

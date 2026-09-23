@@ -28,6 +28,7 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 
 		public static function init() {
 			add_action( 'wp_ajax_tcbvm_search_products', array( __CLASS__, 'ajax_search_products' ) );
+			add_action( 'wp_ajax_tcbvm_products_summary_page', array( __CLASS__, 'ajax_products_summary_page' ) );
 			add_action( 'wp_ajax_tcbvm_search_single_products', array( __CLASS__, 'ajax_search_single_products' ) );
 			add_action( 'wp_ajax_tcbvm_get_attributes', array( __CLASS__, 'ajax_get_attributes' ) );
 			add_action( 'wp_ajax_tcbvm_preview', array( __CLASS__, 'ajax_preview' ) );
@@ -39,6 +40,10 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 			add_action( 'wp_ajax_tcbvm_save_preset', array( __CLASS__, 'ajax_save_preset' ) );
 			add_action( 'wp_ajax_tcbvm_delete_preset', array( __CLASS__, 'ajax_delete_preset' ) );
 			add_action( 'wp_ajax_tcbvm_flush_cache', array( __CLASS__, 'ajax_flush_cache' ) );
+			add_action( 'wp_ajax_tcbvm_purge_attr_search', array( __CLASS__, 'ajax_purge_attr_search' ) );
+			add_action( 'wp_ajax_tcbvm_purge_attr_start', array( __CLASS__, 'ajax_purge_attr_start' ) );
+			add_action( 'wp_ajax_tcbvm_purge_attr_batch', array( __CLASS__, 'ajax_purge_attr_batch' ) );
+			add_action( 'wp_ajax_tcbvm_purge_attr_global', array( __CLASS__, 'ajax_purge_attr_global' ) );
 		}
 
 		private static function check_auth() {
@@ -149,6 +154,28 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 				'ids'     => $ids,
 				'items'   => $summary['items'],
 				'message' => sprintf( '%d محصول منطبق یافت شد.', $total ),
+			) );
+		}
+
+		/**
+		 * واکشی صفحه‌ای اطلاعات محصولات جهت تکمیل تدریجی لیست انتخاب.
+		 * صفحهٔ اول (۱۰۰ تای نخست) در پاسخ جستجو ارسال می‌شود و این مسیر
+		 * جزئیات باقی شناسه‌ها را بسته‌به‌بسته می‌آورد تا هیچ سقفی در انتخاب نباشد.
+		 */
+		public static function ajax_products_summary_page() {
+			self::check_auth();
+
+			$ids    = isset( $_POST['ids'] ) ? array_map( 'absint', (array) $_POST['ids'] ) : array();
+			$offset = isset( $_POST['offset'] ) ? absint( $_POST['offset'] ) : 0;
+
+			if ( empty( $ids ) ) {
+				wp_send_json_success( array( 'items' => array() ) );
+			}
+
+			$summary = TCBVM_DB::get_products_summary( $ids, 100, $offset );
+
+			wp_send_json_success( array(
+				'items' => $summary['items'],
 			) );
 		}
 
@@ -478,6 +505,189 @@ if ( ! class_exists( 'TCBVM_Ajax' ) ) {
 				wp_send_json_success( array( 'message' => 'الگو با موفقیت حذف شد.' ) );
 			} else {
 				wp_send_json_error( array( 'message' => 'الگوهای پیش‌فرض سیستم قابل حذف نیستند یا الگو یافت نشد.' ) );
+			}
+		}
+
+		/**
+		 * جستجوی محصولات دارای یک ویژگی مشخص جهت پاکسازی (مرحله اول ابزار حذف ویژگی).
+		 */
+		public static function ajax_purge_attr_search() {
+			self::check_auth();
+
+			$label = isset( $_POST['attr_name'] ) ? sanitize_text_field( wp_unslash( $_POST['attr_name'] ) ) : '';
+			if ( '' === trim( $label ) ) {
+				wp_send_json_error( array( 'message' => 'عنوان ویژگی را وارد کنید.' ) );
+			}
+
+			TCBVM_OPS::ensure_all_attribute_taxonomies_registered();
+
+			$matches = TCBVM_DB::resolve_attribute_globally( $label );
+			$ids     = TCBVM_DB::query_products_with_attribute( $matches );
+
+			if ( count( $ids ) > 5000 ) {
+				wp_send_json_error( array(
+					'message' => sprintf( 'تعداد محصولات دارای این ویژگی (%d) از سقف ایمنی ۵۰۰۰ محصول بیشتر است. به دلیل حجم بالا، پاکسازی خودکار متوقف شد؛ لطفاً ابتدا با مدیر فنی تیساکیس برای اجرای کنترل‌شده هماهنگ کنید.', count( $ids ) ),
+				) );
+			}
+
+			if ( empty( $ids ) ) {
+				wp_send_json_success( array(
+					'matches' => $matches,
+					'items'   => array(),
+					'totals'  => array( 'products' => 0, 'linked_vars' => 0, 'terms' => 0 ),
+					'message' => 'هیچ محصولی این ویژگی را ندارد.',
+				) );
+			}
+
+			$usage = TCBVM_DB::attribute_usage_summary( $ids, $matches );
+			$names = TCBVM_DB::get_products_name_map( $ids );
+
+			$items            = array();
+			$total_linked     = 0;
+			$total_terms_seen = 0;
+
+			foreach ( $ids as $pid ) {
+				$linked = isset( $usage[ $pid ] ) ? (int) $usage[ $pid ]['linked_vars'] : 0;
+				$terms  = isset( $usage[ $pid ] ) ? (int) $usage[ $pid ]['terms'] : 0;
+				$total_linked     += $linked;
+				$total_terms_seen += $terms;
+
+				$items[] = array(
+					'id'          => $pid,
+					'name'        => isset( $names[ $pid ] ) ? $names[ $pid ] : "محصول #{$pid}",
+					'edit_url'    => admin_url( 'post.php?post=' . $pid . '&action=edit' ),
+					'linked_vars' => $linked,
+					'terms'       => $terms,
+				);
+			}
+
+			wp_send_json_success( array(
+				'matches' => $matches,
+				'items'   => $items,
+				'totals'  => array(
+					'products'    => count( $ids ),
+					'linked_vars' => $total_linked,
+					'terms'       => $total_terms_seen,
+				),
+				'message' => sprintf( '%d محصول دارای این ویژگی پیدا شد؛ مجموعاً %d متغیر وابسته.', count( $ids ), $total_linked ),
+			) );
+		}
+
+		/**
+		 * آغاز نشست پاکسازی ویژگی و ساخت بسته‌های پردازشی.
+		 */
+		public static function ajax_purge_attr_start() {
+			self::check_auth();
+			self::prepare_runtime();
+
+			$product_ids = isset( $_POST['product_ids'] ) ? array_map( 'absint', (array) $_POST['product_ids'] ) : array();
+			$attr_name   = isset( $_POST['attr_name'] ) ? sanitize_text_field( wp_unslash( $_POST['attr_name'] ) ) : '';
+
+			if ( empty( $product_ids ) ) {
+				wp_send_json_error( array( 'message' => 'محصولی برای پاکسازی انتخاب نشده است.' ) );
+			}
+			if ( '' === trim( $attr_name ) ) {
+				wp_send_json_error( array( 'message' => 'عنوان ویژگی ارسال نشده است.' ) );
+			}
+
+			$run_id = TCBVM_Backup::create_run_session(
+				sprintf( 'پاکسازی ویژگی «%s» از محصولات', $attr_name ),
+				$product_ids,
+				array( 'attr_name' => $attr_name, 'operation_type' => 'purge_attribute' )
+			);
+
+			$settings   = TCBVM_Core::get_settings();
+			$batch_size = max( 1, (int) $settings['batch_size'] );
+			$batches    = array_chunk( $product_ids, $batch_size );
+
+			wp_send_json_success( array(
+				'run_id'        => $run_id,
+				'total_items'   => count( $product_ids ),
+				'total_batches' => count( $batches ),
+				'batches'       => $batches,
+			) );
+		}
+
+		/**
+		 * اجرای یک بسته پاکسازی ویژگی روی چند محصول.
+		 */
+		public static function ajax_purge_attr_batch() {
+			self::check_auth();
+			self::prepare_runtime();
+
+			$run_id    = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
+			$batch_ids = isset( $_POST['batch_ids'] ) ? array_map( 'absint', (array) $_POST['batch_ids'] ) : array();
+			$attr_name = isset( $_POST['attr_name'] ) ? sanitize_text_field( wp_unslash( $_POST['attr_name'] ) ) : '';
+
+			if ( empty( $run_id ) || empty( $batch_ids ) || '' === trim( $attr_name ) ) {
+				wp_send_json_error( array( 'message' => 'اطلاعات بسته پاکسازی ناقص است.' ) );
+			}
+
+			TCBVM_OPS::ensure_all_attribute_taxonomies_registered();
+			$matches = TCBVM_DB::resolve_attribute_globally( $attr_name );
+
+			$items   = array();
+			$deleted = 0;
+
+			foreach ( $batch_ids as $product_id ) {
+				try {
+					$res = TCBVM_OPS::purge_attribute_from_product( $product_id, $run_id, $matches );
+				} catch ( \Throwable $e ) {
+					$res = array(
+						'success' => false,
+						'title'   => "محصول #{$product_id}",
+						'message' => 'خطا: ' . $e->getMessage(),
+						'deleted' => 0,
+					);
+				}
+
+				$deleted += isset( $res['deleted'] ) ? (int) $res['deleted'] : 0;
+				$items[]  = array(
+					'id'      => $product_id,
+					'status'  => ! empty( $res['success'] ) ? 'success' : 'error',
+					'title'   => isset( $res['title'] ) ? $res['title'] : "محصول #{$product_id}",
+					'message' => isset( $res['message'] ) ? $res['message'] : '',
+					'deleted' => isset( $res['deleted'] ) ? (int) $res['deleted'] : 0,
+				);
+			}
+
+			TCBVM_Backup::flush();
+
+			self::clean_output();
+			self::$responded = true;
+			wp_send_json_success( array(
+				'items'         => $items,
+				'deleted_count' => $deleted,
+			) );
+		}
+
+		/**
+		 * حذف سراسری تعریف ویژگی و تمام ترم‌هایش از فروشگاه (پس از پاکسازی محصولات).
+		 */
+		public static function ajax_purge_attr_global() {
+			self::check_auth();
+			self::prepare_runtime();
+
+			$attr_name = isset( $_POST['attr_name'] ) ? sanitize_text_field( wp_unslash( $_POST['attr_name'] ) ) : '';
+			if ( '' === trim( $attr_name ) ) {
+				wp_send_json_error( array( 'message' => 'عنوان ویژگی ارسال نشده است.' ) );
+			}
+
+			TCBVM_OPS::ensure_all_attribute_taxonomies_registered();
+			$matches = TCBVM_DB::resolve_attribute_globally( $attr_name );
+
+			if ( empty( $matches['taxonomies'] ) ) {
+				wp_send_json_error( array( 'message' => 'تاکسونومی سراسری منطبق با این عنوان یافت نشد (ویژگی محلی به صورت سراسری قابل حذف نیست).' ) );
+			}
+
+			$result = TCBVM_OPS::delete_attribute_globally( $matches['taxonomies'] );
+
+			if ( ! empty( $result['success'] ) ) {
+				self::clean_output();
+				self::$responded = true;
+				wp_send_json_success( $result );
+			} else {
+				self::send_error_json( $result );
 			}
 		}
 

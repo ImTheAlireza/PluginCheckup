@@ -60,7 +60,6 @@ if ( ! class_exists( 'TCBVM_Core' ) ) {
 				'batch_size'            => 2,
 				'target_attr_name'      => 'مدل گوشی',
 				'backup_retention_days' => 90,
-				'combine_other_default' => 1,
 			);
 		}
 

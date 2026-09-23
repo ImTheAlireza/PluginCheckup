@@ -10,9 +10,10 @@
 	/**
 	 * آبجکت مرکزی مدیریت متغیرهای گروهی
 	 */
-	const TCBVM = {
+		const TCBVM = {
 		selectedProducts: {},
 		isExecuting: false,
+		cancelRequested: false,
 
 		init: function() {
 			this.bindTargetMode();
@@ -24,6 +25,7 @@
 			this.bindPresets();
 			this.bindRollback();
 			this.bindCacheFlush();
+			this.bindPurgeAttr();
 			this.initSelect2();
 		},
 
@@ -63,8 +65,8 @@
 		/**
 		 * لاگ کردن پیام در کنسول زنده
 		 */
-		log: function(msg, type) {
-			const $console = $('#tcbvm-log-console');
+		log: function(msg, type, consoleId) {
+			const $console = $(consoleId || '#tcbvm-log-console');
 			if (!$console.length) return;
 
 			const time = new Date().toLocaleTimeString('fa-IR');
@@ -135,12 +137,8 @@
 					},
 					success: function(resp) {
 						$btn.prop('disabled', false).removeClass('is-busy');
-						if (resp.success && resp.data && resp.data.items) {
-							resp.data.items.forEach(function(item) {
-								self.selectedProducts[item.id] = item;
-							});
-							self.renderProductTable();
-							$('#tcbvm-search-counter').text(resp.data.message || (resp.data.items.length + ' محصول یافت شد.'));
+						if (resp.success && resp.data) {
+							self.addSearchResults(resp.data, $('#tcbvm-search-counter'), 'محصولی یافت نشد.');
 						} else {
 							$('#tcbvm-search-counter').text(resp.data && resp.data.message ? resp.data.message : 'محصولی یافت نشد.');
 						}
@@ -181,12 +179,8 @@
 					},
 					success: function(resp) {
 						$btn.prop('disabled', false).removeClass('is-busy');
-						if (resp.success && resp.data && resp.data.items) {
-							resp.data.items.forEach(function(item) {
-								self.selectedProducts[item.id] = item;
-							});
-							self.renderProductTable();
-							$('#tcbvm-sku-counter').text(resp.data.message || (resp.data.items.length + ' محصول یافت شد.'));
+						if (resp.success && resp.data) {
+							self.addSearchResults(resp.data, $('#tcbvm-sku-counter'), 'هیچ محصولی با این شناسه یافت نشد.');
 						} else {
 							$('#tcbvm-sku-counter').text(resp.data && resp.data.message ? resp.data.message : 'هیچ محصولی با این شناسه یافت نشد.');
 						}
@@ -222,11 +216,8 @@
 					},
 					success: function(resp) {
 						$btn.prop('disabled', false);
-						if (resp.success && resp.data && resp.data.items) {
-							resp.data.items.forEach(function(item) {
-								self.selectedProducts[item.id] = item;
-							});
-							self.renderProductTable();
+						if (resp.success && resp.data && (resp.data.items || (resp.data.ids || []).length)) {
+							self.addSearchResults(resp.data, null, 'محصول معتبری یافت نشد.');
 							$('#tcbvm-manual-ids').val('');
 						} else {
 							alert('محصول معتبری با این شناسه‌ها یافت نشد.');
@@ -289,6 +280,155 @@
 		},
 
 		/**
+		 * ادغام نتایج جستجو در لیست انتخاب.
+		 * آیتم‌های کامل‌شده (صفحهٔ اول) بلافاصله اضافه می‌شوند و برای باقی شناسه‌ها
+		 * یک سطر جایگزین (Stub) ثبت می‌شود تا هیچ‌کدام از محصولات یافت‌شده — حتی
+		 * بیش از ۱۰۰ عدد — از لیست انتخاب جا نمانند؛ جزئیات آن‌ها سپس در پس‌زمینه
+		 * بسته‌به‌بسته از سرور دریافت و جایگزینی می‌شود.
+		 */
+		addSearchResults: function(data, $counter, emptyMessage) {
+			const self = this;
+			const items = (data && data.items) || [];
+			const ids = (data && data.ids) || [];
+			const baseMessage = (data && data.message) || (self.toPersianDigits(ids.length || items.length) + ' محصول یافت شد.');
+
+			if (!items.length && !ids.length) {
+				if ($counter && $counter.length) {
+					$counter.text(baseMessage || emptyMessage);
+				}
+				self.renderProductTable();
+				return;
+			}
+
+			items.forEach(function(item) {
+				// حفظ وضعیت تیک اگر محصول از قبل در لیست بوده و کاربر آن را غیرفعال کرده است
+				if (self.selectedProducts[item.id] && self.selectedProducts[item.id].selected === false) {
+					item.selected = false;
+				}
+				self.selectedProducts[item.id] = item;
+			});
+
+			ids.forEach(function(id) {
+				if (!self.selectedProducts[id]) {
+					self.selectedProducts[id] = self.makeStub(id);
+				}
+			});
+
+			self.renderProductTable();
+
+			if (self.countStubs() > 0) {
+				self.hydrateStubs($counter, baseMessage);
+			} else if ($counter && $counter.length) {
+				$counter.text(baseMessage);
+			}
+		},
+
+		/**
+		 * ساخت سطر جایگزین (Stub) برای شناسه‌ای که جزئیاتش هنوز از سرور نیامده است.
+		 */
+		makeStub: function(id) {
+			return {
+				id: id,
+				stub: true,
+				name: 'محصول #' + id,
+				sku: '…',
+				type: 'pending',
+				cats: '…',
+				variation_count: null,
+				image_url: '',
+				edit_url: '#',
+				selected: true
+			};
+		},
+
+		/**
+		 * شمارش سطرهای جایگزین فعلی در لیست.
+		 */
+		countStubs: function() {
+			const self = this;
+			let n = 0;
+			Object.keys(self.selectedProducts).forEach(function(pid) {
+				if (self.selectedProducts[pid] && self.selectedProducts[pid].stub) {
+					n++;
+				}
+			});
+			return n;
+		},
+
+		hydrationSeq: 0,
+
+		/**
+		 * بارگذاری تدریجی جزئیات سطرهای جایگزین، بسته‌های ۱۰۰تایی، در پس‌زمینه.
+		 * اگر کاربر جستجوی جدیدی انجام دهد، زنجیرهٔ قبلی با توکن لغو می‌شود و
+		 * وضعیت تیک/حذف کاربر در حین جایگزینی حفظ می‌گردد.
+		 */
+		hydrateStubs: function($counter, baseMessage) {
+			const self = this;
+			const token = ++self.hydrationSeq;
+			const pageSize = 100;
+
+			const stubIds = Object.keys(self.selectedProducts)
+				.filter(function(pid) { return self.selectedProducts[pid].stub; })
+				.map(function(pid) { return parseInt(pid, 10); });
+
+			const totalPending = stubIds.length;
+			let loaded = 0;
+			let offset = 0;
+
+			const loadNext = function() {
+				if (token !== self.hydrationSeq) return; // زنجیرهٔ قدیمی لغو شد
+
+				const slice = stubIds.slice(offset, offset + pageSize);
+				if (!slice.length) {
+					if ($counter && $counter.length) {
+						$counter.text(baseMessage);
+					}
+					return;
+				}
+
+				if ($counter && $counter.length) {
+					$counter.text(baseMessage + ' — در حال تکمیل جزئیات لیست (' + self.toPersianDigits(loaded) + ' از ' + self.toPersianDigits(totalPending) + ')…');
+				}
+
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_products_summary_page',
+						nonce: tcbvmData.nonce,
+						ids: slice
+					},
+					success: function(resp) {
+						if (token !== self.hydrationSeq) return;
+						if (resp.success && resp.data && resp.data.items) {
+							resp.data.items.forEach(function(item) {
+								if (!self.selectedProducts[item.id]) return; // کاربر سطر را از لیست حذف کرده است
+								if (self.selectedProducts[item.id].selected === false) {
+									item.selected = false; // حفظ وضعیت تیک کاربر
+								}
+								self.selectedProducts[item.id] = item;
+							});
+							self.renderProductTable();
+						}
+						loaded += slice.length;
+						offset += pageSize;
+						loadNext();
+					},
+					error: function() {
+						if (token !== self.hydrationSeq) return;
+						// در صورت خطا صفحهٔ بعدی امتحان می‌شود تا زنجیره قطع نشود؛
+						// سطرهای جایگزین باقی‌مانده همچنان در انتخاب و اجرای نهایی لحاظ می‌شوند.
+						loaded += slice.length;
+						offset += pageSize;
+						loadNext();
+					}
+				});
+			};
+
+			loadNext();
+		},
+
+		/**
 		 * رندر و به‌روزرسانی جدول محصولات انتخاب‌شده
 		 */
 		renderProductTable: function() {
@@ -310,15 +450,33 @@
 			pids.forEach(function(pid) {
 				const item = self.selectedProducts[pid];
 				const isChecked = item.selected !== false;
+				const isStub = !!item.stub;
+
+				const thumbCell = isStub || !item.image_url
+					? '<span class="tcbvm-thumb tcbvm-thumb--empty" aria-hidden="true"></span>'
+					: '<img src="' + item.image_url + '" class="tcbvm-thumb" alt="">';
+
+				const nameCell = isStub
+					? '<strong>' + item.name + '</strong> <small class="tcbvm-muted">(در حال دریافت جزئیات…)</small>'
+					: '<a href="' + (item.edit_url || '#') + '" target="_blank"><strong>' + item.name + '</strong></a>';
+
+				const typeBadge = isStub
+					? '<span class="tcbvm-badge tcbvm-badge--muted tcbvm-badge--loading">…</span>'
+					: '<span class="tcbvm-badge">' + (item.type === 'variable' ? 'متغیر' : 'ساده') + '</span>';
+
+				const varCell = isStub
+					? '<span class="tcbvm-muted">…</span>'
+					: '<strong>' + self.toPersianDigits(item.variation_count || 0) + '</strong> متغیر';
+
 				const row = $(
-					'<tr data-pid="' + item.id + '">' +
+					'<tr data-pid="' + item.id + '"' + (isStub ? ' class="tcbvm-row-stub"' : '') + '>' +
 						'<td class="tcbvm-col-w38 tcbvm-center"><input type="checkbox" class="tcbvm-product-checkbox" ' + (isChecked ? 'checked' : '') + '></td>' +
-						'<td class="tcbvm-col-w48"><img src="' + (item.image_url || '') + '" class="tcbvm-thumb" alt=""></td>' +
-						'<td><a href="' + (item.edit_url || '#') + '" target="_blank"><strong>' + item.name + '</strong></a></td>' +
+						'<td class="tcbvm-col-w48">' + thumbCell + '</td>' +
+						'<td>' + nameCell + '</td>' +
 						'<td><span class="tisa-code">' + (item.sku || '—') + '</span> <small class="tcbvm-muted">(#' + item.id + ')</small></td>' +
 						'<td><small class="tcbvm-muted">' + (item.cats || '—') + '</small></td>' +
-						'<td><span class="tcbvm-badge">' + (item.type === 'variable' ? 'متغیر' : 'ساده') + '</span></td>' +
-						'<td><strong>' + self.toPersianDigits(item.variation_count || 0) + '</strong> متغیر</td>' +
+						'<td>' + typeBadge + '</td>' +
+						'<td>' + varCell + '</td>' +
 						'<td class="tcbvm-col-w70 tcbvm-center"><button type="button" class="tcbvm-btn-remove-row" title="حذف از لیست">&times;</button></td>' +
 					'</tr>'
 				);
@@ -546,17 +704,27 @@
 					return;
 				}
 
-				self.startBatchExecution({
-					product_ids: pids,
-					attr_name: attrName,
-					new_values: models,
-					price: price,
-					sale_price: $('#tcbvm-sale-price').val().replace(/[^\d]/g, ''),
-					stock_status: $('#tcbvm-stock-status').val(),
-					combine_other: $('#tcbvm-combine-other').is(':checked') ? 1 : 0
-				});
+			self.startBatchExecution({
+				product_ids: pids,
+				attr_name: attrName,
+				new_values: models,
+				price: price,
+				sale_price: $('#tcbvm-sale-price').val().replace(/[^\d]/g, ''),
+				stock_status: $('#tcbvm-stock-status').val(),
+				combine_other: $('#tcbvm-combine-other').is(':checked') ? 1 : 0
 			});
-		},
+		});
+
+		// دکمه لغو عملیات (توقف پس از پایان بستهٔ جاری)
+		$('#tcbvm-btn-cancel-run').on('click', function(e) {
+			e.preventDefault();
+			if (!self.isExecuting || self.cancelRequested) return;
+			if (!confirm(tcbvmData.i18n.cancelRunConfirm || 'لغو کنید؟')) return;
+			self.cancelRequested = true;
+			$(this).prop('disabled', true).text('در حال توقف پس از بستهٔ جاری…');
+			self.log('⚠ درخواست لغو توسط کاربر ثبت شد؛ پس از اتمام بستهٔ جاری عملیات متوقف می‌شود.', 'error');
+		});
+	},
 
 		/**
 		 * رندر کارت پیش‌نمایش
@@ -603,6 +771,8 @@
 		startBatchExecution: function(params) {
 			const self = this;
 			self.isExecuting = true;
+			self.cancelRequested = false;
+			$('#tcbvm-btn-cancel-run').prop('disabled', false).text('لغو عملیات');
 
 			const $progressWrap = $('#tcbvm-progress-wrap');
 			const $bar = $('#tcbvm-bar-fill');
@@ -663,20 +833,35 @@
 					let totalDeleted = 0;
 					const allItems = [];
 
-					const runNextBatch = function() {
-						if (currentBatchIndex >= batches.length) {
-							// پایان تمام بسته‌ها
-							self.finishRun(runId, totalCreated, totalDeleted, allItems, function() {
-								$bar.css('width', '100%');
-								$pPercent.text('۱۰۰٪');
-								$pText.text('تولید و بازسازی تمام متغیرها با موفقیت تکمیل و ثبت شد.');
-								self.log('پایان تمام بسته‌ها! ' + totalCreated + ' متغیر تازه ساخته و ' + totalDeleted + ' متغیر قدیمی پاکسازی شد.', 'success');
-								self.isExecuting = false;
-								$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
-								alert(tcbvmData.i18n.completedText);
-							});
-							return;
-						}
+				const runNextBatch = function() {
+					// لغو توسط کاربر: پس از پایان بستهٔ جاری، زنجیره ادامه نمی‌یابد
+					if (self.cancelRequested) {
+						self.finishRun(runId, totalCreated, totalDeleted, allItems, function() {
+							$pText.text('عملیات لغو شد (' + self.toPersianDigits(processedCount) + ' از ' + self.toPersianDigits(totalProducts) + ' محصول پردازش شده بود). برای برگرداندن تغییرات، از تب تاریخچه Rollback کنید.');
+							self.log('⚠ عملیات لغو شد. ' + self.toPersianDigits(processedCount) + ' محصول پردازش شده بود؛ تغییرات آن‌ها باقی مانده و از تب تاریخچه قابل بازگردانی است.', 'error');
+							self.isExecuting = false;
+							self.cancelRequested = false;
+							$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
+							$('#tcbvm-btn-cancel-run').prop('disabled', true).text('لغو شد');
+							alert(tcbvmData.i18n.cancelledText || 'عملیات لغو شد.');
+						}, 'cancelled');
+						return;
+					}
+
+					if (currentBatchIndex >= batches.length) {
+						// پایان تمام بسته‌ها
+						self.finishRun(runId, totalCreated, totalDeleted, allItems, function() {
+							$bar.css('width', '100%');
+							$pPercent.text('۱۰۰٪');
+							$pText.text('تولید و بازسازی تمام متغیرها با موفقیت تکمیل و ثبت شد.');
+							self.log('پایان تمام بسته‌ها! ' + totalCreated + ' متغیر تازه ساخته و ' + totalDeleted + ' متغیر قدیمی پاکسازی شد.', 'success');
+							self.isExecuting = false;
+							$('#tcbvm-btn-run, #tcbvm-btn-preview').prop('disabled', false);
+							$('#tcbvm-btn-cancel-run').prop('disabled', true);
+							alert(tcbvmData.i18n.completedText);
+						});
+						return;
+					}
 
 						const batchIds = batches[currentBatchIndex];
 						const batchNum = currentBatchIndex + 1;
@@ -759,27 +944,27 @@
 			});
 		},
 
-		/**
-		 * اتمام نشست
-		 */
-		finishRun: function(runId, createdCount, deletedCount, items, callback) {
-			$.ajax({
-				url: tcbvmData.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'tcbvm_finish_run',
-					nonce: tcbvmData.nonce,
-					run_id: runId,
-					status: 'completed',
-					created_count: createdCount,
-					deleted_count: deletedCount,
-					items: items
-				},
-				complete: function() {
-					if (typeof callback === 'function') callback();
-				}
-			});
-		},
+	/**
+	 * اتمام نشست
+	 */
+	finishRun: function(runId, createdCount, deletedCount, items, callback, status) {
+		$.ajax({
+			url: tcbvmData.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'tcbvm_finish_run',
+				nonce: tcbvmData.nonce,
+				run_id: runId,
+				status: status || 'completed',
+				created_count: createdCount,
+				deleted_count: deletedCount,
+				items: items
+			},
+			complete: function() {
+				if (typeof callback === 'function') callback();
+			}
+		});
+	},
 
 		/**
 		 * مدیریت ذخیره و حذف الگوهای سفارشی
@@ -882,6 +1067,454 @@
 						$btn.prop('disabled', false).text('بازگردانی (Rollback)');
 					}
 				});
+			});
+		},
+
+		/* ------------------------------------------------------------------
+		 * ابزار پاکسازی ویژگی از محصولات (تب «پاکسازی ویژگی»)
+		 * ------------------------------------------------------------------ */
+
+		purgeItems: {},
+		purgeMatches: null,
+		isPurging: false,
+		purgeCancelRequested: false,
+
+		/**
+		 * اتصال رخدادهای ابزار پاکسازی ویژگی: جستجو، جدول، اجرای بسته‌ای و حذف سراسری.
+		 */
+		bindPurgeAttr: function() {
+			const self = this;
+			if (!$('#tcbvm-purge-attr-name').length) return;
+
+			// جستجوی محصولات دارای ویژگی
+			$('#tcbvm-btn-purge-search').on('click', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+				const attrName = $('#tcbvm-purge-attr-name').val().trim();
+
+				if (!attrName) {
+					alert('لطفاً عنوان ویژگی را وارد کنید (مثلاً: مدل گوشی).');
+					return;
+				}
+
+				$btn.prop('disabled', true).addClass('is-busy');
+				$('#tcbvm-purge-search-counter').text('در حال جستجو در کل فروشگاه…');
+
+				$.ajax({
+					url: tcbvmData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'tcbvm_purge_attr_search',
+						nonce: tcbvmData.nonce,
+						attr_name: attrName
+					},
+					success: function(resp) {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						if (!resp.success || !resp.data) {
+							$('#tcbvm-purge-search-counter').text(resp.data && resp.data.message ? resp.data.message : 'خطا در جستجو.');
+							return;
+						}
+						const d = resp.data;
+						$('#tcbvm-purge-search-counter').text(d.message || '');
+						self.purgeMatches = d.matches || null;
+						self.purgeItems = {};
+						(d.items || []).forEach(function(item) {
+							item.selected = true;
+							self.purgeItems[item.id] = item;
+						});
+						self.renderPurgeResults(d);
+						self.renderGlobalAttrBox();
+					},
+					error: function() {
+						$btn.prop('disabled', false).removeClass('is-busy');
+						$('#tcbvm-purge-search-counter').text('خطا در برقراری ارتباط با سرور.');
+					}
+				});
+			});
+
+			// تغییر وضعیت تک‌سطر
+			$(document).on('change', '.tcbvm-purge-checkbox', function() {
+				const pid = $(this).closest('tr').data('pid');
+				if (self.purgeItems[pid]) {
+					self.purgeItems[pid].selected = $(this).is(':checked');
+				}
+				self.updatePurgeSummary();
+			});
+
+			// انتخاب همه / لغو همه
+			$('#tcbvm-purge-select-all').on('change', function() {
+				const checked = $(this).is(':checked');
+				$('.tcbvm-purge-checkbox').prop('checked', checked);
+				Object.keys(self.purgeItems).forEach(function(pid) {
+					self.purgeItems[pid].selected = checked;
+				});
+				self.updatePurgeSummary();
+			});
+
+			// حذف مستقیم تعریف سراسری ویژگی (از کادر گام ۱)
+			$('#tcbvm-btn-purge-global').on('click', function(e) {
+				e.preventDefault();
+				if (self.isPurging) return;
+				const attrName = $('#tcbvm-purge-attr-name').val().trim();
+				if (!attrName) return;
+				self.isPurging = true;
+				self.runGlobalAttributeDelete(attrName, '#tcbvm-purge-log-console', function() {
+					self.isPurging = false;
+					// تازه‌سازی نتایج پس از حذف سراسری
+					$('#tcbvm-btn-purge-search').trigger('click');
+				});
+			});
+
+			// اجرای پاکسازی
+			$('#tcbvm-btn-purge-run').on('click', function(e) {
+				e.preventDefault();
+				if (self.isPurging) return;
+
+				const attrName = $('#tcbvm-purge-attr-name').val().trim();
+				const ids = self.getPurgeSelectedIds();
+				if (!ids.length) {
+					alert('حداقل یک محصول را تیک بزنید.');
+					return;
+				}
+
+				const msg = (tcbvmData.i18n.purgeConfirmStart || 'ادامه می‌دهید؟')
+					.replace('{attr}', attrName)
+					.replace('{n}', self.toPersianDigits(ids.length));
+				if (!confirm(msg)) return;
+
+				self.startPurgeExecution(attrName, ids, $('#tcbvm-purge-global-delete').is(':checked'));
+			});
+
+			// دکمه لغو پاکسازی (توقف پس از پایان بستهٔ جاری)
+			$('#tcbvm-btn-cancel-purge-run').on('click', function(e) {
+				e.preventDefault();
+				if (!self.isPurging || self.purgeCancelRequested) return;
+				if (!confirm(tcbvmData.i18n.cancelRunConfirm || 'لغو کنید؟')) return;
+				self.purgeCancelRequested = true;
+				$(this).prop('disabled', true).text('در حال توقف پس از بستهٔ جاری…');
+				self.log('⚠ درخواست لغو توسط کاربر ثبت شد؛ پس از اتمام بستهٔ جاری پاکسازی متوقف می‌شود.', 'error', '#tcbvm-purge-log-console');
+			});
+		},
+
+		/**
+		 * نمایش/مخفی‌سازی کادر حذف سراسری ویژگی بر اساس نتیجهٔ جستجو.
+		 */
+		renderGlobalAttrBox: function() {
+			const self = this;
+			const $box = $('#tcbvm-global-attr-box');
+			const taxes = (self.purgeMatches && self.purgeMatches.taxonomies) || [];
+			if (!$box.length) return;
+
+			if (!taxes.length) {
+				$box.addClass('tcbvm-hidden');
+				return;
+			}
+
+			let chips = '';
+			taxes.forEach(function(t) {
+				chips += '<span class="tcbvm-badge tcbvm-badge--info" dir="ltr">' + t.key + '</span> ';
+			});
+			$('#tcbvm-global-attr-chips').html(chips);
+			$box.removeClass('tcbvm-hidden');
+		},
+
+		/**
+		 * شناسه‌های محصولات تیک‌خورده در ابزار پاکسازی.
+		 */
+		getPurgeSelectedIds: function() {
+			const self = this;
+			const ids = [];
+			Object.keys(self.purgeItems).forEach(function(pid) {
+				if (self.purgeItems[pid].selected !== false) {
+					ids.push(parseInt(pid, 10));
+				}
+			});
+			return ids;
+		},
+
+		/**
+		 * رندر خلاصه و جدول نتایج جستجوی ویژگی.
+		 */
+		renderPurgeResults: function(data) {
+			const self = this;
+			const $box = $('#tcbvm-purge-results');
+			const $tbody = $('#tcbvm-purge-tbody');
+			$tbody.empty();
+
+			const items = data.items || [];
+			if (!items.length) {
+				$box.addClass('tcbvm-hidden');
+				return;
+			}
+			$box.removeClass('tcbvm-hidden');
+			$('#tcbvm-purge-progress-wrap').addClass('tcbvm-hidden');
+
+			items.forEach(function(item) {
+				const row = $(
+					'<tr data-pid="' + item.id + '">' +
+						'<td class="tcbvm-col-w38 tcbvm-center"><input type="checkbox" class="tcbvm-purge-checkbox" ' + (item.selected !== false ? 'checked' : '') + '></td>' +
+						'<td><a href="' + (item.edit_url || '#') + '" target="_blank"><strong>' + item.name + '</strong></a></td>' +
+						'<td><span class="tisa-code">#' + item.id + '</span></td>' +
+						'<td class="tcbvm-center">' + (item.linked_vars > 0
+							? '<span class="tcbvm-badge tcbvm-badge--danger">' + self.toPersianDigits(self.formatNumber(item.linked_vars)) + ' متغیر</span>'
+							: '<span class="tcbvm-muted">۰</span>') + '</td>' +
+						'<td class="tcbvm-center">' + (item.terms > 0
+							? '<span class="tcbvm-badge tcbvm-badge--info">' + self.toPersianDigits(item.terms) + ' ترم</span>'
+							: '<span class="tcbvm-muted">۰</span>') + '</td>' +
+					'</tr>'
+				);
+				$tbody.append(row);
+			});
+
+			self.updatePurgeSummary();
+			$('html, body').animate({ scrollTop: $box.offset().top - 40 }, 400);
+		},
+
+		/**
+		 * به‌روزرسانی شمارندههای خلاصهٔ پاکسازی بر اساس موارد تیک‌خورده.
+		 */
+		updatePurgeSummary: function() {
+			const self = this;
+			let selCount = 0;
+			let selVars = 0;
+			Object.keys(self.purgeItems).forEach(function(pid) {
+				const it = self.purgeItems[pid];
+				if (it.selected !== false) {
+					selCount++;
+					selVars += (it.linked_vars || 0);
+				}
+			});
+
+			const totals = (self.purgeMatches ? Object.keys(self.purgeItems).length : 0);
+			let html = '';
+			html += '<span class="tcbvm-badge tcbvm-badge--success">' + self.toPersianDigits(self.formatNumber(selCount)) + ' محصول تیک‌خورده</span> ';
+			html += '<span class="tcbvm-badge tcbvm-badge--danger">' + self.toPersianDigits(self.formatNumber(selVars)) + ' متغیر وابسته در محصولات تیک‌خورده</span> ';
+			if (self.purgeMatches && self.purgeMatches.taxonomies && self.purgeMatches.taxonomies.length) {
+				self.purgeMatches.taxonomies.forEach(function(t) {
+					html += '<span class="tcbvm-badge tcbvm-badge--info" dir="ltr">' + t.key + '</span> ';
+				});
+			} else {
+				html += '<span class="tcbvm-badge tcbvm-badge--muted">ویژگی محلی (بدون تاکسونومی سراسری)</span>';
+			}
+			$('#tcbvm-purge-summary').html(html);
+
+			// حذف سراسری فقط وقتی تاکسونومی سراسری منطبق وجود دارد معنا دارد
+			const hasGlobalTax = !!(self.purgeMatches && self.purgeMatches.taxonomies && self.purgeMatches.taxonomies.length);
+			$('#tcbvm-purge-global-delete').prop('disabled', !hasGlobalTax);
+		},
+
+		/**
+		 * اجرای بسته‌ای پاکسازی ویژگی با نوار پیشرفت و لاگ زنده مخصوص.
+		 */
+		startPurgeExecution: function(attrName, ids, deleteGlobalAfter) {
+			const self = this;
+			self.isPurging = true;
+			self.purgeCancelRequested = false;
+			$('#tcbvm-btn-cancel-purge-run').prop('disabled', false).text('لغو عملیات');
+
+			const $wrap = $('#tcbvm-purge-progress-wrap');
+			const $bar = $('#tcbvm-purge-bar-fill');
+			const $pText = $('#tcbvm-purge-progress-text');
+			const $pPercent = $('#tcbvm-purge-progress-percent');
+			const consoleId = '#tcbvm-purge-log-console';
+
+			$wrap.removeClass('tcbvm-hidden');
+			$(consoleId).empty();
+			$bar.css('width', '0%');
+			$pPercent.text('0%');
+			$pText.text('در حال ایجاد نشست پاکسازی و اسنپ‌شات…');
+			$('#tcbvm-btn-purge-run, #tcbvm-btn-purge-search').prop('disabled', true);
+			$('html, body').animate({ scrollTop: $wrap.offset().top - 30 }, 400);
+
+			self.log('آغاز پاکسازی ویژگی «' + attrName + '» از ' + self.toPersianDigits(ids.length) + ' محصول…', 'info', consoleId);
+
+			$.ajax({
+				url: tcbvmData.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'tcbvm_purge_attr_start',
+					nonce: tcbvmData.nonce,
+					product_ids: ids,
+					attr_name: attrName
+				},
+				success: function(resp) {
+					if (!resp.success || !resp.data || !resp.data.batches) {
+						alert(resp.data && resp.data.message ? resp.data.message : 'خطا در ایجاد نشست پاکسازی.');
+						self.isPurging = false;
+						$('#tcbvm-btn-purge-run, #tcbvm-btn-purge-search').prop('disabled', false);
+						return;
+					}
+
+					const runId = resp.data.run_id;
+					const batches = resp.data.batches;
+					const totalProducts = resp.data.total_items;
+
+					$('#tcbvm-purge-stat-total').text(self.toPersianDigits(totalProducts));
+					$('#tcbvm-purge-stat-processed').text('۰');
+					$('#tcbvm-purge-stat-success').text('۰');
+					$('#tcbvm-purge-stat-failed').text('۰');
+
+					self.log('نشست پاکسازی ثبت شد (Run ID: ' + runId + '). پردازش در ' + self.toPersianDigits(batches.length) + ' بسته آغاز می‌شود.', 'info', consoleId);
+
+					let currentBatchIndex = 0;
+					let processedCount = 0;
+					let successCount = 0;
+					let failedCount = 0;
+					let totalDeleted = 0;
+					const allItems = [];
+
+				const runNextBatch = function() {
+					// لغو توسط کاربر: پس از پایان بستهٔ جاری، زنجیره ادامه نمی‌یابد
+					if (self.purgeCancelRequested) {
+						self.finishRun(runId, 0, totalDeleted, allItems, function() {
+							$pText.text('پاکسازی لغو شد (' + self.toPersianDigits(processedCount) + ' از ' + self.toPersianDigits(totalProducts) + ' محصول پردازش شده بود). برای برگرداندن تغییرات، از تب تاریخچه Rollback کنید.');
+							self.log('⚠ پاکسازی لغو شد. ' + self.toPersianDigits(processedCount) + ' محصول پردازش شده بود؛ تغییرات آن‌ها باقی مانده و از تب تاریخچه قابل بازگردانی است.', 'error', consoleId);
+							self.isPurging = false;
+							self.purgeCancelRequested = false;
+							$('#tcbvm-btn-purge-run, #tcbvm-btn-purge-search').prop('disabled', false);
+							$('#tcbvm-btn-cancel-purge-run').prop('disabled', true).text('لغو شد');
+							alert(tcbvmData.i18n.cancelledText || 'عملیات لغو شد.');
+						}, 'cancelled');
+						return;
+					}
+
+					if (currentBatchIndex >= batches.length) {
+						// پایان بسته‌ها — ثبت در تاریخچه
+						self.finishRun(runId, 0, totalDeleted, allItems, function() {
+							$bar.css('width', '100%');
+							$pPercent.text('۱۰۰٪');
+							$pText.text('پاکسازی ویژگی تمام شد و در تاریخچه ثبت گردید.');
+							self.log('پایان پاکسازی! مجموعاً ' + self.toPersianDigits(self.formatNumber(totalDeleted)) + ' متغیر وابسته حذف و ویژگی از محصولات برداشته شد.', 'success', consoleId);
+
+							const finalize = function() {
+								self.isPurging = false;
+								$('#tcbvm-btn-purge-run, #tcbvm-btn-purge-search').prop('disabled', false);
+								$('#tcbvm-btn-cancel-purge-run').prop('disabled', true);
+								alert(tcbvmData.i18n.purgeDoneText || 'پاکسازی پایان یافت.');
+							};
+
+							if (deleteGlobalAfter) {
+								self.runGlobalAttributeDelete(attrName, consoleId, finalize);
+							} else {
+								finalize();
+							}
+						});
+						return;
+					}
+
+					const batchIds = batches[currentBatchIndex];
+					const batchNum = currentBatchIndex + 1;
+					$pText.text('در حال پاکسازی بسته ' + self.toPersianDigits(batchNum) + ' از ' + self.toPersianDigits(batches.length) + '…');
+					self.log('⏳ بسته ' + self.toPersianDigits(batchNum) + ' شامل ' + self.toPersianDigits(batchIds.length) + ' محصول…', 'info', consoleId);
+
+						$.ajax({
+							url: tcbvmData.ajaxUrl,
+							type: 'POST',
+							data: {
+								action: 'tcbvm_purge_attr_batch',
+								nonce: tcbvmData.nonce,
+								run_id: runId,
+								batch_ids: batchIds,
+								attr_name: attrName
+							},
+							success: function(bResp) {
+								if (bResp.success && bResp.data && bResp.data.items) {
+									bResp.data.items.forEach(function(it) {
+										processedCount++;
+										allItems.push(it);
+										if (it.status === 'success') {
+											successCount++;
+											totalDeleted += (it.deleted || 0);
+											self.log('[#' + it.id + '] ' + it.title + ' ➔ ' + it.message, 'success', consoleId);
+										} else {
+											failedCount++;
+											self.log('[#' + it.id + '] ' + it.title + ' ➔ خطا: ' + it.message, 'error', consoleId);
+										}
+									});
+								} else {
+									batchIds.forEach(function(pid) {
+										processedCount++;
+										failedCount++;
+										const errItem = { id: pid, status: 'error', title: 'محصول #' + pid, message: (bResp.data && bResp.data.message ? bResp.data.message : 'خطا در پردازش بسته') };
+										allItems.push(errItem);
+										self.log('محصول #' + pid + ': خطا در بسته پاکسازی', 'error', consoleId);
+									});
+								}
+
+								const pct = Math.round((processedCount / totalProducts) * 100);
+								$bar.css('width', pct + '%');
+								$pPercent.text(self.toPersianDigits(pct) + '٪');
+								$('#tcbvm-purge-stat-processed').text(self.toPersianDigits(processedCount));
+								$('#tcbvm-purge-stat-success').text(self.toPersianDigits(successCount));
+								$('#tcbvm-purge-stat-failed').text(self.toPersianDigits(failedCount));
+
+								currentBatchIndex++;
+								setTimeout(runNextBatch, 50);
+							},
+							error: function(xhr, status, err) {
+								self.log('خطای شبکه در بسته ' + batchNum + ': ' + err, 'error', consoleId);
+								batchIds.forEach(function(pid) {
+									processedCount++;
+									failedCount++;
+									allItems.push({ id: pid, status: 'error', title: 'محصول #' + pid, message: 'خطای شبکه در ارتباط با سرور' });
+								});
+								currentBatchIndex++;
+								setTimeout(runNextBatch, 100);
+							}
+						});
+					};
+
+					runNextBatch();
+				},
+				error: function() {
+					alert('خطا در شروع نشست پاکسازی با سرور.');
+					self.isPurging = false;
+					$('#tcbvm-btn-purge-run, #tcbvm-btn-purge-search').prop('disabled', false);
+				}
+			});
+		},
+
+		/**
+		 * حذف سراسری تعریف ویژگی و ترم‌هایش (در صورت فعال بودن گزینهٔ کاربر).
+		 */
+		runGlobalAttributeDelete: function(attrName, consoleId, callback) {
+			const self = this;
+
+			const msg = (tcbvmData.i18n.purgeConfirmGlobal || 'ادامه می‌دهید؟').replace('{attr}', attrName);
+			if (!confirm(msg)) {
+				self.log('حذف سراسری تعریف ویژگی توسط کاربر لغو شد.', 'info', consoleId);
+				if (typeof callback === 'function') callback(true);
+				return;
+			}
+
+			self.log('در حال حذف سراسری تعریف ویژگی «' + attrName + '» و ترم‌هایش…', 'info', consoleId);
+
+			$.ajax({
+				url: tcbvmData.ajaxUrl,
+				type: 'POST',
+				data: {
+					action: 'tcbvm_purge_attr_global',
+					nonce: tcbvmData.nonce,
+					attr_name: attrName
+				},
+				success: function(resp) {
+					let text = '';
+					if (resp.success && resp.data) {
+						const terms = resp.data.terms || 0;
+						text = (resp.data.message || 'حذف سراسری انجام شد.') + ' (' + self.toPersianDigits(terms) + ' ترم)';
+						self.log('حذف سراسری کامل شد: ' + text, 'success', consoleId);
+					} else {
+						text = resp.data && resp.data.message ? resp.data.message : 'خطای نامشخص در حذف سراسری.';
+						self.log('حذف سراسری: ' + text, 'error', consoleId);
+					}
+					alert(text);
+					if (typeof callback === 'function') callback(true);
+				},
+				error: function() {
+					self.log('خطای شبکه هنگام حذف سراسری ویژگی.', 'error', consoleId);
+					alert('خطای شبکه هنگام حذف سراسری ویژگی.');
+					if (typeof callback === 'function') callback(false);
+				}
 			});
 		},
 
