@@ -358,7 +358,11 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			$raw = is_string( $raw ) ? $raw : '';
 			$raw = wp_strip_all_tags( $raw );
 			$raw = html_entity_decode( $raw, ENT_QUOTES, 'UTF-8' );
-			$raw = preg_replace( '/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', '', $raw );
+			$stripped = preg_replace( '/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', '', $raw );
+			if ( is_string( $stripped ) ) {
+				$raw = $stripped;
+			}
+			$raw = preg_replace( '/[[:cntrl:]]+/', '', $raw );
 			if ( preg_match( '#https?://(?:www\.)?github\.com/[^\s<>"\']+#i', $raw, $hit ) ) {
 				$raw = rtrim( $hit[0], " \t.,);]" );
 			} elseif ( preg_match( '#github\.com/[^\s<>"\']+#i', $raw, $hit ) ) {
@@ -369,6 +373,9 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			$raw = trim( $raw, " \t\n\r\"'<>" );
 			if ( '' === $raw ) {
 				return new WP_Error( 'tsh_url', __( 'لینک خالی است.', 'tisacase-hub' ) );
+			}
+			if ( preg_match( '#([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)(?:\.git)?#', $raw, $ow ) && false === stripos( $raw, 'github.com' ) && ! preg_match( '#^https?://#i', $raw ) ) {
+				return array( 'repo' => $ow[1] . '/' . $ow[2], 'branch' => 'main' );
 			}
 			if ( preg_match( '#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$#', $raw ) ) {
 				return array( 'repo' => $raw, 'branch' => 'main' );

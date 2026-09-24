@@ -3,7 +3,7 @@
  * Plugin Name:          اختصاصی تیساکیس (TisaCase Hub)
  * Plugin URI:           https://tisacase.com/
  * Description:           منوی واحد برای همهٔ افزونه‌های اختصاصی، تزریق زبان طراحی مشترک در صفحات آن‌ها، و پایش سلامت/امنیت. افزونه‌ها را اجرا، فعال/غیرفعال و یکدست می‌کند.
- * Version:              1.9.6
+ * Version:              1.9.7
  * Requires at least:    5.8
  * Requires PHP:         7.4
  * Author:               TisaCase

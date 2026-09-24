@@ -892,6 +892,33 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			return $n;
 		}
 
+		/**
+		 * owner/name از POST — بدون وابستگی به فیلد URL که WAF ممکن است خالی کند.
+		 *
+		 * @return array|\\WP_Error
+		 */
+		private static function posted_github() {
+			$owner  = isset( $_POST['gh_owner'] ) ? wp_unslash( $_POST['gh_owner'] ) : '';
+			$name   = isset( $_POST['gh_name'] ) ? wp_unslash( $_POST['gh_name'] ) : '';
+			$branch = isset( $_POST['gh_branch'] ) ? wp_unslash( $_POST['gh_branch'] ) : '';
+			$owner  = preg_replace( '/[^A-Za-z0-9_.-]/', '', (string) $owner );
+			$name   = preg_replace( '/[^A-Za-z0-9_.-]/', '', (string) $name );
+			$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', (string) $branch );
+			if ( $owner && $name ) {
+				return array(
+					'repo'   => $owner . '/' . $name,
+					'branch' => $branch ? $branch : 'main',
+				);
+			}
+			$link = '';
+			if ( isset( $_POST['repo_url'] ) ) {
+				$link = wp_unslash( $_POST['repo_url'] );
+			} elseif ( isset( $_POST['url'] ) ) {
+				$link = wp_unslash( $_POST['url'] );
+			}
+			return TSH_Remote::parse_github_url( $link );
+		}
+
 		/* * * * * * * * * * * AJAX * * * * * * * * * * * */
 
 		/**
@@ -943,13 +970,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			if ( ! current_user_can( 'manage_woocommerce' ) ) {
 				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
 			}
-			$link = '';
-			if ( isset( $_POST['repo_url'] ) ) {
-				$link = wp_unslash( $_POST['repo_url'] );
-			} elseif ( isset( $_POST['url'] ) ) {
-				$link = wp_unslash( $_POST['url'] );
-			}
-			$parsed = TSH_Remote::parse_github_url( $link );
+			$parsed = self::posted_github();
 			if ( is_wp_error( $parsed ) ) {
 				wp_send_json_error( array( 'msg' => $parsed->get_error_message() ) );
 			}
