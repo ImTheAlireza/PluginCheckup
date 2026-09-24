@@ -657,6 +657,16 @@ a.tsh-card__title:hover {
 	margin: 0;
 }
 
+.tsh-upd-repo {
+	display: inline-flex;
+	margin: 0;
+}
+
+.tsh-tool--repo:hover {
+	color: var(--tisa-primary-ink, #0A5F52);
+	background: var(--tisa-primary-soft, #E8F0EE);
+}
+
 .tisa-hub-tile__upd input[type="file"] {
 	position: absolute;
 	width: 1px;

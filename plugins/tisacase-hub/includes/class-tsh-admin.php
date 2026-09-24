@@ -39,7 +39,11 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			add_action( 'admin_post_tisacase_hub_action', array( __CLASS__, 'handle_action' ) );
 			add_action( 'admin_post_tisacase_hub_save', array( __CLASS__, 'handle_save' ) );
 			add_action( 'admin_post_tisacase_hub_update', array( __CLASS__, 'handle_update' ) );
+			add_action( 'admin_post_tisacase_hub_update_repo', array( __CLASS__, 'handle_update_repo' ) );
 			add_action( 'admin_post_tisacase_hub_install', array( __CLASS__, 'handle_install' ) );
+			if ( class_exists( 'TSH_Remote' ) ) {
+				TSH_Remote::allow();
+			}
 			// بنرهای افزونه‌های دیگر (آپدیت دیجی‌پی، ووکامرس، …) روی صفحه‌های هاب چاپ نشوند.
 			add_action( 'in_admin_header', array( __CLASS__, 'mute_foreign_notices' ), 999 );
 			add_action( 'admin_bar_menu', array( __CLASS__, 'admin_bar' ), 61 );
@@ -562,9 +566,9 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
 				exit;
 			}
-			$dir = (string) $items[ $key ]['dir'];
-			$url = TSH_Registry::zip_url( $items[ $key ] );
-			if ( '' === $url ) {
+			$dir  = (string) $items[ $key ]['dir'];
+			$urls = class_exists( 'TSH_Remote' ) ? TSH_Remote::mirrors( $items[ $key ] ) : array( TSH_Registry::zip_url( $items[ $key ] ) );
+			if ( empty( $urls ) ) {
 				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
 				exit;
 			}
@@ -574,13 +578,13 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 			require_once ABSPATH . 'wp-admin/includes/misc.php';
 
-			$tmp = download_url( $url, 90 );
+			$tmp = TSH_Remote::download_zip( $urls );
 			if ( is_wp_error( $tmp ) ) {
 				wp_safe_redirect(
 					add_query_arg(
 						array(
 							'tsh_msg' => 'inst_failed',
-							'tsh_err' => rawurlencode( $tmp->get_error_message() . ' — ' . $url ),
+							'tsh_err' => rawurlencode( $tmp->get_error_message() ),
 						),
 						$back
 					)
@@ -728,6 +732,95 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			}
 
 			wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'updated', 'tsh_item' => $key ), $back ) );
+			exit;
+		}
+
+		/**
+		 * به‌روزرسانی از مخزن (همان زیپ نصب از مخزن، با بازنویسی پوشهٔ فعلی).
+		 *
+		 * @return void
+		 */
+		public static function handle_update_repo() {
+			$key = isset( $_POST['item'] ) ? sanitize_key( wp_unslash( $_POST['item'] ) ) : '';
+			check_admin_referer( 'tsh_update_repo_' . $key, '_tshnonce' );
+
+			$back = admin_url( 'admin.php?page=' . TSH_SLUG );
+			if ( ! current_user_can( 'update_plugins' ) || ! current_user_can( 'upload_plugins' ) ) {
+				wp_die( esc_html__( 'برای به‌روزرسانی افزونه اجازه ندارید.', 'tisacase-hub' ) );
+			}
+
+			$items = TSH_Registry::items();
+			if ( ! isset( $items[ $key ] ) || empty( $items[ $key ]['dir'] ) ) {
+				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
+				exit;
+			}
+			$dir  = (string) $items[ $key ]['dir'];
+			$urls = class_exists( 'TSH_Remote' ) ? TSH_Remote::mirrors( $items[ $key ] ) : array( TSH_Registry::zip_url( $items[ $key ] ) );
+			if ( empty( $urls ) ) {
+				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
+				exit;
+			}
+
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+			require_once ABSPATH . 'wp-admin/includes/misc.php';
+
+			$was_active = false;
+			$old_base   = TSH_Registry::basename_for( $dir );
+			if ( $old_base ) {
+				$was_active = is_plugin_active( $old_base );
+			}
+
+			$tmp = TSH_Remote::download_zip( $urls );
+			if ( is_wp_error( $tmp ) ) {
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_failed', 'tsh_err' => rawurlencode( $tmp->get_error_message() ) ), $back ) );
+				exit;
+			}
+
+			if ( class_exists( 'ZipArchive' ) ) {
+				$zip = new ZipArchive();
+				$top = '';
+				if ( true === $zip->open( $tmp ) ) {
+					$top = strtok( (string) $zip->getNameIndex( 0 ), '/' );
+					$zip->close();
+				}
+				if ( $top !== $dir ) {
+					wp_delete_file( $tmp );
+					wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_wrong', 'tsh_err' => rawurlencode( $top . ' ≠ ' . $dir ) ), $back ) );
+					exit;
+				}
+			}
+
+			$skin     = new Automatic_Upgrader_Skin();
+			$upgrader = new Plugin_Upgrader( $skin );
+			$result   = $upgrader->install(
+				$tmp,
+				array(
+					'overwrite_package'  => true,
+					'clear_update_cache' => true,
+				)
+			);
+			wp_delete_file( $tmp );
+
+			if ( is_wp_error( $result ) || ! $result ) {
+				$err = is_wp_error( $result ) ? $result->get_error_message() : implode( ' ', (array) $skin->get_upgrade_messages() );
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_failed', 'tsh_err' => rawurlencode( $err ) ), $back ) );
+				exit;
+			}
+
+			TSH_UI::flush();
+			wp_clean_plugins_cache( true );
+			self::sweep_temp_write_tests();
+
+			if ( $was_active ) {
+				$new_base = $upgrader->plugin_info();
+				if ( $new_base && ! is_plugin_active( $new_base ) ) {
+					activate_plugin( $new_base, '', is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $old_base ) );
+				}
+			}
+
+			wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'updated_repo', 'tsh_item' => $key ), $back ) );
 			exit;
 		}
 
@@ -886,6 +979,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				'failed'      => array( 'error', sprintf( /* translators: %s: error */ __( 'فعال‌سازی نشد: %s', 'tisacase-hub' ), $err ) ),
 				'bad'         => array( 'error', __( 'اقدام نامعتبر بود.', 'tisacase-hub' ) ),
 				'updated'     => array( 'success', __( 'افزونه به‌روزرسانی شد.', 'tisacase-hub' ) ),
+				'updated_repo'=> array( 'success', __( 'افزونه از مخزن به‌روزرسانی شد.', 'tisacase-hub' ) ),
 				'upd_failed'  => array( 'error', sprintf( /* translators: %s: error */ __( 'به‌روزرسانی نشد: %s', 'tisacase-hub' ), $err ) ),
 				'upd_wrong'   => array( 'error', sprintf( /* translators: %s: dirs */ __( 'این زیپ مال این کارت نیست (%s).', 'tisacase-hub' ), $err ) ),
 				'installed'   => array( 'success', __( 'افزونه از مخزن نصب و فعال شد.', 'tisacase-hub' ) ),

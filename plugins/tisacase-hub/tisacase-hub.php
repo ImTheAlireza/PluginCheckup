@@ -3,7 +3,7 @@
  * Plugin Name:          اختصاصی تیساکیس (TisaCase Hub)
  * Plugin URI:           https://tisacase.com/
  * Description:           منوی واحد برای همهٔ افزونه‌های اختصاصی، تزریق زبان طراحی مشترک در صفحات آن‌ها، و پایش سلامت/امنیت. افزونه‌ها را اجرا، فعال/غیرفعال و یکدست می‌کند.
- * Version:              1.7.1
+ * Version:              1.8.0
  * Requires at least:    5.8
  * Requires PHP:         7.4
  * Author:               TisaCase
@@ -20,7 +20,7 @@
 defined( 'ABSPATH' ) || exit;
 
 if ( ! defined( 'TSH_VERSION' ) ) {
-	define( 'TSH_VERSION', '1.7.1' );
+	define( 'TSH_VERSION', '1.8.0' );
 }
 if ( ! defined( 'TSH_FILE' ) ) {
 	define( 'TSH_FILE', __FILE__ );
@@ -47,6 +47,7 @@ if ( ! defined( 'TSH_SLUG' ) ) {
 
 require_once TSH_DIR . 'includes/class-tsh-view.php';
 require_once TSH_DIR . 'includes/class-tsh-registry.php';
+require_once TSH_DIR . 'includes/class-tsh-remote.php';
 require_once TSH_DIR . 'includes/class-tsh-ui.php';
 require_once TSH_DIR . 'includes/class-tsh-admin.php';
 require_once TSH_DIR . 'includes/tpl-card.php';
