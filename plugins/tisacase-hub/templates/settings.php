@@ -203,6 +203,27 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 			</div>
 		</div>
 
+		<h2 class="tisa-h2" style="margin-top:var(--tisa-sp-6)"><?php esc_html_e( 'مخزن و شاخه', 'tisacase-hub' ); ?></h2>
+
+		<div class="tisa-setrow">
+			<div class="tisa-setrow__text">
+				<b class="tisa-h3"><?php esc_html_e( 'مخزن GitHub و شاخهٔ متصل', 'tisacase-hub' ); ?></b>
+				<p class="tisa-meta"><?php esc_html_e( 'نصب، به‌روزرسانی از مخزن، و شناسایی افزونهٔ جدید از همین مخزن و همین شاخه خوانده می‌شود. برای کار روی برنچ جدا، نام برنچ را اینجا بگذارید و ذخیره کنید؛ لازم نیست هاب را عوض کنید.', 'tisacase-hub' ); ?></p>
+			</div>
+			<div class="tisa-setrow__control" style="display:flex;flex-direction:column;gap:8px;min-width:280px">
+				<label class="tisa-hint" for="tsh-repo"><?php esc_html_e( 'مخزن (owner/name)', 'tisacase-hub' ); ?></label>
+				<input type="text" id="tsh-repo" class="tisa-input tisa-input--code" dir="ltr"
+					name="<?php echo esc_attr( $opt ); ?>[repo]"
+					value="<?php echo esc_attr( isset( $settings['repo'] ) ? $settings['repo'] : 'ImTheAlireza/TisaCaseHub' ); ?>"
+					placeholder="ImTheAlireza/TisaCaseHub">
+				<label class="tisa-hint" for="tsh-branch"><?php esc_html_e( 'شاخه', 'tisacase-hub' ); ?></label>
+				<input type="text" id="tsh-branch" class="tisa-input tisa-input--code" dir="ltr"
+					name="<?php echo esc_attr( $opt ); ?>[branch]"
+					value="<?php echo esc_attr( isset( $settings['branch'] ) ? $settings['branch'] : 'main' ); ?>"
+					placeholder="main">
+			</div>
+		</div>
+
 		<h2 class="tisa-h2" style="margin-top:var(--tisa-sp-6)"><?php esc_html_e( 'نصب از مخزن', 'tisacase-hub' ); ?></h2>
 
 		<div class="tisa-setrow">
@@ -232,6 +253,29 @@ $snippet = "# فایل اصلی افزونه — فقط یک خط هدر، بد�
 			<?php submit_button( __( 'ذخیرهٔ تنظیمات', 'tisacase-hub' ), 'primary', 'submit', false ); ?>
 			<span class="tisa-hint"><?php esc_html_e( 'بلافاصله روی همهٔ صفحه‌ها اعمال می‌شود.', 'tisacase-hub' ); ?></span>
 		</p>
+	</form>
+
+	<?php
+	$cat     = class_exists( 'TSH_Remote' ) ? TSH_Remote::catalog() : array();
+	$cat_n   = isset( $cat['items'] ) ? count( (array) $cat['items'] ) : 0;
+	$cat_at  = ! empty( $cat['at'] ) ? wp_date( 'Y-m-d H:i', (int) $cat['at'] ) : '';
+	$cat_br  = isset( $cat['branch'] ) ? $cat['branch'] : '';
+	?>
+	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:var(--tisa-sp-4)">
+		<input type="hidden" name="action" value="tisacase_hub_sync">
+		<?php wp_nonce_field( 'tsh_sync_catalog', '_tshnonce' ); ?>
+		<div class="tisa-setrow">
+			<div class="tisa-setrow__text">
+				<b class="tisa-h3"><?php esc_html_e( 'شناسایی افزونه‌های مخزن', 'tisacase-hub' ); ?></b>
+				<p class="tisa-meta"><?php esc_html_e( 'زیپ‌های plugins/dist روی شاخهٔ ذخیره‌شده را می‌خواند و کارت افزونهٔ جدید می‌سازد — بدون به‌روزرسانی خودِ هاب. اول مخزن و شاخه را ذخیره کنید، بعد این دکمه را بزنید.', 'tisacase-hub' ); ?></p>
+				<?php if ( $cat_at ) : ?>
+					<p class="tisa-hint" dir="ltr"><?php echo esc_html( sprintf( /* translators: 1: branch, 2: count, 3: time */ __( 'آخرین همگام‌سازی: %1$s · %2$s افزونه · %3$s', 'tisacase-hub' ), $cat_br, (string) $cat_n, $cat_at ) ); ?></p>
+				<?php endif; ?>
+			</div>
+			<div class="tisa-setrow__control">
+				<button type="submit" class="tisa-btn tisa-btn--primary"><?php esc_html_e( 'همگام‌سازی با مخزن', 'tisacase-hub' ); ?></button>
+			</div>
+		</div>
 	</form>
 
 	<section class="tisa-card" id="tsh-dev">

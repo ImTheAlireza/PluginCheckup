@@ -99,9 +99,11 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 					$urls[] = $primary;
 				}
 			}
-			$urls[] = 'https://cdn.jsdelivr.net/gh/ImTheAlireza/TisaCaseHub@main/plugins/dist/' . $file;
-			$urls[] = 'https://github.com/ImTheAlireza/TisaCaseHub/raw/main/plugins/dist/' . $file;
-			$urls[] = 'https://raw.githubusercontent.com/ImTheAlireza/TisaCaseHub/main/plugins/dist/' . $file;
+			$repo   = self::repo();
+			$branch = self::branch();
+			$urls[] = 'https://cdn.jsdelivr.net/gh/' . $repo . '@' . $branch . '/plugins/dist/' . $file;
+			$urls[] = 'https://github.com/' . $repo . '/raw/' . $branch . '/plugins/dist/' . $file;
+			$urls[] = 'https://raw.githubusercontent.com/' . $repo . '/' . $branch . '/plugins/dist/' . $file;
 
 			$out = array();
 			foreach ( $urls as $url ) {
@@ -131,7 +133,7 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 					continue;
 				}
 				$got = self::fetch_one( $url );
-				if ( ! is_wp_error( $got ) && is_string( $got ) && is_readable( $got ) && filesize( $got ) > 64 ) {
+				if ( ! is_wp_error( $got ) && is_string( $got ) && is_readable( $got ) && filesize( $got ) > 8 ) {
 					return $got;
 				}
 				$last = is_wp_error( $got ) ? $got : new WP_Error( 'tsh_empty_zip', __( 'فایل زیپ خالی رسید.', 'tisacase-hub' ) );
@@ -280,6 +282,166 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 			file_put_contents( $tmp, $body );
 			return $tmp;
+		}
+
+		public static function repo() {
+			$repo = 'ImTheAlireza/TisaCaseHub';
+			if ( class_exists( 'TSH_UI' ) ) {
+				$raw = trim( (string) TSH_UI::setting( 'repo', $repo ) );
+				if ( $raw && preg_match( '#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$#', $raw ) ) {
+					$repo = $raw;
+				}
+			}
+			return $repo;
+		}
+
+		public static function branch() {
+			$branch = 'main';
+			if ( class_exists( 'TSH_UI' ) ) {
+				$raw = trim( (string) TSH_UI::setting( 'branch', $branch ) );
+				$raw = preg_replace( '#[^A-Za-z0-9._/-]#', '', $raw );
+				if ( $raw ) {
+					$branch = $raw;
+				}
+			}
+			return $branch;
+		}
+
+		public static function get_text( $urls ) {
+			$tmp = self::download_zip( $urls );
+			if ( is_wp_error( $tmp ) ) {
+				return $tmp;
+			}
+			$body = is_readable( $tmp ) ? (string) file_get_contents( $tmp ) : '';
+			wp_delete_file( $tmp );
+			return $body;
+		}
+
+		public static function sync_catalog() {
+			self::allow();
+			$repo   = self::repo();
+			$branch = self::branch();
+			$api    = 'https://api.github.com/repos/' . $repo . '/contents/plugins/dist?ref=' . rawurlencode( $branch );
+			$body   = self::get_text( array( $api ) );
+			if ( is_wp_error( $body ) ) {
+				return $body;
+			}
+			$data = json_decode( $body, true );
+			if ( ! is_array( $data ) ) {
+				return new WP_Error( 'tsh_catalog', __( 'فهرست مخزن خوانده نشد.', 'tisacase-hub' ) );
+			}
+			if ( isset( $data['message'] ) && ! isset( $data[0] ) ) {
+				return new WP_Error( 'tsh_catalog', (string) $data['message'] );
+			}
+			$items = array();
+			foreach ( $data as $row ) {
+				if ( ! is_array( $row ) || empty( $row['name'] ) ) {
+					continue;
+				}
+				if ( ( isset( $row['type'] ) ? $row['type'] : 'file' ) !== 'file' ) {
+					continue;
+				}
+				$name = (string) $row['name'];
+				if ( ! preg_match( '/^([a-zA-Z0-9._-]+)\.zip$/', $name, $m ) ) {
+					continue;
+				}
+				$dir = $m[1];
+				if ( 'tisacase-hub' === $dir ) {
+					continue;
+				}
+				$meta = self::plugin_meta( $repo, $branch, $dir );
+				$key  = sanitize_key( isset( $meta['key'] ) ? $meta['key'] : $dir );
+				$items[ $key ] = array(
+					'title'  => $meta['title'],
+					'desc'   => $meta['desc'],
+					'group'  => $meta['group'],
+					'icon'   => $meta['icon'],
+					'dir'    => $dir,
+					'cap'    => $meta['cap'],
+					'pages'  => $meta['pages'],
+					'source' => 'github',
+				);
+			}
+			$pack = array(
+				'repo'   => $repo,
+				'branch' => $branch,
+				'at'     => time(),
+				'items'  => $items,
+			);
+			update_option( 'tisacase_hub_catalog', $pack, false );
+			return $pack;
+		}
+
+		public static function catalog() {
+			$pack = get_option( 'tisacase_hub_catalog', array() );
+			return is_array( $pack ) ? $pack : array();
+		}
+
+		private static function plugin_meta( $repo, $branch, $dir ) {
+			$out = array(
+				'title' => $dir,
+				'desc'  => '',
+				'group' => 'products',
+				'icon'  => 'plug',
+				'cap'   => 'manage_woocommerce',
+				'pages' => array(),
+				'key'   => sanitize_key( $dir ),
+			);
+			$list_url = 'https://api.github.com/repos/' . $repo . '/contents/plugins/src/' . rawurlencode( $dir ) . '?ref=' . rawurlencode( $branch );
+			$body     = self::get_text( array( $list_url ) );
+			$files    = array();
+			if ( ! is_wp_error( $body ) ) {
+				$decoded = json_decode( $body, true );
+				if ( is_array( $decoded ) ) {
+					foreach ( $decoded as $row ) {
+						if ( empty( $row['name'] ) || empty( $row['download_url'] ) ) {
+							continue;
+						}
+						if ( preg_match( '/\.php$/', (string) $row['name'] ) ) {
+							$files[] = (string) $row['download_url'];
+						}
+					}
+				}
+			}
+			$files[] = 'https://raw.githubusercontent.com/' . $repo . '/' . $branch . '/plugins/src/' . $dir . '/' . $dir . '.php';
+			foreach ( $files as $file_url ) {
+				$php = self::get_text( array( $file_url ) );
+				if ( is_wp_error( $php ) || false === strpos( (string) $php, 'Plugin Name:' ) ) {
+					continue;
+				}
+				$name = self::header_value( $php, 'Plugin Name' );
+				$desc = self::header_value( $php, 'Description' );
+				$hub  = self::header_value( $php, 'TisaCase Hub' );
+				if ( $name ) { $out['title'] = $name; }
+				if ( $desc ) { $out['desc'] = wp_strip_all_tags( $desc ); }
+				if ( $hub && class_exists( 'TSH_Registry' ) ) {
+					$parsed = TSH_Registry::parse_header( $hub );
+					if ( ! empty( $parsed['title'] ) ) { $out['title'] = $parsed['title']; }
+					if ( ! empty( $parsed['desc'] ) ) { $out['desc'] = $parsed['desc']; }
+					if ( ! empty( $parsed['group'] ) ) { $out['group'] = $parsed['group']; }
+					if ( ! empty( $parsed['icon'] ) ) { $out['icon'] = $parsed['icon']; }
+					if ( ! empty( $parsed['cap'] ) ) { $out['cap'] = $parsed['cap']; }
+					if ( ! empty( $parsed['key'] ) ) { $out['key'] = sanitize_key( $parsed['key'] ); }
+					if ( ! empty( $parsed['page'] ) ) {
+						$out['pages'][] = array(
+							'label'  => __( 'باز کردن', 'tisacase-hub' ),
+							'path'   => $parsed['page'],
+							'screen' => isset( $parsed['screen'] ) ? $parsed['screen'] : '',
+							'parent' => isset( $parsed['parent'] ) ? $parsed['parent'] : '',
+							'slug'   => isset( $parsed['slug'] ) ? $parsed['slug'] : '',
+						);
+					}
+				}
+				break;
+			}
+			return $out;
+		}
+
+		private static function header_value( $php, $key ) {
+			if ( preg_match( '/^[ \t\/*#@]*' . preg_quote( $key, '/' ) . ':[ \t]*(.+)$/mi', $php, $m ) ) {
+				return trim( $m[1] );
+			}
+			return '';
 		}
 	}
 }

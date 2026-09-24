@@ -397,6 +397,9 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 			if ( class_exists( 'TSH_UI' ) ) {
 				$base = trim( (string) TSH_UI::setting( 'zip_base', '' ) );
 			}
+			if ( '' === $base && class_exists( 'TSH_Remote' ) ) {
+				$base = 'https://cdn.jsdelivr.net/gh/' . TSH_Remote::repo() . '@' . TSH_Remote::branch() . '/plugins/dist/';
+			}
 			if ( '' === $base ) {
 				$base = self::ZIP_BASE;
 			}
@@ -466,6 +469,36 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 		 * @param bool $refresh پاک کردن کش درخواستی.
 		 * @return array<string,array>
 		 */
+		/**
+		 * افزونه‌هایی که با همگام‌سازی مخزن پیدا شده‌اند و در فهرست داخلی نیستند.
+		 *
+		 * @param array $items آیتم‌ها.
+		 * @return array
+		 */
+		private static function merge_catalog( $items ) {
+			if ( ! class_exists( 'TSH_Remote' ) ) {
+				return $items;
+			}
+			$pack  = TSH_Remote::catalog();
+			$extra = isset( $pack['items'] ) && is_array( $pack['items'] ) ? $pack['items'] : array();
+			$dirs  = array();
+			foreach ( $items as $it ) {
+				if ( ! empty( $it['dir'] ) ) {
+					$dirs[ $it['dir'] ] = true;
+				}
+			}
+			foreach ( $extra as $key => $it ) {
+				if ( ! is_array( $it ) || empty( $it['dir'] ) ) {
+					continue;
+				}
+				if ( isset( $items[ $key ] ) || isset( $dirs[ $it['dir'] ] ) ) {
+					continue;
+				}
+				$items[ $key ] = $it;
+			}
+			return $items;
+		}
+
 		public static function items( $refresh = false ) {
 			if ( null !== self::$items && ! $refresh ) {
 				return self::$items;

@@ -44,6 +44,8 @@ if ( ! class_exists( 'TSH_UI' ) ) {
 				'hidden'         => array(),
 				// پایهٔ آدرس زیپ‌های مجموعه برای دکمهٔ «نصب از مخزن» (خالی = پیش‌فرض هاب).
 				'zip_base'       => '',
+				'repo'           => 'ImTheAlireza/TisaCaseHub',
+				'branch'         => 'main',
 			);
 		}
 

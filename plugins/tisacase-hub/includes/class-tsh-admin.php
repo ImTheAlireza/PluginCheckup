@@ -259,6 +259,12 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			}
 			$out['zip_base'] = $zip_base;
 
+			$repo = isset( $in['repo'] ) ? trim( (string) $in['repo'] ) : 'ImTheAlireza/TisaCaseHub';
+			$out['repo'] = preg_match( '#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$#', $repo ) ? $repo : 'ImTheAlireza/TisaCaseHub';
+			$branch = isset( $in['branch'] ) ? trim( (string) $in['branch'] ) : 'main';
+			$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', $branch );
+			$out['branch'] = $branch ? $branch : 'main';
+
 			$current = TSH_UI::settings();
 			$hidden  = isset( $in['hidden'] ) ? (array) $in['hidden'] : (array) ( isset( $current['hidden'] ) ? $current['hidden'] : array() );
 			$hidden  = array_values( array_unique( array_map( 'sanitize_key', array_filter( $hidden ) ) ) );
@@ -552,6 +558,28 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		 *
 		 * @return void
 		 */
+		/**
+		 * همگام‌سازی فهرست افزونه‌ها از شاخهٔ تنظیم‌شده.
+		 *
+		 * @return void
+		 */
+		public static function handle_sync() {
+			check_admin_referer( 'tsh_sync_catalog', '_tshnonce' );
+			$back = admin_url( 'admin.php?page=' . TSH_SLUG . '-settings' );
+			if ( ! current_user_can( 'install_plugins' ) && ! current_user_can( 'manage_woocommerce' ) ) {
+				wp_die( esc_html__( 'اجازهٔ همگام‌سازی ندارید.', 'tisacase-hub' ) );
+			}
+			$pack = TSH_Remote::sync_catalog();
+			if ( is_wp_error( $pack ) ) {
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'sync_fail', 'tsh_err' => rawurlencode( $pack->get_error_message() ) ), $back ) );
+				exit;
+			}
+			TSH_Registry::items( true );
+			$count = isset( $pack['items'] ) ? count( $pack['items'] ) : 0;
+			wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'sync_ok', 'tsh_err' => (string) $count ), $back ) );
+			exit;
+		}
+
 		public static function handle_install() {
 			$key = isset( $_POST['item'] ) ? sanitize_key( wp_unslash( $_POST['item'] ) ) : '';
 			check_admin_referer( 'tsh_install_' . $key, '_tshnonce' );
@@ -985,6 +1013,8 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				'installed'   => array( 'success', __( 'افزونه از مخزن نصب و فعال شد.', 'tisacase-hub' ) ),
 				'installed_off' => array( 'success', __( 'افزونه از مخزن نصب شد. برای فعال‌سازی، دکمهٔ «فعال‌سازی» روی همان کارت را بزنید.', 'tisacase-hub' ) ),
 				'inst_failed' => array( 'error', sprintf( /* translators: %s: error */ __( 'نصب از مخزن انجام نشد: %s', 'tisacase-hub' ), $err ) ),
+				'sync_ok'     => array( 'success', sprintf( /* translators: %s: count */ __( 'فهرست مخزن همگام شد (%s افزونه). کارت‌های جدید در صفحهٔ ابزارها ظاهر می‌شوند.', 'tisacase-hub' ), $err ) ),
+				'sync_fail'   => array( 'error', sprintf( /* translators: %s: error */ __( 'همگام‌سازی مخزن نشد: %s', 'tisacase-hub' ), $err ) ),
 			);
 			if ( ! isset( $texts[ $msg ] ) ) {
 				return;
