@@ -425,7 +425,7 @@
 		var testBtn = $( '#tsh-repo-test' );
 		if ( testBtn ) {
 			testBtn.addEventListener( 'click', function () {
-				run( 'tsh_repo_test', { url: input ? input.value : '' } ).then( function ( d ) {
+				run( 'tsh_repo_test', { repo_url: input ? input.value : '' } ).then( function ( d ) {
 					if ( ! d ) { return; }
 					setStatus( d.repo + ' @ ' + d.branch + ' — ' + faDigits( d.count ) + ' زیپ', true );
 				} );
@@ -434,7 +434,7 @@
 		var saveBtn = $( '#tsh-repo-save' );
 		if ( saveBtn ) {
 			saveBtn.addEventListener( 'click', function () {
-				run( 'tsh_repo_connect', { url: input ? input.value : '' } ).then( function ( d ) {
+				run( 'tsh_repo_connect', { repo_url: input ? input.value : '' } ).then( function ( d ) {
 					if ( ! d ) { return; }
 					setStatus( 'متصل شد: ' + d.repo + ' @ ' + d.branch, true );
 					if ( connect ) {

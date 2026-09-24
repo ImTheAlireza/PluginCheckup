@@ -260,15 +260,25 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 					$zip_base .= '/';
 				}
 			}
-			$out['zip_base'] = $zip_base;
-
-			$repo = isset( $in['repo'] ) ? trim( (string) $in['repo'] ) : 'ImTheAlireza/TisaCaseHub';
-			$out['repo'] = preg_match( '#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$#', $repo ) ? $repo : 'ImTheAlireza/TisaCaseHub';
-			$branch = isset( $in['branch'] ) ? trim( (string) $in['branch'] ) : 'main';
-			$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', $branch );
-			$out['branch'] = $branch ? $branch : 'main';
-
 			$current = TSH_UI::settings();
+			if ( array_key_exists( 'zip_base', $in ) ) {
+				$out['zip_base'] = $zip_base;
+			} else {
+				$out['zip_base'] = isset( $current['zip_base'] ) ? $current['zip_base'] : '';
+			}
+
+			if ( isset( $in['repo'] ) ) {
+				$repo = trim( (string) $in['repo'] );
+				$out['repo'] = preg_match( '#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$#', $repo ) ? $repo : ( isset( $current['repo'] ) ? $current['repo'] : 'ImTheAlireza/TisaCaseHub' );
+			} else {
+				$out['repo'] = isset( $current['repo'] ) ? $current['repo'] : 'ImTheAlireza/TisaCaseHub';
+			}
+			if ( isset( $in['branch'] ) ) {
+				$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', trim( (string) $in['branch'] ) );
+				$out['branch'] = $branch ? $branch : 'main';
+			} else {
+				$out['branch'] = isset( $current['branch'] ) ? $current['branch'] : 'main';
+			}
 			$hidden  = isset( $in['hidden'] ) ? (array) $in['hidden'] : (array) ( isset( $current['hidden'] ) ? $current['hidden'] : array() );
 			$hidden  = array_values( array_unique( array_map( 'sanitize_key', array_filter( $hidden ) ) ) );
 			$known   = array_keys( TSH_Registry::items() );
@@ -894,7 +904,13 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			if ( ! current_user_can( 'manage_woocommerce' ) ) {
 				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
 			}
-			$parsed = TSH_Remote::parse_github_url( isset( $_POST['url'] ) ? wp_unslash( $_POST['url'] ) : '' );
+			$link = '';
+			if ( isset( $_POST['repo_url'] ) ) {
+				$link = wp_unslash( $_POST['repo_url'] );
+			} elseif ( isset( $_POST['url'] ) ) {
+				$link = wp_unslash( $_POST['url'] );
+			}
+			$parsed = TSH_Remote::parse_github_url( $link );
 			if ( is_wp_error( $parsed ) ) {
 				wp_send_json_error( array( 'msg' => $parsed->get_error_message() ) );
 			}
@@ -910,7 +926,12 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			if ( ! current_user_can( 'manage_woocommerce' ) ) {
 				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
 			}
-			$parsed = TSH_Remote::parse_github_url( isset( $_POST['url'] ) ? wp_unslash( $_POST['url'] ) : '' );
+			$link = '';
+			if ( isset( $_POST['repo_url'] ) ) {
+				$link = wp_unslash( $_POST['repo_url'] );
+			} elseif ( isset( $_POST['url'] ) ) {
+				$link = wp_unslash( $_POST['url'] );
+			}
 			if ( is_wp_error( $parsed ) ) {
 				wp_send_json_error( array( 'msg' => $parsed->get_error_message() ) );
 			}

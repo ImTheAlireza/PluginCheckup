@@ -317,12 +317,16 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		 * @return array|\WP_Error {repo, branch}
 		 */
 		public static function parse_github_url( $raw ) {
-			$raw = trim( (string) $raw );
-			$raw = preg_replace( '/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', '', $raw );
-			if ( preg_match( '#\]\((https?://[^)\s]+)\)#', $raw, $md ) ) {
-				$raw = $md[1];
-			}
+			$raw = is_string( $raw ) ? $raw : '';
+			$raw = wp_strip_all_tags( $raw );
 			$raw = html_entity_decode( $raw, ENT_QUOTES, 'UTF-8' );
+			$raw = preg_replace( '/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', '', $raw );
+			if ( preg_match( '#https?://(?:www\.)?github\.com/[^\s<>"\']+#i', $raw, $hit ) ) {
+				$raw = rtrim( $hit[0], " \t.,);]" );
+			} elseif ( preg_match( '#github\.com/[^\s<>"\']+#i', $raw, $hit ) ) {
+				$raw = 'https://' . rtrim( $hit[0], " \t.,);]" );
+			}
+			$raw = str_replace( array( '%2F', '%2f' ), '/', $raw );
 			$raw = rawurldecode( $raw );
 			$raw = trim( $raw, " \t\n\r\"'<>" );
 			if ( '' === $raw ) {
@@ -339,10 +343,8 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			$branch = 'main';
 			if ( preg_match( '#/(?:tree|blob|raw)/([^?#]+)#', $raw, $b ) ) {
 				$branch = trim( $b[1], '/' );
-				$branch = preg_replace( '#/(?:blob|tree)(/.*)?$#', '', $branch );
 			}
-			$branch = str_replace( '%2F', '/', $branch );
-			$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', $branch );
+			$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', (string) $branch );
 			if ( ! $branch ) {
 				$branch = 'main';
 			}

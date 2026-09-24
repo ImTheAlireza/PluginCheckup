@@ -797,6 +797,40 @@ body.tisa-compact .tsh-hero.tisa-hero--slim {
    ۶) صفحهٔ تنظیمات
    ================================================================== */
 
+.tsh-set-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin: 16px 0 0;
+}
+.tsh-set-card {
+	padding: 18px 20px 8px;
+	box-shadow: none;
+}
+.tsh-set-card:hover {
+	transform: none;
+}
+.tsh-set-card__h {
+	margin: 0 0 4px;
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: .02em;
+	color: var(--tisa-muted, #77828A);
+}
+.tsh-set-save {
+	display: flex;
+	justify-content: flex-start;
+	padding: 4px 0 24px;
+}
+.tsh-set-more {
+	margin: 0 0 40px;
+	color: var(--tisa-muted, #77828A);
+	font-size: 13px;
+}
+.tsh-set-more summary {
+	cursor: pointer;
+}
+
 .tisa-setrow {
 	display: flex;
 	flex-wrap: wrap;
