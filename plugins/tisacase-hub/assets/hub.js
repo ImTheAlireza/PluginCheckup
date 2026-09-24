@@ -370,4 +370,131 @@
 			history.replaceState( null, '', u.toString() );
 		}
 	} );
+
+	/* اتصال مخزن + همگام‌سازی */
+	( function () {
+		var modal = $( '#tsh-repo-modal' );
+		var input = $( '#tsh-repo-url' );
+		var status = $( '#tsh-repo-status' );
+		var connect = $( '#tsh-connect' );
+		var sync = $( '#tsh-sync' );
+
+		function setStatus( text, ok ) {
+			if ( ! status ) { return; }
+			status.hidden = ! text;
+			status.textContent = text || '';
+			status.className = 'tsh-modal__status' + ( ok === true ? ' is-ok' : ok === false ? ' is-bad' : '' );
+		}
+
+		function openModal() {
+			if ( ! modal ) { return; }
+			modal.hidden = false;
+			if ( input ) {
+				input.value = ( connect && connect.getAttribute( 'data-url' ) ) || input.value || '';
+				window.setTimeout( function () { input.focus(); }, 30 );
+			}
+			setStatus( '', null );
+		}
+
+		function closeModal() {
+			if ( modal ) { modal.hidden = true; }
+		}
+
+		if ( connect ) { connect.addEventListener( 'click', openModal ); }
+		if ( modal ) {
+			$$( '[data-close]', modal ).forEach( function ( el ) {
+				el.addEventListener( 'click', closeModal );
+			} );
+		}
+
+		function parseGh( raw ) {
+			var s = String( raw || '' ).replace( /[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, '' ).trim();
+			var owner = '';
+			var name = '';
+			var branch = 'main';
+			var m = s.match( /github\.com[/:]([^/\s?#]+)\/([^/\s?#]+)/i );
+			if ( m ) {
+				owner = m[1];
+				name = m[2].replace( /\.git$/i, '' );
+				var t = s.match( /\/(?:tree|blob|raw)\/([^?#]+)/i );
+				if ( t && t[1] ) {
+					branch = decodeURIComponent( String( t[1] ).replace( /%2F/ig, '/' ) ).replace( /\/+$/, '' ) || 'main';
+				}
+			} else {
+				m = s.match( /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/ );
+				if ( m ) {
+					owner = m[1];
+					name = m[2];
+				}
+			}
+			if ( ! owner || ! name ) {
+				return null;
+			}
+			return { gh_owner: owner, gh_name: name, gh_branch: branch };
+		}
+
+		function run( action, extra ) {
+			setStatus( '…', null );
+			return post( action, extra || {} ).then( function ( res ) {
+				if ( ! res || ! res.success ) {
+					var msg = ( res && res.data && res.data.msg ) ? res.data.msg : ( cfg.i18n && cfg.i18n.error );
+					setStatus( msg, false );
+					return null;
+				}
+				return res.data || {};
+			} ).catch( function () {
+				setStatus( cfg.i18n && cfg.i18n.error, false );
+				return null;
+			} );
+		}
+
+		var testBtn = $( '#tsh-repo-test' );
+		if ( testBtn ) {
+			testBtn.addEventListener( 'click', function () {
+				var p = parseGh( input ? input.value : '' );
+				if ( ! p ) {
+					setStatus( 'این لینک گیت‌هاب نیست. مثل https://github.com/owner/repo بچسبانید.', false );
+					return;
+				}
+				run( 'tsh_repo_test', p ).then( function ( d ) {
+					if ( ! d ) { return; }
+					var extra = d.remote === false ? ' (فهرست همراه هاب؛ سرور به گیت‌هاب وصل نشد)' : '';
+					setStatus( d.repo + ' @ ' + d.branch + ' — ' + faDigits( d.count ) + ' زیپ' + extra, true );
+				} );
+			} );
+		}
+		var saveBtn = $( '#tsh-repo-save' );
+		if ( saveBtn ) {
+			saveBtn.addEventListener( 'click', function () {
+				var p = parseGh( input ? input.value : '' );
+				if ( ! p ) {
+					setStatus( 'این لینک گیت‌هاب نیست. مثل https://github.com/owner/repo بچسبانید.', false );
+					return;
+				}
+				run( 'tsh_repo_connect', p ).then( function ( d ) {
+					if ( ! d ) { return; }
+					setStatus( 'متصل شد: ' + d.repo + ' @ ' + d.branch, true );
+					if ( connect ) {
+						connect.setAttribute( 'data-url', 'https://github.com/' + d.repo + ( d.branch && d.branch !== 'main' ? '/tree/' + d.branch : '' ) );
+					}
+				} );
+			} );
+		}
+		if ( sync ) {
+			sync.addEventListener( 'click', function () {
+				sync.disabled = true;
+				post( 'tsh_repo_sync', {} ).then( function ( res ) {
+					if ( ! res || ! res.success ) {
+						window.alert( ( res && res.data && res.data.msg ) || ( cfg.i18n && cfg.i18n.error ) );
+						sync.disabled = false;
+						return;
+					}
+					window.location.reload();
+				} ).catch( function () {
+					window.alert( cfg.i18n && cfg.i18n.error );
+					sync.disabled = false;
+				} );
+			} );
+		}
+	}() );
 }() );

@@ -36,8 +36,9 @@
 			colorMap: raw.colorMap || [],
 			i18n: raw.i18n || {},
 			ui: {
-				mode: ui.mode || 'panel',
-				layout: ui.layout || 'chips',
+			mode: ui.mode || 'panel',
+			picker: ui.picker || 'accordion',
+			layout: ui.layout || 'chips',
 				separator: ui.separator || 'line',
 				groupStyle: ui.group_style || ui.groupStyle || 'header',
 				sort: ui.sort || 'asis',
@@ -279,6 +280,17 @@
 			values.push(v);
 		}
 		return values;
+	}
+
+	function optionLabel(select, value) {
+		var options = select.options || [];
+		for (var i = 0; i < options.length; i++) {
+			if (options[i].value === value) {
+				var text = clean(options[i].text);
+				return text || value;
+			}
+		}
+		return value;
 	}
 
 	function shouldGroup(attrKey, values) {
@@ -532,142 +544,150 @@
 		var groups = groupValues(values);
 		if (!groups.length) { return null; }
 
-		var root = el('div', 'tcbv tcbv--panel');
+		var picker = CFG.ui.picker === 'open' ? 'open' : 'accordion';
+		var root = el('div', 'tcbv tcbv--brands tcbv--' + picker);
 		root.setAttribute('data-tcbv-kind', 'brand');
-		root.setAttribute('data-tcbv-layout', CFG.ui.layout);
+		root.setAttribute('data-tcbv-picker', picker);
+		root.setAttribute('data-tcbv-layout', 'chips');
 		root.setAttribute('data-tcbv-sep', CFG.ui.separator);
-		root.setAttribute('data-tcbv-group', CFG.ui.groupStyle);
-		if (!CFG.ui.sticky) { root.classList.add('tcbv--no-sticky'); }
-		if (CFG.ui.colorsOnItems) { root.classList.add('tcbv--tinted'); }
-		if (CFG.ui.highlight) { root.classList.add('tcbv--hl'); }
-
-		var label = fieldLabel(select);
-		var total = values.length;
-
-		// — نوار بالا: جستجو + شمارنده
-		if (CFG.ui.search || CFG.ui.counts || CFG.ui.showLabel) {
-			var bar = el('div', 'tcbv-bar');
-			if (CFG.ui.showLabel && label) {
-				bar.appendChild(el('span', 'tcbv-label', label));
-			}
-			if (CFG.ui.search) {
-				var box = el('div', 'tcbv-search');
-				var input = el('input', 'tcbv-input');
-				input.type = 'search';
-				input.placeholder = CFG.ui.searchPlaceholder;
-				input.setAttribute('aria-label', CFG.ui.searchPlaceholder);
-				input.autocomplete = 'off';
-				box.appendChild(input);
-
-				var clear = el('button', 'tcbv-clear');
-				clear.type = 'button';
-				clear.setAttribute('aria-label', CFG.i18n.clear || 'پاک کردن');
-				clear.hidden = true;
-				box.appendChild(clear);
-				bar.appendChild(box);
-
-				box.__input = input;
-				box.__clear = clear;
-			}
-			if (CFG.ui.counts) {
-				bar.appendChild(el('span', 'tcbv-total', fa(total) + ' ' + (CFG.i18n.models || 'مدل')));
-			}
-			root.appendChild(bar);
-			root.__bar = bar;
-
-			var selected = el('span', 'tcbv-selected');
-			selected.hidden = true;
-			bar.appendChild(selected);
-			select.__tcbvLabel = selected;
-		}
-
-		// — چیپ‌های فیلتر برند
-		var chipsBar = null;
-		if (CFG.ui.chips && groups.length > 1) {
-			chipsBar = el('div', 'tcbv-chips');
-			var allChip = el('button', 'tcbv-chip is-active', CFG.i18n.all || 'همه');
-			allChip.type = 'button';
-			allChip.setAttribute('data-brand', '');
-			chipsBar.appendChild(allChip);
-			for (var c = 0; c < groups.length; c++) {
-				var chip = el('button', 'tcbv-chip');
-				chip.type = 'button';
-				chip.setAttribute('data-brand', groups[c].id);
-				chip.style.setProperty('--tcbv-c', groups[c].color || 'currentColor');
-				var dotC = el('span', 'tcbv-dot');
-				chip.appendChild(dotC);
-				chip.appendChild(el('span', 'tcbv-chip-text', groups[c].label));
-				chipsBar.appendChild(chip);
-			}
-			root.appendChild(chipsBar);
-		}
-
-		// — پنل: گروه‌ها + جداکننده‌ها
-		var panel = el('div', 'tcbv-panel');
-		panel.setAttribute('role', 'listbox');
-		panel.setAttribute('aria-label', label || CFG.i18n.models || 'انتخاب گزینه');
-		panel.style.setProperty('--tcbv-max-h', CFG.ui.maxHeight + 'px');
 
 		var items = [];
-		var nodes = [];
+		var drops = [];
+		var state = { query: '', oosSet: null, openId: '', manual: false };
+		var oosMode = CFG.ui.oos;
 
-		for (var g = 0; g < groups.length; g++) {
-			var group = groups[g];
+		var searchWrap = el('div', 'tcbv-search tcbv-search--global');
+		var searchInput = el('input', 'tcbv-input');
+		searchInput.type = 'text';
+		searchInput.placeholder = CFG.ui.searchPlaceholder || 'جستجوی مدل…';
+		searchInput.setAttribute('aria-label', searchInput.placeholder);
+		searchInput.autocomplete = 'off';
+		searchWrap.appendChild(searchInput);
+		var searchClear = el('button', 'tcbv-clear');
+		searchClear.type = 'button';
+		searchClear.setAttribute('aria-label', CFG.i18n.clear || 'پاک کردن');
+		searchClear.hidden = true;
+		searchWrap.appendChild(searchClear);
+		root.appendChild(searchWrap);
 
-			if (g > 0 && CFG.ui.separator !== 'none') {
-				var sep = el('div', 'tcbv-sep');
-				sep.setAttribute('role', 'separator');
-				if (CFG.ui.separator === 'label') {
-					sep.appendChild(el('span', 'tcbv-sep-label', group.label));
-				}
-				panel.appendChild(sep);
-				nodes.push(sep);
-			}
+		var list = el('div', 'tcbv-dd-list');
 
-			var section = el('section', 'tcbv-group');
-			section.setAttribute('data-brand', group.id);
-			section.style.setProperty('--tcbv-c', group.color || 'currentColor');
-
-			var head = el('header', 'tcbv-ghead');
-			head.appendChild(el('span', 'tcbv-dot'));
-			if (group.icon) { head.appendChild(el('span', 'tcbv-gicon', group.icon)); }
-			head.appendChild(el('span', 'tcbv-gname', group.label));
-			if (CFG.ui.counts) { head.appendChild(el('span', 'tcbv-gcount', fa(group.values.length))); }
-			section.appendChild(head);
-
-			var list = el('div', 'tcbv-items');
-			for (var v = 0; v < group.values.length; v++) {
-				var value = group.values[v];
-				var item = el('button', 'tcbv-item');
-				item.type = 'button';
-				item.setAttribute('role', 'option');
-				item.setAttribute('data-value', value);
-				item.setAttribute('data-brand', group.id);
-				item.setAttribute('data-key', keyOf(value));
-				item.setAttribute('aria-selected', 'false');
-				item.appendChild(el('span', 'tcbv-item-text', value));
-				item.title = value;
-				list.appendChild(item);
-				items.push(item);
-			}
-			section.appendChild(list);
-			panel.appendChild(section);
-			nodes.push(section);
+		function setDropOpen(drop, on) {
+			drop.pop.hidden = !on;
+			drop.wrap.classList.toggle('is-open', on);
+			drop.trigger.setAttribute('aria-expanded', on ? 'true' : 'false');
 		}
 
-		var empty = el('div', 'tcbv-empty', CFG.i18n.noResult || 'چیزی پیدا نشد');
-		empty.hidden = true;
-		panel.appendChild(empty);
+		function closeAll() {
+			if (picker === 'open') { return; }
+			for (var i = 0; i < drops.length; i++) { setDropOpen(drops[i], false); }
+			state.openId = '';
+			state.manual = false;
+		}
 
-		root.appendChild(panel);
-		root.__panel = panel;
-		root.__items = items;
-		root.__groups = groups;
+		function openDrop(drop) {
+			closeAll();
+			setDropOpen(drop, true);
+			state.openId = drop.id;
+			state.manual = true;
+		}
 
-		/* ---------- وضعیت ---------- */
+		function openMatches() {
+			if (picker === 'open') { return; }
+			for (var i = 0; i < drops.length; i++) {
+				var drop = drops[i];
+				var shown = 0;
+				for (var j = 0; j < drop.items.length; j++) {
+					if (!drop.items[j].hidden) { shown++; }
+				}
+				setDropOpen(drop, shown > 0 && !!state.query);
+			}
+			state.openId = '';
+			state.manual = false;
+		}
 
-		var state = { query: '', brand: '', oosSet: null };
-		var oosMode = CFG.ui.oos;
+		for (var g = 0; g < groups.length; g++) {
+			(function (group) {
+				var wrap = el('div', 'tcbv-dd');
+				wrap.setAttribute('data-brand', group.id);
+				wrap.style.setProperty('--tcbv-c', group.color || 'currentColor');
+
+				var trigger = el('button', 'tcbv-trigger is-placeholder');
+				trigger.type = 'button';
+				trigger.setAttribute('aria-haspopup', 'listbox');
+				trigger.setAttribute('aria-expanded', 'false');
+				var tLabel = el('span', 'tcbv-trigger-brand', group.label);
+				var tValue = el('span', 'tcbv-trigger-text', 'انتخاب مدل');
+				var tCount = el('span', 'tcbv-trigger-count', fa(group.values.length));
+				trigger.appendChild(tLabel);
+				trigger.appendChild(tValue);
+				if (CFG.ui.counts) { trigger.appendChild(tCount); }
+				trigger.appendChild(el('span', 'tcbv-trigger-caret'));
+				wrap.appendChild(trigger);
+
+				var pop = el('div', 'tcbv-pop');
+				if (picker !== 'open') { pop.hidden = true; }
+				pop.setAttribute('role', 'listbox');
+				pop.setAttribute('aria-label', group.label);
+
+				var dropItems = [];
+				var itemWrap = el('div', 'tcbv-items');
+				for (var v = 0; v < group.values.length; v++) {
+					var value = group.values[v];
+					var item = el('button', 'tcbv-item');
+					item.type = 'button';
+					item.setAttribute('role', 'option');
+					item.setAttribute('data-value', value);
+					item.setAttribute('data-brand', group.id);
+					item.setAttribute('data-key', keyOf(value));
+					item.setAttribute('aria-selected', 'false');
+					item.appendChild(el('span', 'tcbv-item-text', optionLabel(select, value)));
+					itemWrap.appendChild(item);
+					dropItems.push(item);
+					items.push(item);
+				}
+				pop.appendChild(itemWrap);
+
+				var empty = el('div', 'tcbv-empty', CFG.i18n.noResult || 'چیزی پیدا نشد');
+				empty.hidden = true;
+				pop.appendChild(empty);
+				wrap.appendChild(pop);
+				list.appendChild(wrap);
+
+				var drop = {
+					id: group.id,
+					label: group.label,
+					wrap: wrap,
+					trigger: trigger,
+					tValue: tValue,
+					tCount: tCount,
+					pop: pop,
+					empty: empty,
+					items: dropItems
+				};
+				drops.push(drop);
+
+				if (picker === 'open') {
+					trigger.setAttribute('aria-expanded', 'true');
+					wrap.classList.add('is-open');
+				} else {
+					trigger.addEventListener('click', function (event) {
+						event.preventDefault();
+						event.stopPropagation();
+						if (state.openId === drop.id && state.manual) { closeAll(); } else { openDrop(drop); }
+					});
+				}
+
+				pop.addEventListener('click', function (event) {
+					var target = event.target.closest ? event.target.closest('.tcbv-item') : null;
+					if (!target || target.hidden) { return; }
+				api.setValue(target.getAttribute('data-value'));
+				if (!state.query) { closeAll(); }
+				});
+			})(groups[g]);
+		}
+
+		root.appendChild(list);
 
 		var api = {
 			select: select,
@@ -680,19 +700,8 @@
 				}
 				applySelected();
 			},
-			sync: function () {
-				var val = select.value;
-				if (val && !select.disabled) {
-					var pool = root.__items;
-					for (var i = 0; i < pool.length; i++) {
-						if (pool[i].getAttribute('data-value') === val) {
-							pool[i].scrollIntoView({ block: 'nearest' });
-							break;
-						}
-					}
-				}
-				applySelected();
-			},
+			sync: function () { applySelected(); },
+			close: closeAll,
 			setOos: function (set) {
 				state.oosSet = set;
 				applyFilter();
@@ -701,17 +710,19 @@
 
 		function applySelected() {
 			var val = select.value;
-			var has = false;
-			for (var i = 0; i < items.length; i++) {
-				var on = val !== '' && items[i].getAttribute('data-value') === val;
-				items[i].classList.toggle('is-selected', on);
-				items[i].setAttribute('aria-selected', on ? 'true' : 'false');
-				if (on) { has = true; }
-			}
-			root.classList.toggle('has-value', has);
-			if (select.__tcbvLabel) {
-				select.__tcbvLabel.textContent = has ? val : '';
-				select.__tcbvLabel.hidden = !has;
+			root.classList.toggle('has-value', !!val);
+			for (var d = 0; d < drops.length; d++) {
+				var drop = drops[d];
+				var hit = '';
+				for (var i = 0; i < drop.items.length; i++) {
+					var on = val !== '' && drop.items[i].getAttribute('data-value') === val;
+					drop.items[i].classList.toggle('is-selected', on);
+					drop.items[i].setAttribute('aria-selected', on ? 'true' : 'false');
+					if (on) { hit = val; }
+				}
+				drop.tValue.textContent = hit ? optionLabel(select, hit) : 'انتخاب مدل';
+				drop.trigger.classList.toggle('is-placeholder', !hit);
+				drop.wrap.classList.toggle('has-value', !!hit);
 			}
 		}
 
@@ -719,141 +730,58 @@
 			if (!state.query) { return true; }
 			var key = item.getAttribute('data-key') || '';
 			var text = normalize(item.getAttribute('data-value'));
-			var q = state.query;
-			return key.indexOf(q) !== -1 || text.indexOf(q) !== -1;
+			return key.indexOf(state.query) !== -1 || text.indexOf(state.query) !== -1;
 		}
 
 		function applyFilter() {
-			var visibleTotal = 0, i, j;
-
-			// مرحلهٔ ۱: گزینه‌ها و سپس گروه‌ها
-			for (i = 0; i < nodes.length; i++) {
-				var node = nodes[i];
-				if (!node.classList.contains('tcbv-group')) { continue; }
-				var groupItems = node.querySelectorAll('.tcbv-item');
+			var any = 0;
+			for (var d = 0; d < drops.length; d++) {
+				var drop = drops[d];
 				var shown = 0;
-				for (j = 0; j < groupItems.length; j++) {
-					var item = groupItems[j];
-					var ok = matchQuery(item);
-					var brandOk = !state.brand || item.getAttribute('data-brand') === state.brand;
+				for (var i = 0; i < drop.items.length; i++) {
+					var item = drop.items[i];
 					var oosHidden = oosMode === 2 && state.oosSet && state.oosSet.indexOf(item.getAttribute('data-value')) === -1;
-					var show = ok && brandOk && !oosHidden;
+					var show = matchQuery(item) && !oosHidden;
 					item.hidden = !show;
 					if (show) { shown++; }
 				}
-				node.hidden = shown === 0;
-				visibleTotal += shown;
-				var counter = node.querySelector('.tcbv-gcount');
-				if (counter) { counter.textContent = fa(shown) + (shown !== groupItems.length ? '/' + fa(groupItems.length) : ''); }
+				drop.empty.hidden = shown !== 0;
+				drop.wrap.hidden = shown === 0 && !!state.query;
+				if (drop.tCount) { drop.tCount.textContent = fa(shown); }
+				any += shown;
 			}
-
-			// مرحلهٔ ۲: جداکننده‌ها فقط بین دو گروه دیده‌شده می‌مانند
-			for (i = 0; i < nodes.length; i++) {
-				var sep = nodes[i];
-				if (!sep.classList.contains('tcbv-sep')) { continue; }
-				var prev = sep.previousElementSibling;
-				var next = sep.nextElementSibling;
-				sep.hidden = !(prev && !prev.hidden && next && !next.hidden);
-			}
-
-			empty.hidden = visibleTotal !== 0;
-			if (root.__bar) {
-				var total = root.querySelector('.tcbv-total');
-				if (total) {
-					var label = state.query || state.brand
-						? fa(visibleTotal) + '/' + fa(items.length)
-						: fa(items.length);
-					total.textContent = label + ' ' + (CFG.i18n.models || 'مدل');
-				}
-			}
-			if (root.__bar) {
-				var clearBtn = root.__bar.querySelector('.tcbv-clear');
-				if (clearBtn) { clearBtn.hidden = !state.query; }
+			searchClear.hidden = !state.query;
+			searchWrap.classList.toggle('has-query', !!state.query);
+			if (picker !== 'open') {
+				if (state.query) { openMatches(); }
+				else if (!state.manual) { closeAll(); }
 			}
 		}
 
-		/* ---------- رویدادها ---------- */
-
-		panel.addEventListener('click', function (event) {
-			var target = event.target.closest ? event.target.closest('.tcbv-item') : null;
-			if (!target) { return; }
-			api.setValue(target.getAttribute('data-value'));
+		searchInput.addEventListener('input', debounce(function () {
+			state.query = keyOf(searchInput.value);
+			applyFilter();
+		}, 80));
+		searchClear.addEventListener('click', function () {
+			searchInput.value = '';
+			state.query = '';
+			applyFilter();
+			searchInput.focus();
 		});
-
-		panel.addEventListener('keydown', function (event) {
-			var list = [];
-			for (var i = 0; i < items.length; i++) {
-				if (!items[i].hidden) { list.push(items[i]); }
-			}
-			if (!list.length) { return; }
-			var current = document.activeElement;
-			var idx = list.indexOf(current);
-			var key = event.key;
-
-			if (key === 'ArrowDown' || key === 'ArrowRight') {
-				event.preventDefault();
-				(list[idx + 1] || list[0]).focus();
-			} else if (key === 'ArrowUp' || key === 'ArrowLeft') {
-				event.preventDefault();
-				(list[idx - 1] || list[list.length - 1]).focus();
-			} else if (key === 'Home') {
-				event.preventDefault();
-				list[0].focus();
-			} else if (key === 'End') {
-				event.preventDefault();
-				list[list.length - 1].focus();
-			} else if (key === 'Escape' && root.__bar && root.__bar.__search) {
-				root.__bar.__search.value = '';
+		searchInput.addEventListener('keydown', function (event) {
+			if (event.key === 'Escape') {
+				searchInput.value = '';
 				state.query = '';
 				applyFilter();
 			}
 		});
 
-		if (root.__bar && root.__bar.querySelector) {
-			var searchBox = root.__bar.querySelector('.tcbv-search');
-			if (searchBox) {
-				root.__bar.__search = searchBox.querySelector('input');
-				var onInput = debounce(function () {
-					state.query = keyOf(root.__bar.__search.value);
-					applyFilter();
-				}, 90);
-				root.__bar.__search.addEventListener('input', onInput);
-				root.__bar.__search.addEventListener('keydown', function (event) {
-					if (event.key === 'Escape') {
-						root.__bar.__search.value = '';
-						state.query = '';
-						applyFilter();
-						event.stopPropagation();
-					} else if (event.key === 'ArrowDown') {
-						event.preventDefault();
-						var first = null;
-						for (var i = 0; i < items.length; i++) {
-							if (!items[i].hidden) { first = items[i]; break; }
-						}
-						if (first) { first.focus(); }
-					}
-				});
-				searchBox.querySelector('.tcbv-clear').addEventListener('click', function () {
-					root.__bar.__search.value = '';
-					state.query = '';
-					applyFilter();
-					root.__bar.__search.focus();
-				});
-			}
-		}
-
-		if (chipsBar) {
-			chipsBar.addEventListener('click', function (event) {
-				var chip = event.target.closest ? event.target.closest('.tcbv-chip') : null;
-				if (!chip) { return; }
-				state.brand = chip.getAttribute('data-brand') || '';
-				var all = chipsBar.querySelectorAll('.tcbv-chip');
-				for (var i = 0; i < all.length; i++) {
-					all[i].classList.toggle('is-active', all[i] === chip);
-				}
-				applyFilter();
-			});
-		}
+		document.addEventListener('click', function (event) {
+			if (!root.contains(event.target) && !state.query) { closeAll(); }
+		});
+		document.addEventListener('keydown', function (event) {
+			if (event.key === 'Escape' && !state.query) { closeAll(); }
+		});
 
 		return api;
 	}

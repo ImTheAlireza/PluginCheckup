@@ -657,6 +657,16 @@ a.tsh-card__title:hover {
 	margin: 0;
 }
 
+.tsh-upd-repo {
+	display: inline-flex;
+	margin: 0;
+}
+
+.tsh-tool--repo:hover {
+	color: var(--tisa-primary-ink, #0A5F52);
+	background: var(--tisa-primary-soft, #E8F0EE);
+}
+
 .tisa-hub-tile__upd input[type="file"] {
 	position: absolute;
 	width: 1px;
@@ -786,6 +796,40 @@ body.tisa-compact .tsh-hero.tisa-hero--slim {
 /* ==================================================================
    ۶) صفحهٔ تنظیمات
    ================================================================== */
+
+.tsh-set-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin: 16px 0 0;
+}
+.tsh-set-card {
+	padding: 18px 20px 8px;
+	box-shadow: none;
+}
+.tsh-set-card:hover {
+	transform: none;
+}
+.tsh-set-card__h {
+	margin: 0 0 4px;
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: .02em;
+	color: var(--tisa-muted, #77828A);
+}
+.tsh-set-save {
+	display: flex;
+	justify-content: flex-start;
+	padding: 4px 0 24px;
+}
+.tsh-set-more {
+	margin: 0 0 40px;
+	color: var(--tisa-muted, #77828A);
+	font-size: 13px;
+}
+.tsh-set-more summary {
+	cursor: pointer;
+}
 
 .tisa-setrow {
 	display: flex;
@@ -917,4 +961,48 @@ body.tisa-compact .tsh-hero.tisa-hero--slim {
 	.tsh-card.tisa-plugin-card:hover {
 		transform: none;
 	}
+}
+
+.tsh-modal[hidden] { display: none !important; }
+.tsh-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 100000;
+	display: grid;
+	place-items: center;
+}
+.tsh-modal__back {
+	position: absolute;
+	inset: 0;
+	background: rgba(31, 42, 46, .45);
+}
+.tsh-modal__box {
+	position: relative;
+	z-index: 1;
+	width: min(520px, calc(100vw - 32px));
+	padding: 22px 22px 18px;
+	border-radius: 16px;
+	background: #fff;
+	box-shadow: 0 18px 50px rgba(31, 42, 46, .22);
+	color: var(--tisa-ink, #1F2A2E);
+}
+.tsh-modal__title {
+	margin: 0 0 8px;
+	font-size: 18px;
+}
+.tsh-modal__box .tisa-input {
+	width: 100%;
+	margin: 12px 0 8px;
+}
+.tsh-modal__status {
+	margin: 0 0 12px;
+	font-size: 13px;
+}
+.tsh-modal__status.is-ok { color: #0A5F52; }
+.tsh-modal__status.is-bad { color: #8E3128; }
+.tsh-modal__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	justify-content: flex-end;
 }

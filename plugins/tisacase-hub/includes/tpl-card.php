@@ -119,13 +119,23 @@ if ( ! function_exists( 'tsh_card' ) ) {
 				<?php endif; ?>
 
 				<span class="tsh-card__tools">
+					<?php if ( 'missing' !== $state && ! empty( $item['can_update'] ) && ! empty( $item['zip'] ) ) : ?>
+						<form class="tisa-hub-tile__upd tsh-upd-repo" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="tisacase_hub_update_repo">
+							<input type="hidden" name="item" value="<?php echo esc_attr( $item['key'] ); ?>">
+							<?php wp_nonce_field( 'tsh_update_repo_' . $item['key'], '_tshnonce' ); ?>
+							<button type="submit" class="tsh-tool tsh-tool--repo" title="<?php echo esc_attr( sprintf( /* translators: %s: tool title */ __( 'به‌روزرسانی «%s» از مخزن', 'tisacase-hub' ), $item['title'] ) ); ?>">
+								<?php echo TSH_View::icon( 'refresh' ); // phpcs:ignore WordPress.Security.EscapeOutput ?><span class="screen-reader-text"><?php esc_html_e( 'به‌روزرسانی از مخزن', 'tisacase-hub' ); ?></span>
+							</button>
+						</form>
+					<?php endif; ?>
 					<?php if ( 'missing' !== $state && ! empty( $item['can_update'] ) ) : ?>
 						<form class="tisa-hub-tile__upd" method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" data-upd="1">
 							<input type="hidden" name="action" value="tisacase_hub_update">
 							<input type="hidden" name="item" value="<?php echo esc_attr( $item['key'] ); ?>">
 							<?php wp_nonce_field( 'tsh_update_' . $item['key'], '_tshnonce' ); ?>
 							<label class="tsh-tool" title="<?php echo esc_attr( sprintf( /* translators: %s: tool title */ __( 'به‌روزرسانی «%s» با فایل زیپ', 'tisacase-hub' ), $item['title'] ) ); ?>">
-								<?php echo TSH_View::icon( 'upload' ); // phpcs:ignore WordPress.Security.EscapeOutput ?><span class="screen-reader-text"><?php esc_html_e( 'به‌روزرسانی', 'tisacase-hub' ); ?></span>
+								<?php echo TSH_View::icon( 'upload' ); // phpcs:ignore WordPress.Security.EscapeOutput ?><span class="screen-reader-text"><?php esc_html_e( 'به‌روزرسانی از فایل', 'tisacase-hub' ); ?></span>
 								<input type="file" name="tsh_zip" accept=".zip,application/zip">
 							</label>
 							<noscript><button type="submit" class="tisa-btn tisa-btn--sm tisa-btn--ghost"><?php esc_html_e( 'نصب', 'tisacase-hub' ); ?></button></noscript>

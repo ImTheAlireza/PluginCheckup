@@ -39,13 +39,20 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			add_action( 'admin_post_tisacase_hub_action', array( __CLASS__, 'handle_action' ) );
 			add_action( 'admin_post_tisacase_hub_save', array( __CLASS__, 'handle_save' ) );
 			add_action( 'admin_post_tisacase_hub_update', array( __CLASS__, 'handle_update' ) );
+			add_action( 'admin_post_tisacase_hub_update_repo', array( __CLASS__, 'handle_update_repo' ) );
 			add_action( 'admin_post_tisacase_hub_install', array( __CLASS__, 'handle_install' ) );
+			if ( class_exists( 'TSH_Remote' ) ) {
+				TSH_Remote::allow();
+			}
 			// بنرهای افزونه‌های دیگر (آپدیت دیجی‌پی، ووکامرس، …) روی صفحه‌های هاب چاپ نشوند.
 			add_action( 'in_admin_header', array( __CLASS__, 'mute_foreign_notices' ), 999 );
 			add_action( 'admin_bar_menu', array( __CLASS__, 'admin_bar' ), 61 );
 
 			add_action( 'wp_ajax_tsh_pin', array( __CLASS__, 'ajax_pin' ) );
 			add_action( 'wp_ajax_tsh_prefs', array( __CLASS__, 'ajax_prefs' ) );
+			add_action( 'wp_ajax_tsh_repo_test', array( __CLASS__, 'ajax_repo_test' ) );
+			add_action( 'wp_ajax_tsh_repo_connect', array( __CLASS__, 'ajax_repo_connect' ) );
+			add_action( 'wp_ajax_tsh_repo_sync', array( __CLASS__, 'ajax_repo_sync' ) );
 		}
 
 		/**
@@ -253,9 +260,25 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 					$zip_base .= '/';
 				}
 			}
-			$out['zip_base'] = $zip_base;
-
 			$current = TSH_UI::settings();
+			if ( array_key_exists( 'zip_base', $in ) ) {
+				$out['zip_base'] = $zip_base;
+			} else {
+				$out['zip_base'] = isset( $current['zip_base'] ) ? $current['zip_base'] : '';
+			}
+
+			if ( isset( $in['repo'] ) ) {
+				$repo = trim( (string) $in['repo'] );
+				$out['repo'] = preg_match( '#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$#', $repo ) ? $repo : ( isset( $current['repo'] ) ? $current['repo'] : 'ImTheAlireza/TisaCaseHub' );
+			} else {
+				$out['repo'] = isset( $current['repo'] ) ? $current['repo'] : 'ImTheAlireza/TisaCaseHub';
+			}
+			if ( isset( $in['branch'] ) ) {
+				$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', trim( (string) $in['branch'] ) );
+				$out['branch'] = $branch ? $branch : 'main';
+			} else {
+				$out['branch'] = isset( $current['branch'] ) ? $current['branch'] : 'main';
+			}
 			$hidden  = isset( $in['hidden'] ) ? (array) $in['hidden'] : (array) ( isset( $current['hidden'] ) ? $current['hidden'] : array() );
 			$hidden  = array_values( array_unique( array_map( 'sanitize_key', array_filter( $hidden ) ) ) );
 			$known   = array_keys( TSH_Registry::items() );
@@ -548,6 +571,28 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		 *
 		 * @return void
 		 */
+		/**
+		 * همگام‌سازی فهرست افزونه‌ها از شاخهٔ تنظیم‌شده.
+		 *
+		 * @return void
+		 */
+		public static function handle_sync() {
+			check_admin_referer( 'tsh_sync_catalog', '_tshnonce' );
+			$back = admin_url( 'admin.php?page=' . TSH_SLUG . '-settings' );
+			if ( ! current_user_can( 'install_plugins' ) && ! current_user_can( 'manage_woocommerce' ) ) {
+				wp_die( esc_html__( 'اجازهٔ همگام‌سازی ندارید.', 'tisacase-hub' ) );
+			}
+			$pack = TSH_Remote::sync_catalog();
+			if ( is_wp_error( $pack ) ) {
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'sync_fail', 'tsh_err' => rawurlencode( $pack->get_error_message() ) ), $back ) );
+				exit;
+			}
+			TSH_Registry::items( true );
+			$count = isset( $pack['items'] ) ? count( $pack['items'] ) : 0;
+			wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'sync_ok', 'tsh_err' => (string) $count ), $back ) );
+			exit;
+		}
+
 		public static function handle_install() {
 			$key = isset( $_POST['item'] ) ? sanitize_key( wp_unslash( $_POST['item'] ) ) : '';
 			check_admin_referer( 'tsh_install_' . $key, '_tshnonce' );
@@ -562,9 +607,9 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
 				exit;
 			}
-			$dir = (string) $items[ $key ]['dir'];
-			$url = TSH_Registry::zip_url( $items[ $key ] );
-			if ( '' === $url ) {
+			$dir  = (string) $items[ $key ]['dir'];
+			$urls = class_exists( 'TSH_Remote' ) ? TSH_Remote::mirrors( $items[ $key ] ) : array( TSH_Registry::zip_url( $items[ $key ] ) );
+			if ( empty( $urls ) ) {
 				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
 				exit;
 			}
@@ -574,13 +619,13 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 			require_once ABSPATH . 'wp-admin/includes/misc.php';
 
-			$tmp = download_url( $url, 90 );
+			$tmp = TSH_Remote::download_zip( $urls );
 			if ( is_wp_error( $tmp ) ) {
 				wp_safe_redirect(
 					add_query_arg(
 						array(
 							'tsh_msg' => 'inst_failed',
-							'tsh_err' => rawurlencode( $tmp->get_error_message() . ' — ' . $url ),
+							'tsh_err' => rawurlencode( $tmp->get_error_message() ),
 						),
 						$back
 					)
@@ -732,6 +777,95 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		}
 
 		/**
+		 * به‌روزرسانی از مخزن (همان زیپ نصب از مخزن، با بازنویسی پوشهٔ فعلی).
+		 *
+		 * @return void
+		 */
+		public static function handle_update_repo() {
+			$key = isset( $_POST['item'] ) ? sanitize_key( wp_unslash( $_POST['item'] ) ) : '';
+			check_admin_referer( 'tsh_update_repo_' . $key, '_tshnonce' );
+
+			$back = admin_url( 'admin.php?page=' . TSH_SLUG );
+			if ( ! current_user_can( 'update_plugins' ) || ! current_user_can( 'upload_plugins' ) ) {
+				wp_die( esc_html__( 'برای به‌روزرسانی افزونه اجازه ندارید.', 'tisacase-hub' ) );
+			}
+
+			$items = TSH_Registry::items();
+			if ( ! isset( $items[ $key ] ) || empty( $items[ $key ]['dir'] ) ) {
+				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
+				exit;
+			}
+			$dir  = (string) $items[ $key ]['dir'];
+			$urls = class_exists( 'TSH_Remote' ) ? TSH_Remote::mirrors( $items[ $key ] ) : array( TSH_Registry::zip_url( $items[ $key ] ) );
+			if ( empty( $urls ) ) {
+				wp_safe_redirect( add_query_arg( 'tsh_msg', 'bad', $back ) );
+				exit;
+			}
+
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+			require_once ABSPATH . 'wp-admin/includes/misc.php';
+
+			$was_active = false;
+			$old_base   = TSH_Registry::basename_for( $dir );
+			if ( $old_base ) {
+				$was_active = is_plugin_active( $old_base );
+			}
+
+			$tmp = TSH_Remote::download_zip( $urls );
+			if ( is_wp_error( $tmp ) ) {
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_failed', 'tsh_err' => rawurlencode( $tmp->get_error_message() ) ), $back ) );
+				exit;
+			}
+
+			if ( class_exists( 'ZipArchive' ) ) {
+				$zip = new ZipArchive();
+				$top = '';
+				if ( true === $zip->open( $tmp ) ) {
+					$top = strtok( (string) $zip->getNameIndex( 0 ), '/' );
+					$zip->close();
+				}
+				if ( $top !== $dir ) {
+					wp_delete_file( $tmp );
+					wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_wrong', 'tsh_err' => rawurlencode( $top . ' ≠ ' . $dir ) ), $back ) );
+					exit;
+				}
+			}
+
+			$skin     = new Automatic_Upgrader_Skin();
+			$upgrader = new Plugin_Upgrader( $skin );
+			$result   = $upgrader->install(
+				$tmp,
+				array(
+					'overwrite_package'  => true,
+					'clear_update_cache' => true,
+				)
+			);
+			wp_delete_file( $tmp );
+
+			if ( is_wp_error( $result ) || ! $result ) {
+				$err = is_wp_error( $result ) ? $result->get_error_message() : implode( ' ', (array) $skin->get_upgrade_messages() );
+				wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'upd_failed', 'tsh_err' => rawurlencode( $err ) ), $back ) );
+				exit;
+			}
+
+			TSH_UI::flush();
+			wp_clean_plugins_cache( true );
+			self::sweep_temp_write_tests();
+
+			if ( $was_active ) {
+				$new_base = $upgrader->plugin_info();
+				if ( $new_base && ! is_plugin_active( $new_base ) ) {
+					activate_plugin( $new_base, '', is_multisite() && function_exists( 'is_plugin_active_for_network' ) && is_plugin_active_for_network( $old_base ) );
+				}
+			}
+
+			wp_safe_redirect( add_query_arg( array( 'tsh_msg' => 'updated_repo', 'tsh_item' => $key ), $back ) );
+			exit;
+		}
+
+		/**
 		 * پاک‌کردن فایل‌های صفر بایتی «temp-write-test-*» که هستهٔ وردپرس هنگام
 		 * تشخیص روش فایل‌سیستم می‌سازد و گاهی جا می‌گذارد. فقط فایل‌های خالی با همین
 		 * الگو، فقط در ریشه‌های شناخته‌شده و بدون پیمایش بازگشتی.
@@ -758,6 +892,33 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			return $n;
 		}
 
+		/**
+		 * owner/name از POST — بدون وابستگی به فیلد URL که WAF ممکن است خالی کند.
+		 *
+		 * @return array|\\WP_Error
+		 */
+		private static function posted_github() {
+			$owner  = isset( $_POST['gh_owner'] ) ? wp_unslash( $_POST['gh_owner'] ) : '';
+			$name   = isset( $_POST['gh_name'] ) ? wp_unslash( $_POST['gh_name'] ) : '';
+			$branch = isset( $_POST['gh_branch'] ) ? wp_unslash( $_POST['gh_branch'] ) : '';
+			$owner  = preg_replace( '/[^A-Za-z0-9_.-]/', '', (string) $owner );
+			$name   = preg_replace( '/[^A-Za-z0-9_.-]/', '', (string) $name );
+			$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', (string) $branch );
+			if ( $owner && $name ) {
+				return array(
+					'repo'   => $owner . '/' . $name,
+					'branch' => $branch ? $branch : 'main',
+				);
+			}
+			$link = '';
+			if ( isset( $_POST['repo_url'] ) ) {
+				$link = wp_unslash( $_POST['repo_url'] );
+			} elseif ( isset( $_POST['url'] ) ) {
+				$link = wp_unslash( $_POST['url'] );
+			}
+			return TSH_Remote::parse_github_url( $link );
+		}
+
 		/* * * * * * * * * * * AJAX * * * * * * * * * * * */
 
 		/**
@@ -765,6 +926,93 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		 *
 		 * @return void
 		 */
+		public static function ajax_repo_test() {
+			check_ajax_referer( 'tsh_hub', 'nonce' );
+			if ( ! current_user_can( 'manage_woocommerce' ) ) {
+				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
+			}
+			$link = '';
+			if ( isset( $_POST['repo_url'] ) ) {
+				$link = wp_unslash( $_POST['repo_url'] );
+			} elseif ( isset( $_POST['url'] ) ) {
+				$link = wp_unslash( $_POST['url'] );
+			}
+			$parsed = TSH_Remote::parse_github_url( $link );
+			if ( is_wp_error( $parsed ) ) {
+				wp_send_json_error( array( 'msg' => $parsed->get_error_message() ) );
+			}
+			$test = TSH_Remote::test_connection( $parsed['repo'], $parsed['branch'] );
+			if ( is_wp_error( $test ) ) {
+				$pack = TSH_Remote::bundled_catalog();
+				$n    = ( ! is_wp_error( $pack ) && ! empty( $pack['items'] ) ) ? count( $pack['items'] ) : 0;
+				wp_send_json_success(
+					array(
+						'repo'   => $parsed['repo'],
+						'branch' => $parsed['branch'],
+						'count'  => $n,
+						'remote' => false,
+						'msg'    => $test->get_error_message(),
+					)
+				);
+			}
+			wp_send_json_success(
+				array(
+					'repo'   => $parsed['repo'],
+					'branch' => $parsed['branch'],
+					'count'  => $test['count'],
+					'remote' => ! empty( $test['remote'] ),
+				)
+			);
+		}
+
+		public static function ajax_repo_connect() {
+			check_ajax_referer( 'tsh_hub', 'nonce' );
+			if ( ! current_user_can( 'manage_woocommerce' ) ) {
+				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
+			}
+			$parsed = self::posted_github();
+			if ( is_wp_error( $parsed ) ) {
+				wp_send_json_error( array( 'msg' => $parsed->get_error_message() ) );
+			}
+			TSH_Remote::save_connection( $parsed['repo'], $parsed['branch'] );
+			$test = TSH_Remote::test_connection( $parsed['repo'], $parsed['branch'] );
+			$count  = 0;
+			$remote = false;
+			if ( ! is_wp_error( $test ) ) {
+				$count  = (int) $test['count'];
+				$remote = ! empty( $test['remote'] );
+			} else {
+				$pack = TSH_Remote::bundled_catalog();
+				if ( ! is_wp_error( $pack ) ) {
+					$pack['repo']   = $parsed['repo'];
+					$pack['branch'] = $parsed['branch'];
+					update_option( 'tisacase_hub_catalog', $pack, false );
+					$count = count( $pack['items'] );
+				}
+			}
+			wp_send_json_success(
+				array(
+					'repo'   => $parsed['repo'],
+					'branch' => $parsed['branch'],
+					'count'  => $count,
+					'remote' => $remote,
+				)
+			);
+		}
+
+		public static function ajax_repo_sync() {
+			check_ajax_referer( 'tsh_hub', 'nonce' );
+			if ( ! current_user_can( 'manage_woocommerce' ) ) {
+				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
+			}
+			$pack = TSH_Remote::sync_catalog();
+			if ( is_wp_error( $pack ) ) {
+				wp_send_json_error( array( 'msg' => $pack->get_error_message() ) );
+			}
+			TSH_Registry::items( true );
+			wp_send_json_success( array( 'count' => isset( $pack['items'] ) ? count( $pack['items'] ) : 0 ) );
+		}
+
 		public static function ajax_pin() {
 			check_ajax_referer( 'tsh_hub', 'nonce' );
 			if ( ! is_user_logged_in() ) {
@@ -886,11 +1134,14 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 				'failed'      => array( 'error', sprintf( /* translators: %s: error */ __( 'فعال‌سازی نشد: %s', 'tisacase-hub' ), $err ) ),
 				'bad'         => array( 'error', __( 'اقدام نامعتبر بود.', 'tisacase-hub' ) ),
 				'updated'     => array( 'success', __( 'افزونه به‌روزرسانی شد.', 'tisacase-hub' ) ),
+				'updated_repo'=> array( 'success', __( 'افزونه از مخزن به‌روزرسانی شد.', 'tisacase-hub' ) ),
 				'upd_failed'  => array( 'error', sprintf( /* translators: %s: error */ __( 'به‌روزرسانی نشد: %s', 'tisacase-hub' ), $err ) ),
 				'upd_wrong'   => array( 'error', sprintf( /* translators: %s: dirs */ __( 'این زیپ مال این کارت نیست (%s).', 'tisacase-hub' ), $err ) ),
 				'installed'   => array( 'success', __( 'افزونه از مخزن نصب و فعال شد.', 'tisacase-hub' ) ),
 				'installed_off' => array( 'success', __( 'افزونه از مخزن نصب شد. برای فعال‌سازی، دکمهٔ «فعال‌سازی» روی همان کارت را بزنید.', 'tisacase-hub' ) ),
 				'inst_failed' => array( 'error', sprintf( /* translators: %s: error */ __( 'نصب از مخزن انجام نشد: %s', 'tisacase-hub' ), $err ) ),
+				'sync_ok'     => array( 'success', sprintf( /* translators: %s: count */ __( 'فهرست مخزن همگام شد (%s افزونه). کارت‌های جدید در صفحهٔ ابزارها ظاهر می‌شوند.', 'tisacase-hub' ), $err ) ),
+				'sync_fail'   => array( 'error', sprintf( /* translators: %s: error */ __( 'همگام‌سازی مخزن نشد: %s', 'tisacase-hub' ), $err ) ),
 			);
 			if ( ! isset( $texts[ $msg ] ) ) {
 				return;

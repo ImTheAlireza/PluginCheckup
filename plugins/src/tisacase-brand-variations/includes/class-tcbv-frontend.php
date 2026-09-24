@@ -166,7 +166,13 @@ if ( ! class_exists( 'TCBV_Frontend' ) ) {
 
 			$settings = self::settings();
 
-			wp_enqueue_style( 'tcbv-frontend', TCBV_URL . 'assets/frontend.css', array(), TCBV_VERSION );
+			wp_enqueue_style(
+				'tcbv-vazir',
+				'https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css',
+				array(),
+				'33.003'
+			);
+			wp_enqueue_style( 'tcbv-frontend', TCBV_URL . 'assets/frontend.css', array( 'tcbv-vazir' ), TCBV_VERSION );
 			wp_add_inline_style( 'tcbv-frontend', self::css_vars( $settings ) );
 
 			$panel_on = ( 'panel' === $settings['ui']['mode'] ) && empty( $settings['advanced']['safe_mode'] );
@@ -217,7 +223,7 @@ if ( ! class_exists( 'TCBV_Frontend' ) ) {
 			$css .= '}';
 
 			if ( ! empty( $t['shadow'] ) ) {
-				$css .= '.tcbv-panel{box-shadow:0 6px 24px rgba(31,42,46,.07)}';
+				$css .= '.tcbv-pop{box-shadow:0 12px 36px rgba(31,42,46,.14)}';
 			}
 
 			return $css;
