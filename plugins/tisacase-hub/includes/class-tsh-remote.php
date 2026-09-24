@@ -28,6 +28,7 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 				'cdn.jsdelivr.net',
 				'fastly.jsdelivr.net',
 				'gcore.jsdelivr.net',
+				'data.jsdelivr.net',
 				'api.github.com',
 			);
 		}
@@ -153,11 +154,22 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		 * @return string|\WP_Error مسیر موقت.
 		 */
 		private static function fetch_one( $url ) {
-			$tmp = download_url( $url, 90 );
-			if ( ! is_wp_error( $tmp ) ) {
-				return $tmp;
+			$direct = self::fetch_direct( $url );
+			if ( ! is_wp_error( $direct ) ) {
+				return $direct;
 			}
-			$wp_err = $tmp;
+
+			$blocked = defined( 'WP_HTTP_BLOCK_EXTERNAL' ) && WP_HTTP_BLOCK_EXTERNAL;
+			if ( $blocked ) {
+				return $direct;
+			}
+
+			if ( function_exists( 'download_url' ) ) {
+				$tmp = download_url( $url, 90 );
+				if ( ! is_wp_error( $tmp ) ) {
+					return $tmp;
+				}
+			}
 
 			$response = wp_remote_get(
 				$url,
@@ -165,23 +177,29 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 					'timeout'     => 90,
 					'redirection' => 5,
 					'sslverify'   => true,
-					'headers'     => array(
-						'Accept'     => 'application/zip,application/octet-stream,*/*',
-						'User-Agent' => 'TisaCase-Hub/' . ( defined( 'TSH_VERSION' ) ? TSH_VERSION : '1' ),
-					),
+					'headers'     => self::headers_for( $url ),
 				)
 			);
-			$saved = self::store_body( $response, $url );
-			if ( ! is_wp_error( $saved ) ) {
-				return $saved;
-			}
+			return self::store_body( $response, $url );
+		}
 
-			$direct = self::fetch_direct( $url );
-			if ( ! is_wp_error( $direct ) ) {
-				return $direct;
+		/**
+		 * @param string $url آدرس.
+		 * @return array<string,string>
+		 */
+		private static function headers_for( $url ) {
+			$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
+			$ua   = 'TisaCase-Hub/' . ( defined( 'TSH_VERSION' ) ? TSH_VERSION : '1' );
+			if ( false !== strpos( $host, 'api.github.com' ) ) {
+				return array(
+					'Accept'     => 'application/vnd.github+json',
+					'User-Agent' => $ua,
+				);
 			}
-
-			return $wp_err;
+			return array(
+				'Accept'     => 'application/zip,application/octet-stream,*/*',
+				'User-Agent' => $ua,
+			);
 		}
 
 		/**
@@ -198,7 +216,7 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 				return new WP_Error( 'tsh_http', sprintf( /* translators: %d: status */ __( 'پاسخ HTTP %d از مخزن.', 'tisacase-hub' ), $code ) );
 			}
 			$body = wp_remote_retrieve_body( $response );
-			if ( ! is_string( $body ) || strlen( $body ) < 64 ) {
+			if ( ! is_string( $body ) || strlen( $body ) < 2 ) {
 				return new WP_Error( 'tsh_empty_zip', __( 'فایل زیپ خالی رسید.', 'tisacase-hub' ) );
 			}
 			$tmp = wp_tempnam( $url );
@@ -225,6 +243,11 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			}
 
 			$body = '';
+			$hdrs = self::headers_for( $url );
+			$hdr_lines = array();
+			foreach ( $hdrs as $k => $v ) {
+				$hdr_lines[] = $k . ': ' . $v;
+			}
 			if ( function_exists( 'curl_init' ) ) {
 				$ch = curl_init( $url );
 				if ( $ch ) {
@@ -236,8 +259,8 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 							CURLOPT_MAXREDIRS      => 5,
 							CURLOPT_TIMEOUT        => 90,
 							CURLOPT_SSL_VERIFYPEER => true,
-							CURLOPT_USERAGENT      => 'TisaCase-Hub/' . ( defined( 'TSH_VERSION' ) ? TSH_VERSION : '1' ),
-							CURLOPT_HTTPHEADER     => array( 'Accept: application/zip,application/octet-stream,*/*' ),
+							CURLOPT_USERAGENT      => $hdrs['User-Agent'],
+							CURLOPT_HTTPHEADER     => $hdr_lines,
 						)
 					);
 					$got  = curl_exec( $ch );
@@ -274,7 +297,7 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 				}
 			}
 
-			if ( strlen( $body ) < 64 ) {
+			if ( strlen( $body ) < 2 ) {
 				return new WP_Error( 'tsh_empty_zip', __( 'دانلود مستقیم از مخزن ممکن نشد.', 'tisacase-hub' ) );
 			}
 			$tmp = wp_tempnam( $url );
@@ -360,13 +383,18 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		 */
 		public static function test_connection( $repo, $branch ) {
 			self::allow();
-			$api  = 'https://api.github.com/repos/' . $repo . '/contents/plugins/dist?ref=' . rawurlencode( $branch );
-			$body = self::get_text( array( $api ) );
+			$enc  = rawurlencode( $branch );
+			$body = self::get_text(
+				array(
+					'https://api.github.com/repos/' . $repo . '/contents/plugins/dist?ref=' . $enc,
+					'https://data.jsdelivr.com/v1/packages/gh/' . $repo . '@' . $enc . '/flat',
+				)
+			);
 			if ( is_wp_error( $body ) ) {
 				return $body;
 			}
 			$data = json_decode( $body, true );
-			if ( isset( $data['message'] ) ) {
+			if ( isset( $data['message'] ) && ! isset( $data[0] ) && empty( $data['files'] ) ) {
 				return new WP_Error( 'tsh_github', (string) $data['message'] );
 			}
 			if ( ! is_array( $data ) ) {
@@ -374,10 +402,19 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			}
 			$files = array();
 			foreach ( $data as $row ) {
-				if ( ! empty( $row['name'] ) && preg_match( '/\.zip$/', (string) $row['name'] ) ) {
+				if ( is_array( $row ) && ! empty( $row['name'] ) && preg_match( '/\.zip$/', (string) $row['name'] ) && false === strpos( (string) $row['name'], '/' ) ) {
 					$files[] = (string) $row['name'];
 				}
 			}
+			if ( isset( $data['files'] ) && is_array( $data['files'] ) ) {
+				foreach ( $data['files'] as $row ) {
+					$n = isset( $row['name'] ) ? (string) $row['name'] : '';
+					if ( preg_match( '#/plugins/dist/([^/]+\.zip)$#', $n, $m ) ) {
+						$files[] = $m[1];
+					}
+				}
+			}
+			$files = array_values( array_unique( $files ) );
 			return array(
 				'count' => count( $files ),
 				'files' => $files,
@@ -405,13 +442,26 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		}
 
 		public static function get_text( $urls ) {
-			$tmp = self::download_zip( $urls );
-			if ( is_wp_error( $tmp ) ) {
-				return $tmp;
+			self::allow();
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			$urls = is_array( $urls ) ? $urls : array( $urls );
+			$last = null;
+			foreach ( $urls as $url ) {
+				$url = trim( (string) $url );
+				if ( ! $url || ! preg_match( '#^https://#i', $url ) ) {
+					continue;
+				}
+				$got = self::fetch_one( $url );
+				if ( ! is_wp_error( $got ) && is_string( $got ) && is_readable( $got ) ) {
+					$body = (string) file_get_contents( $got ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+					wp_delete_file( $got );
+					if ( '' !== $body ) {
+						return $body;
+					}
+				}
+				$last = is_wp_error( $got ) ? $got : new WP_Error( 'tsh_empty', __( 'پاسخ خالی از مخزن.', 'tisacase-hub' ) );
 			}
-			$body = is_readable( $tmp ) ? (string) file_get_contents( $tmp ) : '';
-			wp_delete_file( $tmp );
-			return $body;
+			return $last instanceof WP_Error ? $last : new WP_Error( 'tsh_empty', __( 'پاسخ خالی از مخزن.', 'tisacase-hub' ) );
 		}
 
 		public static function sync_catalog() {
