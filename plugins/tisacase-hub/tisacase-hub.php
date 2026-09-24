@@ -20,7 +20,7 @@
 defined( 'ABSPATH' ) || exit;
 
 if ( ! defined( 'TSH_VERSION' ) ) {
-	define( 'TSH_VERSION', '1.9.3' );
+	define( 'TSH_VERSION', '1.9.4' );
 }
 if ( ! defined( 'TSH_FILE' ) ) {
 	define( 'TSH_FILE', __FILE__ );
