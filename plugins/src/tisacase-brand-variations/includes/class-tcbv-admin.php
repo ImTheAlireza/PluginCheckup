@@ -207,7 +207,7 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 							</svg>
 						</div>
 						<div class="tcbv-hero-text">
-							<p class="tcbv-hero-title">گروه‌بندی متغیرها بر اساس برند</p>
+							<h1 class="tcbv-hero-title">گروه‌بندی متغیرها بر اساس برند</h1>
 							<p class="tcbv-hero-sub">مدل‌ها در صفحهٔ محصول به برند جدا می‌شوند — آیفون، سامسونگ، شیائومی — با جستجو و سواچ رنگ. هیچ محصولی تغییر نمی‌کند.</p>
 						</div>
 						<div class="tcbv-hero-meta">
