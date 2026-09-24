@@ -932,6 +932,7 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			} elseif ( isset( $_POST['url'] ) ) {
 				$link = wp_unslash( $_POST['url'] );
 			}
+			$parsed = TSH_Remote::parse_github_url( $link );
 			if ( is_wp_error( $parsed ) ) {
 				wp_send_json_error( array( 'msg' => $parsed->get_error_message() ) );
 			}

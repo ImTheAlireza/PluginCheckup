@@ -22,15 +22,39 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		public static function hosts() {
 			return array(
 				'github.com',
+				'www.github.com',
+				'api.github.com',
 				'raw.githubusercontent.com',
 				'objects.githubusercontent.com',
 				'camo.githubusercontent.com',
+				'media.githubusercontent.com',
 				'cdn.jsdelivr.net',
 				'fastly.jsdelivr.net',
 				'gcore.jsdelivr.net',
 				'data.jsdelivr.net',
-				'api.github.com',
+				'cdn.jsdelivr.com',
 			);
+		}
+
+		/**
+		 * @param string $url آدرس.
+		 * @return bool
+		 */
+		public static function host_ok( $url ) {
+			$host = strtolower( (string) parse_url( (string) $url, PHP_URL_HOST ) );
+			if ( '' === $host && function_exists( 'wp_parse_url' ) ) {
+				$host = strtolower( (string) wp_parse_url( (string) $url, PHP_URL_HOST ) );
+			}
+			if ( $host && in_array( $host, self::hosts(), true ) ) {
+				return true;
+			}
+			$ok = array( 'github.com', 'githubusercontent.com', 'jsdelivr.net', 'jsdelivr.com' );
+			foreach ( $ok as $suf ) {
+				if ( $host === $suf || ( strlen( $host ) > strlen( $suf ) && substr( $host, -strlen( $suf ) - 1 ) === '.' . $suf ) ) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		/**
@@ -237,8 +261,7 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		 * @return string|\WP_Error
 		 */
 		private static function fetch_direct( $url ) {
-			$host = strtolower( (string) wp_parse_url( $url, PHP_URL_HOST ) );
-			if ( ! in_array( $host, self::hosts(), true ) ) {
+			if ( ! self::host_ok( $url ) ) {
 				return new WP_Error( 'tsh_host', __( 'میزبان مجاز نیست.', 'tisacase-hub' ) );
 			}
 
@@ -269,10 +292,6 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 					curl_close( $ch );
 					if ( is_string( $got ) && $got && $code >= 200 && $code < 300 ) {
 						$body = $got;
-					} elseif ( $cerr ) {
-						return new WP_Error( 'tsh_curl', $cerr );
-					} else {
-						return new WP_Error( 'tsh_http', sprintf( /* translators: %d: status */ __( 'پاسخ HTTP %d از مخزن.', 'tisacase-hub' ), $code ) );
 					}
 				}
 			}
@@ -384,10 +403,12 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		public static function test_connection( $repo, $branch ) {
 			self::allow();
 			$enc  = rawurlencode( $branch );
+			$slash = str_replace( '/', '%2F', $branch );
 			$body = self::get_text(
 				array(
 					'https://api.github.com/repos/' . $repo . '/contents/plugins/dist?ref=' . $enc,
 					'https://data.jsdelivr.com/v1/packages/gh/' . $repo . '@' . $enc . '/flat',
+					'https://cdn.jsdelivr.net/gh/' . $repo . '@' . $slash . '/plugins/dist/tisacase-hub.zip',
 				)
 			);
 			if ( is_wp_error( $body ) ) {
@@ -415,6 +436,9 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 				}
 			}
 			$files = array_values( array_unique( $files ) );
+			if ( empty( $files ) && is_string( $body ) && ( 0 === strpos( $body, 'PK' ) || false !== strpos( $body, 'Plugin Name:' ) ) ) {
+				$files[] = 'tisacase-hub.zip';
+			}
 			return array(
 				'count' => count( $files ),
 				'files' => $files,
