@@ -916,9 +916,26 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			}
 			$test = TSH_Remote::test_connection( $parsed['repo'], $parsed['branch'] );
 			if ( is_wp_error( $test ) ) {
-				wp_send_json_error( array( 'msg' => $test->get_error_message() ) );
+				$pack = TSH_Remote::bundled_catalog();
+				$n    = ( ! is_wp_error( $pack ) && ! empty( $pack['items'] ) ) ? count( $pack['items'] ) : 0;
+				wp_send_json_success(
+					array(
+						'repo'   => $parsed['repo'],
+						'branch' => $parsed['branch'],
+						'count'  => $n,
+						'remote' => false,
+						'msg'    => $test->get_error_message(),
+					)
+				);
 			}
-			wp_send_json_success( array( 'repo' => $parsed['repo'], 'branch' => $parsed['branch'], 'count' => $test['count'] ) );
+			wp_send_json_success(
+				array(
+					'repo'   => $parsed['repo'],
+					'branch' => $parsed['branch'],
+					'count'  => $test['count'],
+					'remote' => ! empty( $test['remote'] ),
+				)
+			);
 		}
 
 		public static function ajax_repo_connect() {
@@ -936,12 +953,30 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 			if ( is_wp_error( $parsed ) ) {
 				wp_send_json_error( array( 'msg' => $parsed->get_error_message() ) );
 			}
-			$test = TSH_Remote::test_connection( $parsed['repo'], $parsed['branch'] );
-			if ( is_wp_error( $test ) ) {
-				wp_send_json_error( array( 'msg' => $test->get_error_message() ) );
-			}
 			TSH_Remote::save_connection( $parsed['repo'], $parsed['branch'] );
-			wp_send_json_success( array( 'repo' => $parsed['repo'], 'branch' => $parsed['branch'], 'count' => $test['count'] ) );
+			$test = TSH_Remote::test_connection( $parsed['repo'], $parsed['branch'] );
+			$count  = 0;
+			$remote = false;
+			if ( ! is_wp_error( $test ) ) {
+				$count  = (int) $test['count'];
+				$remote = ! empty( $test['remote'] );
+			} else {
+				$pack = TSH_Remote::bundled_catalog();
+				if ( ! is_wp_error( $pack ) ) {
+					$pack['repo']   = $parsed['repo'];
+					$pack['branch'] = $parsed['branch'];
+					update_option( 'tisacase_hub_catalog', $pack, false );
+					$count = count( $pack['items'] );
+				}
+			}
+			wp_send_json_success(
+				array(
+					'repo'   => $parsed['repo'],
+					'branch' => $parsed['branch'],
+					'count'  => $count,
+					'remote' => $remote,
+				)
+			);
 		}
 
 		public static function ajax_repo_sync() {

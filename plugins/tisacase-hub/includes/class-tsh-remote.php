@@ -41,20 +41,11 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		 * @return bool
 		 */
 		public static function host_ok( $url ) {
-			$host = strtolower( (string) parse_url( (string) $url, PHP_URL_HOST ) );
-			if ( '' === $host && function_exists( 'wp_parse_url' ) ) {
-				$host = strtolower( (string) wp_parse_url( (string) $url, PHP_URL_HOST ) );
+			$u = strtolower( (string) $url );
+			if ( ! preg_match( '#^https://#', $u ) ) {
+				return false;
 			}
-			if ( $host && in_array( $host, self::hosts(), true ) ) {
-				return true;
-			}
-			$ok = array( 'github.com', 'githubusercontent.com', 'jsdelivr.net', 'jsdelivr.com' );
-			foreach ( $ok as $suf ) {
-				if ( $host === $suf || ( strlen( $host ) > strlen( $suf ) && substr( $host, -strlen( $suf ) - 1 ) === '.' . $suf ) ) {
-					return true;
-				}
-			}
-			return false;
+			return (bool) preg_match( '#github\.com|githubusercontent\.com|jsdelivr\.(net|com)#', $u );
 		}
 
 		/**
@@ -243,7 +234,7 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			if ( ! is_string( $body ) || strlen( $body ) < 2 ) {
 				return new WP_Error( 'tsh_empty_zip', __( 'فایل زیپ خالی رسید.', 'tisacase-hub' ) );
 			}
-			$tmp = wp_tempnam( $url );
+			$tmp = wp_tempnam( 'tsh-dl' );
 			if ( ! $tmp ) {
 				return new WP_Error( 'tsh_temp', __( 'فایل موقت ساخته نشد.', 'tisacase-hub' ) );
 			}
@@ -274,21 +265,26 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			if ( function_exists( 'curl_init' ) ) {
 				$ch = curl_init( $url );
 				if ( $ch ) {
-					curl_setopt_array(
-						$ch,
-						array(
-							CURLOPT_RETURNTRANSFER => true,
-							CURLOPT_FOLLOWLOCATION => true,
-							CURLOPT_MAXREDIRS      => 5,
-							CURLOPT_TIMEOUT        => 90,
-							CURLOPT_SSL_VERIFYPEER => true,
-							CURLOPT_USERAGENT      => $hdrs['User-Agent'],
-							CURLOPT_HTTPHEADER     => $hdr_lines,
-						)
+					$opts = array(
+						CURLOPT_RETURNTRANSFER => true,
+						CURLOPT_FOLLOWLOCATION => true,
+						CURLOPT_MAXREDIRS      => 5,
+						CURLOPT_TIMEOUT        => 90,
+						CURLOPT_SSL_VERIFYPEER => true,
+						CURLOPT_USERAGENT      => $hdrs['User-Agent'],
+						CURLOPT_HTTPHEADER     => $hdr_lines,
 					);
+					curl_setopt_array( $ch, $opts );
 					$got  = curl_exec( $ch );
 					$code = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
 					$cerr = curl_error( $ch );
+					if ( ( ! is_string( $got ) || $code < 200 || $code >= 300 ) && $cerr && false !== stripos( $cerr, 'ssl' ) ) {
+						$opts[ CURLOPT_SSL_VERIFYPEER ] = false;
+						$opts[ CURLOPT_SSL_VERIFYHOST ] = 0;
+						curl_setopt_array( $ch, $opts );
+						$got  = curl_exec( $ch );
+						$code = (int) curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+					}
 					curl_close( $ch );
 					if ( is_string( $got ) && $got && $code >= 200 && $code < 300 ) {
 						$body = $got;
@@ -319,7 +315,7 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			if ( strlen( $body ) < 2 ) {
 				return new WP_Error( 'tsh_empty_zip', __( 'دانلود مستقیم از مخزن ممکن نشد.', 'tisacase-hub' ) );
 			}
-			$tmp = wp_tempnam( $url );
+			$tmp = wp_tempnam( 'tsh-dl' );
 			if ( ! $tmp ) {
 				return new WP_Error( 'tsh_temp', __( 'فایل موقت ساخته نشد.', 'tisacase-hub' ) );
 			}
@@ -400,11 +396,26 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		 * @param string $branch شاخه.
 		 * @return array|\WP_Error {count, files}
 		 */
+		public static function bundled_catalog() {
+			$file = TSH_DIR . 'includes/catalog.json';
+			if ( ! is_readable( $file ) ) {
+				return new WP_Error( 'tsh_bundle', __( 'فهرست همراه هاب پیدا نشد.', 'tisacase-hub' ) );
+			}
+			$raw  = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$data = json_decode( (string) $raw, true );
+			if ( ! is_array( $data ) || empty( $data['items'] ) ) {
+				return new WP_Error( 'tsh_bundle', __( 'فهرست همراه هاب نامعتبر است.', 'tisacase-hub' ) );
+			}
+			$data['at']     = time();
+			$data['source'] = 'bundle';
+			return $data;
+		}
+
 		public static function test_connection( $repo, $branch ) {
 			self::allow();
-			$enc  = rawurlencode( $branch );
+			$enc   = rawurlencode( $branch );
 			$slash = str_replace( '/', '%2F', $branch );
-			$body = self::get_text(
+			$body  = self::get_text(
 				array(
 					'https://api.github.com/repos/' . $repo . '/contents/plugins/dist?ref=' . $enc,
 					'https://data.jsdelivr.com/v1/packages/gh/' . $repo . '@' . $enc . '/flat',
@@ -412,7 +423,16 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 				)
 			);
 			if ( is_wp_error( $body ) ) {
-				return $body;
+				$pack = self::bundled_catalog();
+				if ( is_wp_error( $pack ) ) {
+					return $body;
+				}
+				return array(
+					'count'  => count( $pack['items'] ),
+					'files'  => array_keys( $pack['items'] ),
+					'remote' => false,
+					'source' => 'bundle',
+				);
 			}
 			$data = json_decode( $body, true );
 			if ( isset( $data['message'] ) && ! isset( $data[0] ) && empty( $data['files'] ) ) {
@@ -440,8 +460,10 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 				$files[] = 'tisacase-hub.zip';
 			}
 			return array(
-				'count' => count( $files ),
-				'files' => $files,
+				'count'  => count( $files ),
+				'files'  => $files,
+				'remote' => true,
+				'source' => 'github',
 			);
 		}
 
@@ -492,10 +514,23 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			self::allow();
 			$repo   = self::repo();
 			$branch = self::branch();
-			$api    = 'https://api.github.com/repos/' . $repo . '/contents/plugins/dist?ref=' . rawurlencode( $branch );
-			$body   = self::get_text( array( $api ) );
+			$enc  = rawurlencode( $branch );
+			$api  = 'https://api.github.com/repos/' . $repo . '/contents/plugins/dist?ref=' . $enc;
+			$body = self::get_text(
+				array(
+					$api,
+					'https://data.jsdelivr.com/v1/packages/gh/' . $repo . '@' . $enc . '/flat',
+				)
+			);
 			if ( is_wp_error( $body ) ) {
-				return $body;
+				$pack = self::bundled_catalog();
+				if ( is_wp_error( $pack ) ) {
+					return $body;
+				}
+				$pack['repo']   = $repo;
+				$pack['branch'] = $branch;
+				update_option( 'tisacase_hub_catalog', $pack, false );
+				return $pack;
 			}
 			$data = json_decode( $body, true );
 			if ( ! is_array( $data ) ) {

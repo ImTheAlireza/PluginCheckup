@@ -427,7 +427,8 @@
 			testBtn.addEventListener( 'click', function () {
 				run( 'tsh_repo_test', { repo_url: input ? input.value : '' } ).then( function ( d ) {
 					if ( ! d ) { return; }
-					setStatus( d.repo + ' @ ' + d.branch + ' — ' + faDigits( d.count ) + ' زیپ', true );
+					var extra = d.remote === false ? ' (فهرست همراه هاب؛ سرور به گیت‌هاب وصل نشد)' : '';
+					setStatus( d.repo + ' @ ' + d.branch + ' — ' + faDigits( d.count ) + ' زیپ' + extra, true );
 				} );
 			} );
 		}
