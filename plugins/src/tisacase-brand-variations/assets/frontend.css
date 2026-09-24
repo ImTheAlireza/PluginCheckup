@@ -608,25 +608,31 @@ select.tcbv-native:focus {
 	justify-content: center !important;
 	min-height: 34px;
 	padding: 6px 12px !important;
-	border: 1px solid #2b2b2b !important;
+	border: 1px solid var(--tcbv-border) !important;
 	border-radius: 10px !important;
 	background: #fff !important;
-	color: #1a1a1a !important;
+	color: var(--tcbv-text) !important;
 	font-size: 13px;
 	font-weight: 500;
+	text-transform: none !important;
 	box-shadow: none !important;
 }
 
 .tcbv--brands .tcbv-item:hover {
 	background: #fff !important;
-	border-color: #111 !important;
+	border-color: color-mix(in srgb, var(--tcbv-accent) 35%, var(--tcbv-border)) !important;
 }
 
 .tcbv--brands .tcbv-item.is-selected {
 	background: #fff !important;
-	border-color: #4a7dff !important;
-	color: #1a1a1a !important;
+	border-color: var(--tcbv-accent) !important;
+	color: var(--tcbv-text) !important;
 	font-weight: 600;
+}
+
+.tcbv-item-text,
+.tcbv-trigger-text {
+	text-transform: none !important;
 }
 
 .tcbv-item:hover {

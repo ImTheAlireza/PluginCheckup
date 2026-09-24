@@ -282,6 +282,17 @@
 		return values;
 	}
 
+	function optionLabel(select, value) {
+		var options = select.options || [];
+		for (var i = 0; i < options.length; i++) {
+			if (options[i].value === value) {
+				var text = clean(options[i].text);
+				return text || value;
+			}
+		}
+		return value;
+	}
+
 	function shouldGroup(attrKey, values) {
 		if (isColorAttr(attrKey)) { return false; }
 		var listed = listHas(CFG.groupAttrs, attrKey);
@@ -630,7 +641,7 @@
 					item.setAttribute('data-brand', group.id);
 					item.setAttribute('data-key', keyOf(value));
 					item.setAttribute('aria-selected', 'false');
-					item.appendChild(el('span', 'tcbv-item-text', value));
+					item.appendChild(el('span', 'tcbv-item-text', optionLabel(select, value)));
 					itemWrap.appendChild(item);
 					dropItems.push(item);
 					items.push(item);
@@ -709,7 +720,7 @@
 					drop.items[i].setAttribute('aria-selected', on ? 'true' : 'false');
 					if (on) { hit = val; }
 				}
-				drop.tValue.textContent = hit || 'انتخاب مدل';
+				drop.tValue.textContent = hit ? optionLabel(select, hit) : 'انتخاب مدل';
 				drop.trigger.classList.toggle('is-placeholder', !hit);
 				drop.wrap.classList.toggle('has-value', !!hit);
 			}
