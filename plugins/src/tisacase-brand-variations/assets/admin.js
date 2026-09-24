@@ -134,8 +134,11 @@
 	if (presetBtn) {
 		presetBtn.addEventListener('click', function () {
 			var select = document.getElementById('tcbv-preset');
-			var id = select.value;
-			if (!id) { return; }
+			var id = select ? select.value : '';
+			if (!id) {
+				addRow({ label: '', color: '#94A3B8' });
+				return;
+			}
 			if ('custom' === id) {
 				addRow({ label: '', color: '#94A3B8' });
 			} else if (A.presets && A.presets[id]) {

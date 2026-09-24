@@ -243,63 +243,42 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 				<?php endif; ?>
 				</div>
 
-				<div class="tcbv-layout">
-					<div class="tcbv-main">
-					<form class="tcbv-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-						<input type="hidden" name="action" value="tcbv_save">
-						<input type="hidden" name="tab" value="<?php echo esc_attr( $tab ); ?>">
-						<input type="hidden" name="tcbv[brands_marker]" value="1">
-						<?php wp_nonce_field( 'tcbv_save' ); ?>
+				<form class="tcbv-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="tcbv-save-form">
+					<input type="hidden" name="action" value="tcbv_save">
+					<input type="hidden" name="tab" value="<?php echo esc_attr( $tab ); ?>">
+					<input type="hidden" name="tcbv[brands_marker]" value="1">
+					<?php wp_nonce_field( 'tcbv_save' ); ?>
 
-						<?php
-						self::section_test( $settings );
-						self::section_brands( $settings, $tab );
-						self::section_display( $settings, $tab );
-						self::section_colors( $settings, $tab );
-						self::section_advanced( $settings, $tab );
-						?>
-
-						<div class="tcbv-actions">
-							<button type="submit" class="button button-primary">ذخیرهٔ تنظیمات</button>
-							<span class="tcbv-muted">فقط نمایش صفحهٔ محصول عوض می‌شود.</span>
+					<div class="tcbv-layout tcbv-layout--top">
+						<div class="tcbv-main">
+							<?php self::section_test( $settings ); ?>
 						</div>
-					</form>
-
-					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="tcbv-reset-form" id="tcbv-reset-form">
-						<input type="hidden" name="action" value="tcbv_reset">
-						<?php wp_nonce_field( 'tcbv_reset' ); ?>
-						<button type="submit" class="button-link-delete">بازنشانی همهٔ تنظیمات به پیش‌فرض</button>
-					</form>
+						<aside class="tcbv-side">
+							<?php self::section_preview(); ?>
+						</aside>
 					</div>
 
-					<aside class="tcbv-side">
-						<div class="tcbv-card tcbv-card--sticky">
-							<div class="tcbv-card-head">
-								<span class="tcbv-step">◎</span>
-								<div>
-									<h2>پیش‌نمایش زنده</h2>
-									<p class="tcbv-hint">با تغییر تنظیمات همان لحظه به‌روز می‌شود</p>
-								</div>
-							</div>
-							<div class="tcbv-card-body">
-								<div class="tcbv-preview" id="tcbv-preview" data-sample="1">
-									<p class="tcbv-muted">در حال ساخت پیش‌نمایش…</p>
-								</div>
-								<div class="tcbv-preview-tools">
-									<label class="tcbv-check">
-										<input type="checkbox" id="tcbv-preview-real">
-										<span>پیش‌نمایش با مدل‌های واقعی یک محصول</span>
-									</label>
-									<div class="tcbv-row" id="tcbv-preview-picker" hidden>
-										<input type="search" id="tcbv-product-search" class="tcbv-input" placeholder="جستجوی نام محصول…">
-										<button type="button" class="button" id="tcbv-product-search-btn">جستجو</button>
-									</div>
-									<div id="tcbv-product-results" class="tcbv-results" hidden></div>
-								</div>
-							</div>
-						</div>
-					</aside>
-				</div>
+					<?php
+					self::section_brands( $settings, $tab );
+					echo '<div class="tcbv-layout tcbv-layout--bot' . ( 'brands' === $tab ? '' : ' is-hidden' ) . '" data-tab="brands-extra">';
+					self::section_unknown( $settings );
+					self::section_analyser();
+					echo '</div>';
+					self::section_display( $settings, $tab );
+					self::section_colors( $settings, $tab );
+					self::section_advanced( $settings, $tab );
+					?>
+
+					<div class="tcbv-dock">
+						<button type="submit" class="tcbv-dock-save">ذخیرهٔ تنظیمات</button>
+						<span class="tcbv-dock-note">فقط نمایش صفحهٔ محصول عوض می‌شود.</span>
+						<button type="submit" form="tcbv-reset-form" class="tcbv-dock-reset">بازنشانی به پیش‌فرض</button>
+					</div>
+				</form>
+				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="tcbv-reset-form" id="tcbv-reset-form">
+					<input type="hidden" name="action" value="tcbv_reset">
+					<?php wp_nonce_field( 'tcbv_reset' ); ?>
+				</form>
 			</div>
 			<?php
 		}
@@ -307,6 +286,39 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 		/* ============================================================
 		   کارت «حالت تست» — همیشه بالای همهٔ تب‌ها (بخشی از همان فرم)
 		   ============================================================ */
+
+		private static function section_preview() {
+			?>
+			<div class="tcbv-card tcbv-card--preview">
+				<div class="tcbv-card-head">
+					<span class="tcbv-ico" aria-hidden="true">◎</span>
+					<div>
+						<h2>پیش‌نمایش زنده</h2>
+						<p class="tcbv-hint">با تغییر تنظیمات، همین‌جا به‌روز می‌شود</p>
+					</div>
+				</div>
+				<div class="tcbv-card-body">
+					<div class="tcbv-preview" id="tcbv-preview" data-sample="1">
+						<p class="tcbv-muted">در حال ساخت پیش‌نمایش…</p>
+					</div>
+					<div class="tcbv-preview-tools">
+						<label class="tcbv-search">
+							<span class="tcbv-search-ico" aria-hidden="true">⌕</span>
+							<input type="search" id="tcbv-product-search" class="tcbv-input" placeholder="جستجوی محصول…">
+						</label>
+						<label class="tcbv-check">
+							<input type="checkbox" id="tcbv-preview-real">
+							<span>مدل‌های واقعی محصول</span>
+						</label>
+						<div class="tcbv-row" id="tcbv-preview-picker" hidden>
+							<button type="button" class="button" id="tcbv-product-search-btn">جستجو</button>
+						</div>
+						<div id="tcbv-product-results" class="tcbv-results" hidden></div>
+					</div>
+				</div>
+			</div>
+			<?php
+		}
 
 		private static function section_test( $settings ) {
 			$t   = isset( $settings['test'] ) ? $settings['test'] : array();
@@ -316,38 +328,33 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 			<section class="tcbv-card tcbv-card--test<?php echo $on ? ' is-on' : ''; ?>" id="tcbv-test-card" data-tab="test">
 				<div class="tcbv-card-head">
 					<span class="tcbv-step tcbv-step--test">تست</span>
-					<div class="tcbv-test-head">
-						<h2>حالت تست — فعلاً فقط روی محصول‌هایی که خودتان انتخاب می‌کنید</h2>
-						<p class="tcbv-hint">تا وقتی این حالت روشن است، افزونه روی هیچ محصول دیگری اثر نمی‌گذارد — نه پنل سمت کاربر، نه مرتب‌سازی سرور. محصول‌های آزمایشی را پایین اضافه کنید و نتیجه را همان‌جا ببینید؛ هر وقت راضی بودید، با یک کلیک برای کل فروشگاه روشن کنید.</p>
-					</div>
-					<span class="tcbv-status" id="tcbv-test-status" data-on="<?php echo $on ? '1' : '0'; ?>">…</span>
+					<h2>حالت تست</h2>
+					<label class="tcbv-switch">
+						<input type="checkbox" id="tcbv-test-enabled" name="tcbv[test][enabled]" value="1" <?php checked( $on ); ?>>
+						<span class="tcbv-switch-ui" aria-hidden="true"></span>
+						<span class="tcbv-switch-text"><?php echo $on ? 'فعال — فقط روی محصول‌های انتخاب‌شده' : 'خاموش'; ?></span>
+					</label>
+					<span class="tcbv-status tcbv-sr-only" id="tcbv-test-status" data-on="<?php echo $on ? '1' : '0'; ?>">…</span>
 				</div>
 				<div class="tcbv-card-body">
-					<div class="tcbv-test-top">
-						<label class="tcbv-switch">
-							<input type="checkbox" id="tcbv-test-enabled" name="tcbv[test][enabled]" value="1" <?php checked( $on ); ?>>
-							<span class="tcbv-switch-ui" aria-hidden="true"></span>
-							<span class="tcbv-switch-text">حالت تست</span>
-						</label>
-						<label class="tcbv-check">
-							<input type="checkbox" name="tcbv[test][badge]" value="1" <?php checked( ! empty( $t['badge'] ) ); ?>>
-							<span>نشان «حالت تست» روی صفحهٔ محصول (فقط برای مدیر، بازدیدکنندهٔ عادی نمی‌بیند)</span>
-						</label>
-						<button type="button" class="button" id="tcbv-test-all">روشن‌کردن برای کل فروشگاه</button>
-					</div>
-
-					<div class="tcbv-row tcbv-test-search">
-						<input type="search" id="tcbv-test-search" class="tcbv-input" placeholder="نام محصول آزمایشی (مثلاً قاب TS184)…">
-						<button type="button" class="button" id="tcbv-test-search-btn">جستجوی محصول</button>
-					</div>
+					<label class="tcbv-search">
+						<input type="search" id="tcbv-test-search" class="tcbv-input" placeholder="جستجوی محصول… (مثل قاب TS184)">
+						<span class="tcbv-search-ico" aria-hidden="true">⌕</span>
+					</label>
 					<div id="tcbv-test-results" class="tcbv-results" hidden></div>
-
-					<div class="tcbv-test-chips" id="tcbv-test-chips">
-						<?php foreach ( $ids as $id ) : ?>
-							<?php self::test_chip( $id ); ?>
-						<?php endforeach; ?>
+					<div class="tcbv-test-row">
+						<div class="tcbv-test-chips" id="tcbv-test-chips">
+							<?php foreach ( $ids as $id ) : ?>
+								<?php self::test_chip( $id ); ?>
+							<?php endforeach; ?>
+						</div>
+						<button type="button" class="tcbv-btn tcbv-btn--ghost" id="tcbv-test-all">روشن‌کردن برای کل فروشگاه</button>
 					</div>
-					<p class="tcbv-muted" id="tcbv-test-empty"><?php echo $ids ? 'برای حذف یک محصول، روی × همان چیپ بزنید.' : 'هنوز محصولی انتخاب نشده — در این وضعیت افزونه روی هیچ محصولی اجرا نمی‌شود.'; ?></p>
+					<p class="tcbv-muted" id="tcbv-test-empty" <?php echo $ids ? 'hidden' : ''; ?>>هنوز محصولی انتخاب نشده.</p>
+					<label class="tcbv-check tcbv-check--end">
+						<input type="checkbox" name="tcbv[test][badge]" value="1" <?php checked( ! empty( $t['badge'] ) ); ?>>
+						<span>نشان «حالت تست» فقط به مدیر نمایش داده شود</span>
+					</label>
 				</div>
 			</section>
 			<?php
@@ -382,91 +389,140 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 		   تب ۱ — برندها
 		   ============================================================ */
 
+		private static function lines_of( $raw ) {
+			$parts = preg_split( '/\r\n|\r|\n/', (string) $raw );
+			$out   = array();
+			foreach ( (array) $parts as $p ) {
+				$p = trim( (string) $p );
+				if ( '' !== $p ) {
+					$out[] = $p;
+				}
+			}
+			return $out;
+		}
+
 		private static function section_brands( $settings, $tab ) {
 			$brands = isset( $settings['brands'] ) ? $settings['brands'] : array();
+			$n_on   = 0;
+			$n_rx   = 0;
+			$n_ex   = 0;
+			foreach ( $brands as $b ) {
+				if ( ! empty( $b['enabled'] ) ) {
+					$n_on++;
+				}
+				if ( self::lines_of( isset( $b['regex'] ) ? $b['regex'] : '' ) ) {
+					$n_rx++;
+				}
+				$n_ex += count( self::lines_of( isset( $b['exact'] ) ? $b['exact'] : '' ) );
+			}
 			?>
-			<section class="tcbv-card<?php echo 'brands' === $tab ? '' : ' is-hidden'; ?>" data-tab="brands">
+			<section class="tcbv-card tcbv-card--brands<?php echo 'brands' === $tab ? '' : ' is-hidden'; ?>" data-tab="brands">
 				<div class="tcbv-card-head">
 					<span class="tcbv-step">۱</span>
-					<div>
+					<div class="tcbv-head-copy">
 						<h2>برندها و قواعد تشخیص</h2>
-						<p class="tcbv-hint">ترتیب ردیف‌ها = ترتیب نمایش در صفحهٔ محصول = اولویت تطبیق. اگر مدلی با چند برند بخواند، بالاترین برند برنده است. «فهرست دستی» همیشه بر قواعد دیگر مقدم است.</p>
+						<p class="tcbv-hint">قاعدهٔ بالاتر، اولویت بالاتر — برای جابه‌جایی بکشید</p>
 					</div>
 					<label class="tcbv-switch">
 						<input type="checkbox" name="tcbv[enabled]" value="1" <?php checked( ! empty( $settings['enabled'] ) ); ?>>
 						<span class="tcbv-switch-ui" aria-hidden="true"></span>
-						<span>افزونه فعال باشد</span>
+						<span>فعال</span>
 					</label>
 				</div>
-
 				<div class="tcbv-card-body">
+					<div class="tcbv-stats">
+						<span class="tcbv-stat"><?php echo esc_html( number_format_i18n( $n_on ) ); ?> برند فعال</span>
+						<span class="tcbv-stat">regex: <?php echo esc_html( number_format_i18n( $n_rx ) ); ?></span>
+						<span class="tcbv-stat">مدل دستی: <?php echo esc_html( number_format_i18n( $n_ex ) ); ?></span>
+						<span class="tcbv-stats-note">قوانین «دقیق» همیشه بر «رگکس» مقدم‌اند</span>
+					</div>
 					<div class="tcbv-brands" id="tcbv-brands">
 						<?php foreach ( $brands as $index => $brand ) { self::brand_row( $index, $brand ); } ?>
 					</div>
-
-					<div class="tcbv-row tcbv-row--between">
-						<div class="tcbv-row">
-							<select id="tcbv-preset" class="tcbv-input">
-								<option value="">افزودن برند آماده…</option>
-								<?php foreach ( TCBV_Settings::presets() as $id => $preset ) : ?>
-									<option value="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $preset['label'] ); ?></option>
-								<?php endforeach; ?>
-								<option value="custom">برند دلخواه…</option>
-							</select>
-							<button type="button" class="button" id="tcbv-add-preset">افزودن</button>
-						</div>
-						<button type="button" class="button" id="tcbv-add-brand">+ برند خالی</button>
+					<div class="tcbv-brand-add">
+						<select id="tcbv-preset" class="tcbv-input tcbv-preset-select">
+							<option value="">افزودن برند آماده…</option>
+							<?php foreach ( TCBV_Settings::presets() as $id => $preset ) : ?>
+								<option value="<?php echo esc_attr( $id ); ?>"><?php echo esc_html( $preset['label'] ); ?></option>
+							<?php endforeach; ?>
+							<option value="custom">برند دلخواه…</option>
+						</select>
+						<button type="button" class="tcbv-btn tcbv-btn--primary" id="tcbv-add-preset">+ افزودن برند</button>
+						<button type="button" class="tcbv-btn tcbv-btn--ghost" id="tcbv-add-brand">برند خالی</button>
 					</div>
+				</div>
+			</section>
+			<template id="tcbv-brand-template">
+				<?php self::brand_row( '__INDEX__', array( 'label' => '', 'color' => '#94A3B8', 'icon' => '', 'enabled' => 1, 'keywords' => '', 'regex' => '', 'exact' => '' ) ); ?>
+			</template>
+			<?php
+		}
 
-					<hr class="tcbv-hr">
-
-					<h3 class="tcbv-h3">مدل‌های ناشناس</h3>
-					<p class="tcbv-hint">هر مدلی که با هیچ قاعده‌ای نخواند، اینجا می‌افتد — با عنوان و رنگ خودش.</p>
-					<div class="tcbv-grid-3">
+		private static function section_unknown( $settings ) {
+			$u = isset( $settings['unknown'] ) ? $settings['unknown'] : array();
+			?>
+			<section class="tcbv-card">
+				<div class="tcbv-card-head">
+					<h2>مدل‌های ناشناس</h2>
+				</div>
+				<div class="tcbv-card-body">
+					<p class="tcbv-hint">هر مدلی که با هیچ قاعده‌ای نخواند، با این عنوان و رنگ می‌افتد</p>
+					<div class="tcbv-unknown-grid">
 						<label class="tcbv-field">
 							<span>عنوان گروه</span>
-							<input type="text" class="tcbv-input" name="tcbv[unknown][label]" value="<?php echo esc_attr( $settings['unknown']['label'] ); ?>">
+							<input type="text" class="tcbv-input" name="tcbv[unknown][label]" value="<?php echo esc_attr( isset( $u['label'] ) ? $u['label'] : '' ); ?>">
 						</label>
 						<label class="tcbv-field">
 							<span>رنگ</span>
-							<input type="color" class="tcbv-color" name="tcbv[unknown][color]" value="<?php echo esc_attr( $settings['unknown']['color'] ); ?>">
+							<span class="tcbv-colorwrap">
+								<input type="color" class="tcbv-color" name="tcbv[unknown][color]" value="<?php echo esc_attr( isset( $u['color'] ) ? $u['color'] : '#94A3B8' ); ?>">
+								<code><?php echo esc_html( isset( $u['color'] ) ? $u['color'] : '' ); ?></code>
+							</span>
 						</label>
 						<label class="tcbv-field">
 							<span>جایگاه</span>
 							<select class="tcbv-input" name="tcbv[unknown][position]">
-								<option value="last" <?php selected( 'last', $settings['unknown']['position'] ); ?>>آخر فهرست</option>
-								<option value="first" <?php selected( 'first', $settings['unknown']['position'] ); ?>>ابتدای فهرست</option>
+								<option value="last" <?php selected( 'last', isset( $u['position'] ) ? $u['position'] : 'last' ); ?>>آخر فهرست</option>
+								<option value="first" <?php selected( 'first', isset( $u['position'] ) ? $u['position'] : '' ); ?>>ابتدای فهرست</option>
 							</select>
 						</label>
+						<div class="tcbv-unknown-preview">
+							<span class="tcbv-unknown-swatch" style="background:<?php echo esc_attr( isset( $u['color'] ) ? $u['color'] : '#94A3B8' ); ?>"></span>
+							<span><?php echo esc_html( isset( $u['label'] ) ? $u['label'] : 'سایر مدل‌ها' ); ?></span>
+						</div>
 					</div>
 					<label class="tcbv-check">
-						<input type="checkbox" name="tcbv[unknown][enabled]" value="1" <?php checked( ! empty( $settings['unknown']['enabled'] ) ); ?>>
+						<input type="checkbox" name="tcbv[unknown][enabled]" value="1" <?php checked( ! empty( $u['enabled'] ) ); ?>>
 						<span>نمایش گروه ناشناس‌ها</span>
 					</label>
+				</div>
+			</section>
+			<?php
+		}
 
-					<hr class="tcbv-hr">
-
-					<h3 class="tcbv-h3">تحلیلگر مدل‌ها</h3>
-					<p class="tcbv-hint">لیست واقعی مدل‌های یک محصول را بخوانید و ببینید کدام برند می‌شود و کدام «ناشناس» می‌ماند. مدل‌های ناشناس را همان‌جا با یک کلیک به برند دلخواه بچسبانید (به «فهرست دستی» آن برند اضافه می‌شود).</p>
+		private static function section_analyser() {
+			?>
+			<section class="tcbv-card">
+				<div class="tcbv-card-head">
+					<h2>تحلیلگر مدل‌ها</h2>
+				</div>
+				<div class="tcbv-card-body">
+					<p class="tcbv-hint">ببینید کدام برند، کدام مدل را می‌گیرد</p>
 					<div class="tcbv-row">
-						<button type="button" class="button button-primary" id="tcbv-analyse">تحلیل لیست زیر</button>
-						<button type="button" class="button" id="tcbv-load-product">بارگذاری مدل‌های یک محصول…</button>
-						<button type="button" class="button" id="tcbv-clear-list">پاک کردن</button>
+						<input type="search" class="tcbv-input" id="tcbv-analyse-search" placeholder="نام محصول (مثل قاب اسپیس)…">
+						<button type="button" class="tcbv-btn tcbv-btn--ghost" id="tcbv-analyse-search-btn">جستجو</button>
 					</div>
-					<div class="tcbv-row" id="tcbv-product-picker" hidden>
-						<input type="search" class="tcbv-input" id="tcbv-analyse-search" placeholder="نام محصول متغیر… (مثلاً قاب اسپیس)">
-						<button type="button" class="button" id="tcbv-analyse-search-btn">جستجو</button>
-					</div>
+					<div class="tcbv-row" id="tcbv-product-picker" hidden></div>
 					<div id="tcbv-analyse-products" class="tcbv-results" hidden></div>
-
-					<textarea id="tcbv-test-input" class="tcbv-textarea" rows="6" placeholder="هر مدل در یک خط — مثلاً:&#10;iPhone 15 Pro Max&#10;A55&#10;Redmi Note 13 Pro 5G"></textarea>
+					<div class="tcbv-row">
+						<button type="button" class="tcbv-btn tcbv-btn--primary" id="tcbv-analyse">تحلیل لیست زیر</button>
+						<button type="button" class="tcbv-btn tcbv-btn--ghost" id="tcbv-load-product">بارگذاری مدل‌های یک محصول…</button>
+						<button type="button" class="button-link" id="tcbv-clear-list">پاک کردن</button>
+					</div>
+					<textarea id="tcbv-test-input" class="tcbv-textarea" rows="4" placeholder="هر مدل در یک خط — مثلاً:&#10;iPhone 15 Pro Max&#10;A55&#10;Redmi Note 13 Pro 5G"></textarea>
 					<div id="tcbv-analyse-out" class="tcbv-analyse" hidden></div>
 				</div>
 			</section>
-
-			<template id="tcbv-brand-template">
-				<?php self::brand_row( '__INDEX__', array( 'label' => '', 'color' => '#94A3B8', 'icon' => '', 'enabled' => 1, 'keywords' => '', 'regex' => '', 'exact' => '' ) ); ?>
-			</template>
 			<?php
 		}
 
@@ -482,6 +538,10 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 				$brand
 			);
 			$name = 'tcbv[brands][' . $index . ']';
+			$kws  = self::lines_of( $brand['keywords'] );
+			$rxs  = self::lines_of( $brand['regex'] );
+			$exs  = self::lines_of( $brand['exact'] );
+			$letter = $brand['label'] !== '' ? mb_substr( $brand['label'], 0, 1 ) : '?';
 			?>
 			<div class="tcbv-brand" data-index="<?php echo esc_attr( $index ); ?>">
 				<div class="tcbv-brand-head">
@@ -491,29 +551,52 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 					<label class="tcbv-check" title="فعال">
 						<input type="checkbox" name="<?php echo esc_attr( $name ); ?>[enabled]" value="1" <?php checked( ! empty( $brand['enabled'] ) ); ?> data-field="enabled">
 					</label>
-					<input type="text" class="tcbv-input tcbv-brand-label" name="<?php echo esc_attr( $name ); ?>[label]" value="<?php echo esc_attr( $brand['label'] ); ?>" placeholder="نام برند (مثلاً آیفون)" data-field="label">
-					<input type="color" class="tcbv-color" name="<?php echo esc_attr( $name ); ?>[color]" value="<?php echo esc_attr( $brand['color'] ); ?>" data-field="color" title="رنگ برند">
-					<input type="text" class="tcbv-input tcbv-brand-icon" name="<?php echo esc_attr( $name ); ?>[icon]" value="<?php echo esc_attr( $brand['icon'] ); ?>" placeholder="آیکن" data-field="icon" title="آیکن یا ایموجی (اختیاری)">
+					<span class="tcbv-avatar" style="background:<?php echo esc_attr( $brand['color'] ); ?>"><?php echo esc_html( $letter ); ?></span>
+					<div class="tcbv-brand-id">
+						<input type="text" class="tcbv-input tcbv-brand-label" name="<?php echo esc_attr( $name ); ?>[label]" value="<?php echo esc_attr( $brand['label'] ); ?>" placeholder="نام برند" data-field="label">
+						<span class="tcbv-hex">
+							<input type="color" class="tcbv-color" name="<?php echo esc_attr( $name ); ?>[color]" value="<?php echo esc_attr( $brand['color'] ); ?>" data-field="color">
+							<code dir="ltr"><?php echo esc_html( $brand['color'] ); ?></code>
+						</span>
+						<input type="hidden" class="tcbv-brand-icon" name="<?php echo esc_attr( $name ); ?>[icon]" value="<?php echo esc_attr( $brand['icon'] ); ?>" data-field="icon">
+					</div>
+					<div class="tcbv-kw">
+						<span class="tcbv-kw-lab">کلیدواژه‌ها</span>
+						<?php foreach ( array_slice( $kws, 0, 6 ) as $kw ) : ?>
+							<span class="tcbv-chip"><?php echo esc_html( $kw ); ?></span>
+						<?php endforeach; ?>
+					</div>
+					<div class="tcbv-meta-bits">
+						<?php if ( $rxs ) : ?>
+							<span class="tcbv-pill tcbv-pill--rx" dir="ltr" title="<?php echo esc_attr( implode( "\n", $rxs ) ); ?>">regex</span>
+						<?php else : ?>
+							<span class="tcbv-muted">regex —</span>
+						<?php endif; ?>
+						<span class="tcbv-muted">مدل دستی: <?php echo esc_html( number_format_i18n( count( $exs ) ) ); ?></span>
+					</div>
 					<span class="tcbv-brand-actions">
 						<button type="button" class="button-link tcbv-up" title="بالا">▲</button>
 						<button type="button" class="button-link tcbv-down" title="پایین">▼</button>
 						<button type="button" class="button-link tcbv-del" title="حذف">✕</button>
 					</span>
 				</div>
-				<div class="tcbv-grid-3 tcbv-brand-rules">
-					<label class="tcbv-field">
-						<span>کلیدواژه‌ها (هر خط یکی) <em>مثلاً iphone</em></span>
-						<textarea class="tcbv-textarea" rows="4" name="<?php echo esc_attr( $name ); ?>[keywords]" data-field="keywords"><?php echo esc_textarea( $brand['keywords'] ); ?></textarea>
-					</label>
-					<label class="tcbv-field">
-						<span>الگو (regex، هر خط یکی)</span>
-						<textarea class="tcbv-textarea" rows="4" name="<?php echo esc_attr( $name ); ?>[regex]" data-field="regex" dir="ltr"><?php echo esc_textarea( $brand['regex'] ); ?></textarea>
-					</label>
-					<label class="tcbv-field">
-						<span>فهرست دستی مدل‌ها (هر خط یکی، دقیق)</span>
-						<textarea class="tcbv-textarea" rows="4" name="<?php echo esc_attr( $name ); ?>[exact]" data-field="exact"><?php echo esc_textarea( $brand['exact'] ); ?></textarea>
-					</label>
-				</div>
+				<details class="tcbv-brand-rules">
+					<summary>ویرایش قواعد</summary>
+					<div class="tcbv-grid-3">
+						<label class="tcbv-field">
+							<span>کلیدواژه‌ها (هر خط یکی)</span>
+							<textarea class="tcbv-textarea" rows="3" name="<?php echo esc_attr( $name ); ?>[keywords]" data-field="keywords"><?php echo esc_textarea( $brand['keywords'] ); ?></textarea>
+						</label>
+						<label class="tcbv-field">
+							<span>الگو (regex)</span>
+							<textarea class="tcbv-textarea" rows="3" name="<?php echo esc_attr( $name ); ?>[regex]" data-field="regex" dir="ltr"><?php echo esc_textarea( $brand['regex'] ); ?></textarea>
+						</label>
+						<label class="tcbv-field">
+							<span>فهرست دستی</span>
+							<textarea class="tcbv-textarea" rows="3" name="<?php echo esc_attr( $name ); ?>[exact]" data-field="exact"><?php echo esc_textarea( $brand['exact'] ); ?></textarea>
+						</label>
+					</div>
+				</details>
 			</div>
 			<?php
 		}
