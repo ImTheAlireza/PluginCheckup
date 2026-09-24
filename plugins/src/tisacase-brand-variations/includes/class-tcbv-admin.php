@@ -243,33 +243,8 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 				<?php endif; ?>
 				</div>
 
-				<div class="tcbv-stage">
-					<aside class="tcbv-preview-card tcbv-card">
-						<div class="tcbv-card-head">
-							<span class="tcbv-step">◎</span>
-							<div>
-								<h2>پیش‌نمایش زنده</h2>
-								<p class="tcbv-hint">با تغییر تنظیمات همان لحظه به‌روز می‌شود</p>
-							</div>
-						</div>
-						<div class="tcbv-card-body">
-							<div class="tcbv-preview" id="tcbv-preview" data-sample="1">
-								<p class="tcbv-muted">در حال ساخت پیش‌نمایش…</p>
-							</div>
-							<div class="tcbv-preview-tools">
-								<label class="tcbv-check">
-									<input type="checkbox" id="tcbv-preview-real">
-									<span>پیش‌نمایش با مدل‌های واقعی یک محصول</span>
-								</label>
-								<div class="tcbv-row tcbv-row--center" id="tcbv-preview-picker" hidden>
-									<input type="search" id="tcbv-product-search" class="tcbv-input" placeholder="جستجوی نام محصول…">
-									<button type="button" class="button" id="tcbv-product-search-btn">جستجو</button>
-								</div>
-								<div id="tcbv-product-results" class="tcbv-results" hidden></div>
-							</div>
-						</div>
-					</aside>
-
+				<div class="tcbv-layout">
+					<div class="tcbv-main">
 					<form class="tcbv-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 						<input type="hidden" name="action" value="tcbv_save">
 						<input type="hidden" name="tab" value="<?php echo esc_attr( $tab ); ?>">
@@ -285,7 +260,7 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 						?>
 
 						<div class="tcbv-actions">
-							<button type="submit" class="button button-primary button-hero">ذخیرهٔ تنظیمات</button>
+							<button type="submit" class="button button-primary">ذخیرهٔ تنظیمات</button>
 							<span class="tcbv-muted">فقط نمایش صفحهٔ محصول عوض می‌شود.</span>
 						</div>
 					</form>
@@ -295,6 +270,35 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 						<?php wp_nonce_field( 'tcbv_reset' ); ?>
 						<button type="submit" class="button-link-delete">بازنشانی همهٔ تنظیمات به پیش‌فرض</button>
 					</form>
+					</div>
+
+					<aside class="tcbv-side">
+						<div class="tcbv-card tcbv-card--sticky">
+							<div class="tcbv-card-head">
+								<span class="tcbv-step">◎</span>
+								<div>
+									<h2>پیش‌نمایش زنده</h2>
+									<p class="tcbv-hint">با تغییر تنظیمات همان لحظه به‌روز می‌شود</p>
+								</div>
+							</div>
+							<div class="tcbv-card-body">
+								<div class="tcbv-preview" id="tcbv-preview" data-sample="1">
+									<p class="tcbv-muted">در حال ساخت پیش‌نمایش…</p>
+								</div>
+								<div class="tcbv-preview-tools">
+									<label class="tcbv-check">
+										<input type="checkbox" id="tcbv-preview-real">
+										<span>پیش‌نمایش با مدل‌های واقعی یک محصول</span>
+									</label>
+									<div class="tcbv-row" id="tcbv-preview-picker" hidden>
+										<input type="search" id="tcbv-product-search" class="tcbv-input" placeholder="جستجوی نام محصول…">
+										<button type="button" class="button" id="tcbv-product-search-btn">جستجو</button>
+									</div>
+									<div id="tcbv-product-results" class="tcbv-results" hidden></div>
+								</div>
+							</div>
+						</div>
+					</aside>
 				</div>
 			</div>
 			<?php

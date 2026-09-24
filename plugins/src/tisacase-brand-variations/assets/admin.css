@@ -5,14 +5,14 @@
 
 .tcbv-wrap.wrap,
 .tcbv-wrap {
-	max-width: 1040px;
+	max-width: 1120px;
 	width: 100%;
 	margin: 28px auto 56px !important;
 	padding: 0 20px 48px;
 	float: none;
 	font-family: var(--tisa-font, "Vazirmatn", Tahoma, sans-serif);
 	color: var(--tisa-ink, #1F2A2E);
-	text-align: center;
+	text-align: start;
 }
 
 .tcbv-wrap * {
@@ -227,39 +227,39 @@
 }
 
 .tcbv-flash {
-	margin: 0 auto 16px;
-	max-width: 720px;
-	text-align: center;
+	margin-bottom: 16px;
+	text-align: start;
 }
 
 .tcbv-notice {
-	text-align: center;
+	text-align: start;
 }
 
 /* ------------------------------------------------------------------
-   چیدمان وسط‌چین — ستون واحد زیر هیرو
+   دو ستون مثل بقیهٔ افزونه‌های تیساکیس
    ------------------------------------------------------------------ */
-.tcbv-stage {
-	max-width: 720px;
-	margin: 0 auto;
-	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-	text-align: center;
+.tcbv-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1.5fr) minmax(280px, .85fr);
+	gap: 20px;
+	align-items: start;
+	text-align: start;
 }
 
-.tcbv-form {
-	width: 100%;
+@media (max-width: 1100px) {
+	.tcbv-layout {
+		grid-template-columns: 1fr;
+	}
 }
 
 .tcbv-card {
 	background: var(--tisa-surface, #fff);
-	border: 1px solid rgba(227, 225, 218, .95);
-	border-radius: 22px;
-	box-shadow: 0 1px 1px rgba(31, 42, 46, .04), 0 14px 36px rgba(31, 42, 46, .06);
-	margin-bottom: 22px;
+	border: 1px solid var(--tisa-border, #E3E1DA);
+	border-radius: var(--tisa-r, 14px);
+	box-shadow: var(--tisa-shadow-sm, 0 1px 2px rgba(31, 42, 46, .05));
+	margin-bottom: 16px;
 	overflow: hidden;
-	text-align: center;
+	text-align: start;
 }
 
 .tcbv-card.is-hidden {
@@ -268,14 +268,12 @@
 
 .tcbv-card-head {
 	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 10px;
-	padding: 22px 28px 16px;
+	align-items: flex-start;
+	gap: var(--tisa-sp-3, 12px);
+	padding: 14px 18px;
 	border-bottom: 1px solid var(--tisa-border, #E3E1DA);
-	background: linear-gradient(180deg, #FBFBFA 0%, var(--tisa-surface-2, #FAFAF8) 100%);
-	text-align: center;
+	background: var(--tisa-surface-2, #FAFAF8);
+	text-align: start;
 }
 
 .tcbv-card-head h2 {
@@ -302,24 +300,24 @@
 }
 
 .tcbv-card-body {
-	padding: var(--tisa-sp-5, 24px);
+	padding: 16px 18px 18px;
 }
 
 .tcbv-hint {
-	margin: 6px auto 0;
-	max-width: 46ch;
+	margin: 4px 0 0;
+	max-width: none;
 	color: var(--tisa-muted, #77828A);
 	font-size: var(--tisa-fs-meta, 12px);
-	line-height: var(--tisa-lh, 1.75);
-	text-align: center;
+	line-height: 1.65;
+	text-align: start;
 }
 
 .tcbv-h3 {
-	margin: 0 auto var(--tisa-sp-2, 8px);
+	margin: 0 0 var(--tisa-sp-2, 8px);
 	font-size: var(--tisa-fs-body, 14px);
 	font-weight: 700;
 	color: var(--tisa-ink, #1F2A2E);
-	text-align: center;
+	text-align: start;
 }
 
 .tcbv-muted {
@@ -343,12 +341,12 @@
    ------------------------------------------------------------------ */
 .tcbv-card--test {
 	border-color: var(--tisa-border-strong, #C9DCD7);
-	box-shadow: inset 0 3px 0 0 var(--tisa-primary, #0E7C6B), 0 14px 36px rgba(31, 42, 46, .06);
+	box-shadow: inset 3px 0 0 0 var(--tisa-primary, #0E7C6B), var(--tisa-shadow-sm, 0 1px 2px rgba(31, 42, 46, .05));
 }
 
 .tcbv-card--test.is-on {
 	border-color: #EBD39A;
-	box-shadow: inset 0 3px 0 0 var(--tisa-warning, #8A6116), 0 14px 36px rgba(31, 42, 46, .06);
+	box-shadow: inset 3px 0 0 0 var(--tisa-warning, #8A6116), var(--tisa-shadow-sm);
 	background: linear-gradient(180deg, #FFFDF6 0%, var(--tisa-surface, #fff) 55%);
 }
 
@@ -366,9 +364,8 @@
 }
 
 .tcbv-test-head {
-	flex: none;
+	flex: 1 1 auto;
 	min-width: 0;
-	max-width: 46rem;
 }
 
 .tcbv-status {
@@ -400,9 +397,9 @@
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--tisa-sp-4, 16px);
-	margin-bottom: var(--tisa-sp-4, 16px);
+	margin-bottom: var(--tisa-sp-3, 12px);
 }
 
 .tcbv-test-top .tcbv-check {
@@ -479,7 +476,7 @@ html[dir="ltr"] .tcbv-switch input:checked + .tcbv-switch-ui::after,
 .tcbv-test-chips {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--tisa-sp-2, 8px);
 	margin: var(--tisa-sp-3, 12px) 0 var(--tisa-sp-2, 8px);
 }
@@ -562,17 +559,12 @@ html[dir="ltr"] .tcbv-switch input:checked + .tcbv-switch-ui::after,
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--tisa-sp-2, 8px);
 }
 
-.tcbv-row--center {
-	justify-content: center;
-}
-
 .tcbv-row--between {
-	justify-content: center;
-	gap: 12px;
+	justify-content: space-between;
 	margin-top: var(--tisa-sp-3, 12px);
 }
 
@@ -613,7 +605,7 @@ html[dir="ltr"] .tcbv-switch input:checked + .tcbv-switch-ui::after,
 	align-items: stretch;
 	gap: 5px;
 	min-width: 0;
-	text-align: center;
+	text-align: start;
 }
 
 .tcbv-field > span {
@@ -693,7 +685,7 @@ html[dir="ltr"] .tcbv-switch input:checked + .tcbv-switch-ui::after,
 .tcbv-check {
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: 7px;
 	font-size: var(--tisa-fs-control, 13px);
 	padding: 4px 0;
@@ -716,12 +708,12 @@ html[dir="ltr"] .tcbv-switch input:checked + .tcbv-switch-ui::after,
 	background: var(--tisa-surface-2, #FAFAF8);
 	border: 1px solid var(--tisa-border, #E3E1DA);
 	border-radius: var(--tisa-r, 14px);
-	justify-items: center;
-	text-align: center;
+	justify-items: start;
+	text-align: start;
 }
 
 .tcbv-card-head .tcbv-switch {
-	margin: 4px 0 0;
+	margin-inline-start: auto;
 }
 
 .tcbv-actions {
@@ -768,7 +760,7 @@ html[dir="ltr"] .tcbv-switch input:checked + .tcbv-switch-ui::after,
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--tisa-sp-2, 8px);
 	margin-bottom: var(--tisa-sp-3, 12px);
 }
@@ -982,13 +974,19 @@ html[dir="ltr"] .tcbv-switch input:checked + .tcbv-switch-ui::after,
 /* ------------------------------------------------------------------
    پیش‌نمایش
    ------------------------------------------------------------------ */
+.tcbv-card--sticky {
+	position: sticky;
+	top: 42px;
+	margin-bottom: 0;
+}
+
 .tcbv-preview {
 	padding: var(--tisa-sp-4, 16px);
 	border: 1px dashed var(--tisa-border-strong, #C9DCD7);
 	border-radius: var(--tisa-r, 14px);
 	background: var(--tisa-surface-2, #FAFAF8);
 	overflow: auto;
-	max-height: 480px;
+	max-height: 520px;
 	text-align: start;
 }
 
