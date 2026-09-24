@@ -109,24 +109,27 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			if ( '' === $dir ) {
 				return array();
 			}
-			$file = $dir . '.zip';
-			$urls = array();
-			if ( class_exists( 'TSH_Registry' ) ) {
-				$primary = TSH_Registry::zip_url( $item );
-				if ( $primary ) {
-					$urls[] = $primary;
-				}
-			}
+			$file   = $dir . '.zip';
 			$repo   = self::repo();
 			$branch = self::branch();
-			$urls[] = 'https://cdn.jsdelivr.net/gh/' . $repo . '@' . str_replace( '/', '%2F', $branch ) . '/plugins/dist/' . $file;
-			$urls[] = 'https://github.com/' . $repo . '/raw/' . str_replace( '/', '%2F', $branch ) . '/plugins/dist/' . $file;
-			$urls[] = 'https://raw.githubusercontent.com/' . $repo . '/refs/heads/' . $branch . '/plugins/dist/' . $file;
-
+			$enc    = rawurlencode( $branch );
+			$urls   = array(
+				'https://raw.githubusercontent.com/' . $repo . '/refs/heads/' . $branch . '/plugins/dist/' . $file,
+				'https://github.com/' . $repo . '/raw/' . $enc . '/plugins/dist/' . $file,
+			);
+			if ( false === strpos( $branch, '/' ) ) {
+				$urls[] = 'https://cdn.jsdelivr.net/gh/' . $repo . '@' . $branch . '/plugins/dist/' . $file;
+			}
+			if ( class_exists( 'TSH_Registry' ) ) {
+				$primary = TSH_Registry::zip_url( $item );
+				if ( $primary && false === strpos( $primary, 'jsdelivr.net' ) ) {
+					array_unshift( $urls, $primary );
+				}
+			}
 			$out = array();
 			foreach ( $urls as $url ) {
-				$url = esc_url_raw( (string) $url );
-				if ( $url && ! in_array( $url, $out, true ) ) {
+				$url = trim( (string) $url );
+				if ( $url && preg_match( '#^https://#i', $url ) && ! in_array( $url, $out, true ) ) {
 					$out[] = $url;
 				}
 			}
@@ -146,8 +149,11 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			$urls = is_array( $urls ) ? $urls : array( $urls );
 			$last = null;
 			foreach ( $urls as $url ) {
-				$url = esc_url_raw( (string) $url );
-				if ( ! $url ) {
+				$url = trim( (string) $url );
+				if ( ! $url || ! preg_match( '#^https://#i', $url ) ) {
+					continue;
+				}
+				if ( ! self::host_ok( $url ) ) {
 					continue;
 				}
 				$got = self::fetch_one( $url );

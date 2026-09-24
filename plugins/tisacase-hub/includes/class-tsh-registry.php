@@ -398,7 +398,7 @@ if ( ! class_exists( 'TSH_Registry' ) ) {
 				$base = trim( (string) TSH_UI::setting( 'zip_base', '' ) );
 			}
 			if ( '' === $base && class_exists( 'TSH_Remote' ) ) {
-				$base = 'https://cdn.jsdelivr.net/gh/' . TSH_Remote::repo() . '@' . str_replace( '/', '%2F', TSH_Remote::branch() ) . '/plugins/dist/';
+				$base = 'https://raw.githubusercontent.com/' . TSH_Remote::repo() . '/refs/heads/' . TSH_Remote::branch() . '/plugins/dist/';
 			}
 			if ( '' === $base ) {
 				$base = self::ZIP_BASE;
