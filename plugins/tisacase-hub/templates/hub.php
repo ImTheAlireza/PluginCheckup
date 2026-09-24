@@ -29,6 +29,17 @@ $tool_n       = TSH_View::num( count( $all ) );
 				<p class="tisa-lead"><?php echo esc_html( $tool_n ); ?> <?php esc_html_e( 'ابزار · هر کدام در تب جدید باز می‌شود', 'tisacase-hub' ); ?></p>
 			</div>
 			<div class="tisa-hero-actions">
+				<?php
+				$repo    = class_exists( 'TSH_Remote' ) ? TSH_Remote::repo() : '';
+				$branch  = class_exists( 'TSH_Remote' ) ? TSH_Remote::branch() : '';
+				$gh_link = $repo ? ( 'https://github.com/' . $repo . ( $branch && 'main' !== $branch ? '/tree/' . $branch : '' ) ) : '';
+				?>
+				<button type="button" class="tisa-btn tisa-btn--sm tisa-btn--on-dark" id="tsh-connect" data-url="<?php echo esc_attr( $gh_link ); ?>">
+					<span><?php esc_html_e( 'اتصال مخزن', 'tisacase-hub' ); ?></span>
+				</button>
+				<button type="button" class="tisa-btn tisa-btn--sm tisa-btn--on-dark" id="tsh-sync">
+					<span><?php esc_html_e( 'همگام‌سازی', 'tisacase-hub' ); ?></span>
+				</button>
 				<a class="tisa-btn tisa-btn--sm tisa-btn--on-dark" href="<?php echo esc_url( $settings_url ); ?>">
 					<span><?php echo TSH_View::icon( 'gear' ); // phpcs:ignore WordPress.Security.EscapeOutput ?><?php esc_html_e( 'تنظیمات', 'tisacase-hub' ); ?></span>
 				</a>
@@ -88,4 +99,20 @@ $tool_n       = TSH_View::num( count( $all ) );
 			</p>
 		<?php endif; ?>
 	</main>
+</div>
+
+<div class="tsh-modal" id="tsh-repo-modal" hidden>
+	<div class="tsh-modal__back" data-close="1"></div>
+	<div class="tsh-modal__box" role="dialog" aria-modal="true" aria-labelledby="tsh-repo-title">
+		<h2 class="tsh-modal__title" id="tsh-repo-title"><?php esc_html_e( 'اتصال مخزن', 'tisacase-hub' ); ?></h2>
+		<p class="tisa-meta"><?php esc_html_e( 'لینک مخزن گیت‌هاب را بچسبانید. اگر برنچ خاصی است، همان لینک برنچ را بگذارید.', 'tisacase-hub' ); ?></p>
+		<label class="screen-reader-text" for="tsh-repo-url"><?php esc_html_e( 'لینک مخزن', 'tisacase-hub' ); ?></label>
+		<input type="url" id="tsh-repo-url" class="tisa-input tisa-input--code" dir="ltr" placeholder="https://github.com/owner/repo">
+		<p class="tsh-modal__status" id="tsh-repo-status" hidden></p>
+		<div class="tsh-modal__actions">
+			<button type="button" class="tisa-btn tisa-btn--secondary" id="tsh-repo-test"><?php esc_html_e( 'تست اتصال', 'tisacase-hub' ); ?></button>
+			<button type="button" class="tisa-btn tisa-btn--primary" id="tsh-repo-save"><?php esc_html_e( 'اتصال', 'tisacase-hub' ); ?></button>
+			<button type="button" class="tisa-btn tisa-btn--ghost" data-close="1"><?php esc_html_e( 'بستن', 'tisacase-hub' ); ?></button>
+		</div>
+	</div>
 </div>

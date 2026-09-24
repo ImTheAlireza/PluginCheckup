@@ -74,7 +74,9 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			if ( empty( $args['headers'] ) || ! is_array( $args['headers'] ) ) {
 				$args['headers'] = array();
 			}
-			if ( empty( $args['headers']['Accept'] ) ) {
+			if ( 0 === strpos( strtolower( $host ), 'api.github.com' ) ) {
+				$args['headers']['Accept'] = 'application/vnd.github+json';
+			} elseif ( empty( $args['headers']['Accept'] ) ) {
 				$args['headers']['Accept'] = 'application/zip,application/octet-stream,*/*';
 			}
 			return $args;
@@ -305,6 +307,91 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 				}
 			}
 			return $branch;
+		}
+
+		/**
+		 * لینک گیت‌هاب → owner/repo + شاخه.
+		 * نمونه: https://github.com/ImTheAlireza/TisaCaseHub/tree/arena/foo
+		 *
+		 * @param string $raw ورودی کاربر.
+		 * @return array|\WP_Error {repo, branch}
+		 */
+		public static function parse_github_url( $raw ) {
+			$raw = trim( (string) $raw );
+			if ( '' === $raw ) {
+				return new WP_Error( 'tsh_url', __( 'لینک خالی است.', 'tisacase-hub' ) );
+			}
+			if ( preg_match( '#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$#', $raw ) ) {
+				return array( 'repo' => $raw, 'branch' => 'main' );
+			}
+			$raw = preg_replace( '#^git@github\.com:#i', 'https://github.com/', $raw );
+			if ( ! preg_match( '#github\.com[/:]([^/\s]+)/([^/\s?#]+)#i', $raw, $m ) ) {
+				return new WP_Error( 'tsh_url', __( 'این لینک گیت‌هاب نیست. مثل https://github.com/owner/repo بچسبانید.', 'tisacase-hub' ) );
+			}
+			$repo   = $m[1] . '/' . preg_replace( '/\.git$/', '', $m[2] );
+			$branch = 'main';
+			if ( preg_match( '#/(?:tree|blob|raw)/([^?#]+)#', $raw, $b ) ) {
+				$branch = trim( $b[1], '/' );
+				$branch = preg_replace( '#/(?:plugins|blob|tree).*$#', '', $branch );
+			}
+			$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', $branch );
+			if ( ! $branch ) {
+				$branch = 'main';
+			}
+			return array( 'repo' => $repo, 'branch' => $branch );
+		}
+
+		/**
+		 * تست: فهرست plugins/dist روی آن مخزن/شاخه.
+		 *
+		 * @param string $repo   owner/name.
+		 * @param string $branch شاخه.
+		 * @return array|\WP_Error {count, files}
+		 */
+		public static function test_connection( $repo, $branch ) {
+			self::allow();
+			$api  = 'https://api.github.com/repos/' . $repo . '/contents/plugins/dist?ref=' . rawurlencode( $branch );
+			$body = self::get_text( array( $api ) );
+			if ( is_wp_error( $body ) ) {
+				return $body;
+			}
+			$data = json_decode( $body, true );
+			if ( isset( $data['message'] ) ) {
+				return new WP_Error( 'tsh_github', (string) $data['message'] );
+			}
+			if ( ! is_array( $data ) ) {
+				return new WP_Error( 'tsh_github', __( 'پاسخ مخزن نامعتبر بود.', 'tisacase-hub' ) );
+			}
+			$files = array();
+			foreach ( $data as $row ) {
+				if ( ! empty( $row['name'] ) && preg_match( '/\.zip$/', (string) $row['name'] ) ) {
+					$files[] = (string) $row['name'];
+				}
+			}
+			return array(
+				'count' => count( $files ),
+				'files' => $files,
+			);
+		}
+
+		/**
+		 * ذخیرهٔ اتصال در تنظیمات هاب.
+		 *
+		 * @param string $repo   owner/name.
+		 * @param string $branch شاخه.
+		 * @return void
+		 */
+		public static function save_connection( $repo, $branch ) {
+			$saved = get_option( TSH_OPTION, array() );
+			if ( ! is_array( $saved ) ) {
+				$saved = array();
+			}
+			$saved['repo']   = $repo;
+			$saved['branch'] = $branch;
+			update_option( TSH_OPTION, $saved, false );
+			if ( class_exists( 'TSH_UI' ) ) {
+				TSH_UI::flush();
+			}
 		}
 
 		public static function get_text( $urls ) {

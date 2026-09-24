@@ -50,6 +50,9 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 
 			add_action( 'wp_ajax_tsh_pin', array( __CLASS__, 'ajax_pin' ) );
 			add_action( 'wp_ajax_tsh_prefs', array( __CLASS__, 'ajax_prefs' ) );
+			add_action( 'wp_ajax_tsh_repo_test', array( __CLASS__, 'ajax_repo_test' ) );
+			add_action( 'wp_ajax_tsh_repo_connect', array( __CLASS__, 'ajax_repo_connect' ) );
+			add_action( 'wp_ajax_tsh_repo_sync', array( __CLASS__, 'ajax_repo_sync' ) );
 		}
 
 		/**
@@ -886,6 +889,52 @@ if ( ! class_exists( 'TSH_Admin' ) ) {
 		 *
 		 * @return void
 		 */
+		public static function ajax_repo_test() {
+			check_ajax_referer( 'tsh_hub', 'nonce' );
+			if ( ! current_user_can( 'manage_woocommerce' ) ) {
+				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
+			}
+			$parsed = TSH_Remote::parse_github_url( isset( $_POST['url'] ) ? wp_unslash( $_POST['url'] ) : '' );
+			if ( is_wp_error( $parsed ) ) {
+				wp_send_json_error( array( 'msg' => $parsed->get_error_message() ) );
+			}
+			$test = TSH_Remote::test_connection( $parsed['repo'], $parsed['branch'] );
+			if ( is_wp_error( $test ) ) {
+				wp_send_json_error( array( 'msg' => $test->get_error_message() ) );
+			}
+			wp_send_json_success( array( 'repo' => $parsed['repo'], 'branch' => $parsed['branch'], 'count' => $test['count'] ) );
+		}
+
+		public static function ajax_repo_connect() {
+			check_ajax_referer( 'tsh_hub', 'nonce' );
+			if ( ! current_user_can( 'manage_woocommerce' ) ) {
+				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
+			}
+			$parsed = TSH_Remote::parse_github_url( isset( $_POST['url'] ) ? wp_unslash( $_POST['url'] ) : '' );
+			if ( is_wp_error( $parsed ) ) {
+				wp_send_json_error( array( 'msg' => $parsed->get_error_message() ) );
+			}
+			$test = TSH_Remote::test_connection( $parsed['repo'], $parsed['branch'] );
+			if ( is_wp_error( $test ) ) {
+				wp_send_json_error( array( 'msg' => $test->get_error_message() ) );
+			}
+			TSH_Remote::save_connection( $parsed['repo'], $parsed['branch'] );
+			wp_send_json_success( array( 'repo' => $parsed['repo'], 'branch' => $parsed['branch'], 'count' => $test['count'] ) );
+		}
+
+		public static function ajax_repo_sync() {
+			check_ajax_referer( 'tsh_hub', 'nonce' );
+			if ( ! current_user_can( 'manage_woocommerce' ) ) {
+				wp_send_json_error( array( 'msg' => 'cap' ), 403 );
+			}
+			$pack = TSH_Remote::sync_catalog();
+			if ( is_wp_error( $pack ) ) {
+				wp_send_json_error( array( 'msg' => $pack->get_error_message() ) );
+			}
+			TSH_Registry::items( true );
+			wp_send_json_success( array( 'count' => isset( $pack['items'] ) ? count( $pack['items'] ) : 0 ) );
+		}
+
 		public static function ajax_pin() {
 			check_ajax_referer( 'tsh_hub', 'nonce' );
 			if ( ! is_user_logged_in() ) {

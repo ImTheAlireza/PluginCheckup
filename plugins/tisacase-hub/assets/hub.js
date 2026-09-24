@@ -370,4 +370,94 @@
 			history.replaceState( null, '', u.toString() );
 		}
 	} );
+
+	/* اتصال مخزن + همگام‌سازی */
+	( function () {
+		var modal = $( '#tsh-repo-modal' );
+		var input = $( '#tsh-repo-url' );
+		var status = $( '#tsh-repo-status' );
+		var connect = $( '#tsh-connect' );
+		var sync = $( '#tsh-sync' );
+
+		function setStatus( text, ok ) {
+			if ( ! status ) { return; }
+			status.hidden = ! text;
+			status.textContent = text || '';
+			status.className = 'tsh-modal__status' + ( ok === true ? ' is-ok' : ok === false ? ' is-bad' : '' );
+		}
+
+		function openModal() {
+			if ( ! modal ) { return; }
+			modal.hidden = false;
+			if ( input ) {
+				input.value = ( connect && connect.getAttribute( 'data-url' ) ) || input.value || '';
+				window.setTimeout( function () { input.focus(); }, 30 );
+			}
+			setStatus( '', null );
+		}
+
+		function closeModal() {
+			if ( modal ) { modal.hidden = true; }
+		}
+
+		if ( connect ) { connect.addEventListener( 'click', openModal ); }
+		if ( modal ) {
+			$$( '[data-close]', modal ).forEach( function ( el ) {
+				el.addEventListener( 'click', closeModal );
+			} );
+		}
+
+		function run( action, extra ) {
+			setStatus( '…', null );
+			return post( action, extra || {} ).then( function ( res ) {
+				if ( ! res || ! res.success ) {
+					var msg = ( res && res.data && res.data.msg ) ? res.data.msg : ( cfg.i18n && cfg.i18n.error );
+					setStatus( msg, false );
+					return null;
+				}
+				return res.data || {};
+			} ).catch( function () {
+				setStatus( cfg.i18n && cfg.i18n.error, false );
+				return null;
+			} );
+		}
+
+		var testBtn = $( '#tsh-repo-test' );
+		if ( testBtn ) {
+			testBtn.addEventListener( 'click', function () {
+				run( 'tsh_repo_test', { url: input ? input.value : '' } ).then( function ( d ) {
+					if ( ! d ) { return; }
+					setStatus( d.repo + ' @ ' + d.branch + ' — ' + faDigits( d.count ) + ' زیپ', true );
+				} );
+			} );
+		}
+		var saveBtn = $( '#tsh-repo-save' );
+		if ( saveBtn ) {
+			saveBtn.addEventListener( 'click', function () {
+				run( 'tsh_repo_connect', { url: input ? input.value : '' } ).then( function ( d ) {
+					if ( ! d ) { return; }
+					setStatus( 'متصل شد: ' + d.repo + ' @ ' + d.branch, true );
+					if ( connect ) {
+						connect.setAttribute( 'data-url', 'https://github.com/' + d.repo + ( d.branch && d.branch !== 'main' ? '/tree/' + d.branch : '' ) );
+					}
+				} );
+			} );
+		}
+		if ( sync ) {
+			sync.addEventListener( 'click', function () {
+				sync.disabled = true;
+				post( 'tsh_repo_sync', {} ).then( function ( res ) {
+					if ( ! res || ! res.success ) {
+						window.alert( ( res && res.data && res.data.msg ) || ( cfg.i18n && cfg.i18n.error ) );
+						sync.disabled = false;
+						return;
+					}
+					window.location.reload();
+				} ).catch( function () {
+					window.alert( cfg.i18n && cfg.i18n.error );
+					sync.disabled = false;
+				} );
+			} );
+		}
+	}() );
 }() );
