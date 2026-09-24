@@ -107,7 +107,7 @@ $tool_n       = TSH_View::num( count( $all ) );
 		<h2 class="tsh-modal__title" id="tsh-repo-title"><?php esc_html_e( 'اتصال مخزن', 'tisacase-hub' ); ?></h2>
 		<p class="tisa-meta"><?php esc_html_e( 'لینک مخزن گیت‌هاب را بچسبانید. اگر برنچ خاصی است، همان لینک برنچ را بگذارید.', 'tisacase-hub' ); ?></p>
 		<label class="screen-reader-text" for="tsh-repo-url"><?php esc_html_e( 'لینک مخزن', 'tisacase-hub' ); ?></label>
-		<input type="url" id="tsh-repo-url" class="tisa-input tisa-input--code" dir="ltr" placeholder="https://github.com/owner/repo">
+		<input type="text" id="tsh-repo-url" class="tisa-input tisa-input--code" dir="ltr" spellcheck="false" autocomplete="off" placeholder="https://github.com/owner/repo">
 		<p class="tsh-modal__status" id="tsh-repo-status" hidden></p>
 		<div class="tsh-modal__actions">
 			<button type="button" class="tisa-btn tisa-btn--secondary" id="tsh-repo-test"><?php esc_html_e( 'تست اتصال', 'tisacase-hub' ); ?></button>

@@ -103,9 +103,9 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 			}
 			$repo   = self::repo();
 			$branch = self::branch();
-			$urls[] = 'https://cdn.jsdelivr.net/gh/' . $repo . '@' . $branch . '/plugins/dist/' . $file;
-			$urls[] = 'https://github.com/' . $repo . '/raw/' . $branch . '/plugins/dist/' . $file;
-			$urls[] = 'https://raw.githubusercontent.com/' . $repo . '/' . $branch . '/plugins/dist/' . $file;
+			$urls[] = 'https://cdn.jsdelivr.net/gh/' . $repo . '@' . str_replace( '/', '%2F', $branch ) . '/plugins/dist/' . $file;
+			$urls[] = 'https://github.com/' . $repo . '/raw/' . str_replace( '/', '%2F', $branch ) . '/plugins/dist/' . $file;
+			$urls[] = 'https://raw.githubusercontent.com/' . $repo . '/refs/heads/' . $branch . '/plugins/dist/' . $file;
 
 			$out = array();
 			foreach ( $urls as $url ) {
@@ -318,6 +318,13 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 		 */
 		public static function parse_github_url( $raw ) {
 			$raw = trim( (string) $raw );
+			$raw = preg_replace( '/[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u', '', $raw );
+			if ( preg_match( '#\]\((https?://[^)\s]+)\)#', $raw, $md ) ) {
+				$raw = $md[1];
+			}
+			$raw = html_entity_decode( $raw, ENT_QUOTES, 'UTF-8' );
+			$raw = rawurldecode( $raw );
+			$raw = trim( $raw, " \t\n\r\"'<>" );
 			if ( '' === $raw ) {
 				return new WP_Error( 'tsh_url', __( 'لینک خالی است.', 'tisacase-hub' ) );
 			}
@@ -325,15 +332,16 @@ if ( ! class_exists( 'TSH_Remote' ) ) {
 				return array( 'repo' => $raw, 'branch' => 'main' );
 			}
 			$raw = preg_replace( '#^git@github\.com:#i', 'https://github.com/', $raw );
-			if ( ! preg_match( '#github\.com[/:]([^/\s]+)/([^/\s?#]+)#i', $raw, $m ) ) {
+			if ( ! preg_match( '#(?:https?://)?(?:www\.)?github\.com[/:]([^/\s]+)/([^/\s?#]+)#i', $raw, $m ) ) {
 				return new WP_Error( 'tsh_url', __( 'این لینک گیت‌هاب نیست. مثل https://github.com/owner/repo بچسبانید.', 'tisacase-hub' ) );
 			}
 			$repo   = $m[1] . '/' . preg_replace( '/\.git$/', '', $m[2] );
 			$branch = 'main';
 			if ( preg_match( '#/(?:tree|blob|raw)/([^?#]+)#', $raw, $b ) ) {
 				$branch = trim( $b[1], '/' );
-				$branch = preg_replace( '#/(?:plugins|blob|tree).*$#', '', $branch );
+				$branch = preg_replace( '#/(?:blob|tree)(/.*)?$#', '', $branch );
 			}
+			$branch = str_replace( '%2F', '/', $branch );
 			$branch = preg_replace( '#[^A-Za-z0-9._/-]#', '', $branch );
 			if ( ! $branch ) {
 				$branch = 'main';
