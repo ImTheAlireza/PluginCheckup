@@ -859,10 +859,15 @@ select.tcbv-native:focus {
    جزئیات
    ============================================================ */
 
+.tcbv [hidden],
+.tcbv[hidden],
 .tcbv-item[hidden],
+.tcbv-dd[hidden],
+.tcbv-pop[hidden],
 .tcbv-group[hidden],
 .tcbv-sep[hidden],
 .tcbv-empty[hidden],
+.tcbv-clear[hidden],
 .tcbv-selected[hidden] {
 	display: none !important;
 }

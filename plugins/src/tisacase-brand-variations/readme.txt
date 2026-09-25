@@ -46,6 +46,9 @@ Test mode (the card at the top of the settings page) is on by default. Add the p
 
 == Changelog ==
 
+= 1.5.2 =
+* Search filtered the counts but not the list on some themes: options were hidden with the `hidden` attribute only, which a theme rule like `.tcbv-item{display:inline-flex}` can override. Hiding is now enforced with an inline `display:none !important` (plus broader `[hidden]` CSS), so filtering, empty groups and closed dropdowns always hide.
+
 = 1.5.1 =
 * Model search fixed: the panel indexed the option *slug* (`a20-a30`, or percent-encoded Persian) instead of the label the customer sees, so typing a model name — especially in Persian — found nothing. Items are now indexed on their visible label plus the decoded slug, and typing a brand name ("سامسونگ", "xiaomi") shows that whole group.
 * Brand detection uses the visible label too (frontend panel, server-side optgroups and the admin analyzer), so global attributes with Persian term names are no longer dumped into "other models".

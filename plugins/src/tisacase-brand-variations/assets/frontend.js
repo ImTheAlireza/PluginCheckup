@@ -148,6 +148,22 @@
 		return kw.length >= 4;
 	}
 
+	// پنهان‌سازی مقاوم: بعضی قالب‌ها با display روی کلاس، خاصیت hidden را بی‌اثر
+	// می‌کنند؛ پس علاوه بر hidden، display را هم inline و important می‌گذاریم.
+	function setHidden(node, on) {
+		if (!node) { return; }
+		node.hidden = !!on;
+		if (on) {
+			node.setAttribute('aria-hidden', 'true');
+			if (node.style.setProperty) { node.style.setProperty('display', 'none', 'important'); }
+			else { node.style.display = 'none'; }
+		} else {
+			node.removeAttribute('aria-hidden');
+			if (node.style.removeProperty) { node.style.removeProperty('display'); }
+			else { node.style.display = ''; }
+		}
+	}
+
 	function escapeRegex(str) {
 		return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	}
@@ -653,14 +669,14 @@
 		var searchClear = el('button', 'tcbv-clear');
 		searchClear.type = 'button';
 		searchClear.setAttribute('aria-label', CFG.i18n.clear || 'پاک کردن');
-		searchClear.hidden = true;
+		setHidden(searchClear, true);
 		searchWrap.appendChild(searchClear);
 		root.appendChild(searchWrap);
 
 		var list = el('div', 'tcbv-dd-list');
 
 		function setDropOpen(drop, on) {
-			drop.pop.hidden = !on;
+			setHidden(drop.pop, !on);
 			drop.wrap.classList.toggle('is-open', on);
 			drop.trigger.setAttribute('aria-expanded', on ? 'true' : 'false');
 		}
@@ -713,7 +729,7 @@
 				wrap.appendChild(trigger);
 
 				var pop = el('div', 'tcbv-pop');
-				if (picker !== 'open') { pop.hidden = true; }
+				if (picker !== 'open') { setHidden(pop, true); }
 				pop.setAttribute('role', 'listbox');
 				pop.setAttribute('aria-label', group.label);
 
@@ -737,7 +753,7 @@
 				pop.appendChild(itemWrap);
 
 				var empty = el('div', 'tcbv-empty', CFG.i18n.noResult || 'چیزی پیدا نشد');
-				empty.hidden = true;
+				setHidden(empty, true);
 				pop.appendChild(empty);
 				wrap.appendChild(pop);
 				list.appendChild(wrap);
@@ -833,15 +849,15 @@
 					var item = drop.items[i];
 					var oosHidden = oosMode === 2 && state.oosSet && state.oosSet.indexOf(item.getAttribute('data-value')) === -1;
 					var show = matchQuery(item, brandHit) && !oosHidden;
-					item.hidden = !show;
+					setHidden(item, !show);
 					if (show) { shown++; }
 				}
-				drop.empty.hidden = shown !== 0;
-				drop.wrap.hidden = shown === 0 && !!state.query;
+				setHidden(drop.empty, shown !== 0);
+				setHidden(drop.wrap, shown === 0 && !!state.query);
 				if (drop.tCount) { drop.tCount.textContent = fa(shown); }
 				any += shown;
 			}
-			searchClear.hidden = !state.query;
+			setHidden(searchClear, !state.query);
 			searchWrap.classList.toggle('has-query', !!state.query);
 			if (picker !== 'open') {
 				if (state.query) { openMatches(); }
