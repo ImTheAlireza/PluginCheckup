@@ -5,7 +5,7 @@ Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
 WC requires at least: 5.0
-Stable tag: 1.5.2
+Stable tag: 1.5.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,9 @@ Yes — Advanced tab → product scope (all / only these categories / all except
 Test mode (the card at the top of the settings page) is on by default. Add the products you want to try, save, and only those products are grouped on the frontend. No other product, category or template output changes while Test mode is on.
 
 == Changelog ==
+
+= 1.5.3 =
+* The search box "clear" (×) button escaped the field on themes that force `position`/`float`/`margin` on buttons: it is now pinned inside the input with `!important` physical *and* logical offsets, with an explicit RTL rule (left side in RTL, right side in LTR).
 
 = 1.5.2 =
 * Search filtered the counts but not the list on some themes: options were hidden with the `hidden` attribute only, which a theme rule like `.tcbv-item{display:inline-flex}` can override. Hiding is now enforced with an inline `display:none !important` (plus broader `[hidden]` CSS), so filtering, empty groups and closed dropdowns always hide.
