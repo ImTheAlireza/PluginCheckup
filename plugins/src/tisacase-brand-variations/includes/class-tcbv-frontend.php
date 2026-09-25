@@ -277,12 +277,19 @@ if ( ! class_exists( 'TCBV_Frontend' ) ) {
 			$placeholders = array();
 			$by_value     = array();
 			$order        = array();
+			$labels       = array();
 
 			foreach ( $tags as $tag ) {
 				$value = self::option_value( $tag );
 				if ( '' === $value ) {
 					$placeholders[] = $tag;
 					continue;
+				}
+				if ( ! isset( $labels[ $value ] ) ) {
+					$text = self::option_text( $tag );
+					if ( '' !== $text ) {
+						$labels[ $value ] = $text;
+					}
 				}
 				if ( ! isset( $by_value[ $value ] ) ) {
 					$by_value[ $value ] = $tag;
@@ -295,6 +302,8 @@ if ( ! class_exists( 'TCBV_Frontend' ) ) {
 			if ( count( $order ) < 2 ) {
 				return $html;
 			}
+
+			TCBV_Rules::set_labels( $labels );
 
 			if ( ! TCBV_Rules::should_group( $attribute, $order, $settings ) ) {
 				return $html;
@@ -372,6 +381,19 @@ if ( ! class_exists( 'TCBV_Frontend' ) ) {
 		 * @param string $tag تگ.
 		 * @return string
 		 */
+		/**
+		 * متن دیده‌شدهٔ یک <option>.
+		 *
+		 * @param string $tag تگ گزینه.
+		 * @return string
+		 */
+		private static function option_text( $tag ) {
+			if ( preg_match( '#<option\b[^>]*>(.*?)(?:</option>)?$#is', $tag, $m ) ) {
+				return html_entity_decode( trim( wp_strip_all_tags( $m[1] ) ), ENT_QUOTES, 'UTF-8' );
+			}
+			return '';
+		}
+
 		private static function option_value( $tag ) {
 			if ( preg_match( '#\bvalue\s*=\s*"([^"]*)"#i', $tag, $m ) ) {
 				return html_entity_decode( $m[1], ENT_QUOTES, 'UTF-8' );

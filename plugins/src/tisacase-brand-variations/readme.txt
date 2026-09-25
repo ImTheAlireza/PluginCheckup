@@ -46,6 +46,10 @@ Test mode (the card at the top of the settings page) is on by default. Add the p
 
 == Changelog ==
 
+= 1.5.1 =
+* Model search fixed: the panel indexed the option *slug* (`a20-a30`, or percent-encoded Persian) instead of the label the customer sees, so typing a model name — especially in Persian — found nothing. Items are now indexed on their visible label plus the decoded slug, and typing a brand name ("سامسونگ", "xiaomi") shows that whole group.
+* Brand detection uses the visible label too (frontend panel, server-side optgroups and the admin analyzer), so global attributes with Persian term names are no longer dumped into "other models".
+
 = 1.5.0 =
 * Detection engine rewritten around multi-model values: `A20/A30`, `A12/m12`, `A30s/A50/A50s`, `Mi11t/tpro` are now split on `/ \ | , ، ; + &` and each part is matched on its own, so anchored brand patterns finally hit instead of falling into "other models".
 * Keyword matching understands glued model codes: `Mi13lite`, `Mi11lite`, `iphone13pro`, `redminote12`, `pocox3` match their brand (a keyword now also matches when the token continues with a digit, or as a prefix for keywords of 4+ characters). Single-letter keywords still require an exact token match.

@@ -16,6 +16,45 @@ if ( ! class_exists( 'TCBV_Rules' ) ) {
 
 		const UNKNOWN = 'unknown';
 
+		/** @var array<string,string> نقشهٔ «مقدار گزینه → متن دیده‌شده». */
+		private static $labels = array();
+
+		/**
+		 * ثبت برچسب گزینه‌ها.
+		 *
+		 * مقدار گزینه در ووکامرس اسلاگ است (`a20-a30` یا برای فارسی درصدکدشده)؛
+		 * تشخیص برند باید روی متنی انجام شود که مشتری می‌بیند.
+		 *
+		 * @param array $map value => label.
+		 * @return void
+		 */
+		public static function set_labels( $map ) {
+			self::$labels = is_array( $map ) ? $map : array();
+		}
+
+		/**
+		 * متن‌های قابل‌تطبیق یک مقدار: برچسب + اسلاگ دیکدشده.
+		 *
+		 * @param string $value مقدار گزینه.
+		 * @return string[]
+		 */
+		public static function texts_for( $value ) {
+			$out = array();
+			$key = (string) $value;
+
+			if ( isset( self::$labels[ $key ] ) && '' !== trim( (string) self::$labels[ $key ] ) ) {
+				$out[] = (string) self::$labels[ $key ];
+			}
+
+			$decoded = rawurldecode( $key );
+			$decoded = str_replace( array( '-', '_' ), ' ', $decoded );
+			if ( '' !== trim( $decoded ) && ! in_array( $decoded, $out, true ) ) {
+				$out[] = $decoded;
+			}
+
+			return empty( $out ) ? array( $key ) : $out;
+		}
+
 		/**
 		 * نرمال‌سازی: نیم‌فاصله/فاصلهٔ مجازی، ی و ک عربی، اعراب، ارقام فارسی، حروف کوچک.
 		 *
@@ -311,13 +350,17 @@ if ( ! class_exists( 'TCBV_Rules' ) ) {
 		 * @return array{id:string,hits:string[]}
 		 */
 		public static function classify( $value, $brands ) {
-			$hits = array();
+			$hits  = array();
+			$texts = self::texts_for( $value );
 			foreach ( $brands as $brand ) {
 				if ( isset( $brand['enabled'] ) && empty( $brand['enabled'] ) ) {
 					continue;
 				}
-				if ( self::matches( $value, $brand ) ) {
-					$hits[] = (string) $brand['id'];
+				foreach ( $texts as $text ) {
+					if ( self::matches( $text, $brand ) ) {
+						$hits[] = (string) $brand['id'];
+						break;
+					}
 				}
 			}
 			return array(

@@ -241,10 +241,13 @@
 
 	function classifyValue(value) {
 		var hits = [];
+		var texts = textsOf(value);
 		for (var i = 0; i < CFG.brands.length; i++) {
 			var brand = CFG.brands[i];
 			if (!brand.enabled) { continue; }
-			if (matchesBrand(value, brand)) { hits.push(brand.id); }
+			for (var t = 0; t < texts.length; t++) {
+				if (matchesBrand(texts[t], brand)) { hits.push(brand.id); break; }
+			}
 		}
 		return { id: hits.length ? hits[0] : 'unknown', hits: hits };
 	}
@@ -321,6 +324,38 @@
 
 	function isColorAttr(attrKey) {
 		return listHas(CFG.swatchAttrs, attrKey);
+	}
+
+	// نقشهٔ «مقدار select → متن دیده‌شده». مقدارِ گزینه در ووکامرس اسلاگ است
+	// (مثلاً «a20-a30» یا برای فارسی درصدکدشده)، پس هم برای تشخیص برند و هم
+	// برای جست‌وجو باید متن واقعیِ گزینه ملاک باشد.
+	var LABELS = null;
+
+	function decodeSafe(value) {
+		var s = String(value === null || value === undefined ? '' : value);
+		if (s.indexOf('%') === -1) { return s; }
+		try { return decodeURIComponent(s); } catch (e) { return s; }
+	}
+
+	function useLabels(select) {
+		var map = {}, options = (select && select.options) || [];
+		for (var i = 0; i < options.length; i++) {
+			var v = options[i].value;
+			if (v === '' || v === null || typeof v === 'undefined') { continue; }
+			map[v] = clean(options[i].text) || decodeSafe(v);
+		}
+		LABELS = map;
+		return map;
+	}
+
+	// متن‌های قابل‌جست‌وجو/تطبیق یک مقدار: برچسب دیده‌شده + اسلاگ دیکدشده.
+	function textsOf(value) {
+		var out = [];
+		var label = LABELS ? LABELS[value] : '';
+		if (label) { out.push(label); }
+		var dec = decodeSafe(value).replace(/[-_]+/g, ' ');
+		if (dec && out.indexOf(dec) === -1) { out.push(dec); }
+		return out.length ? out : [String(value)];
 	}
 
 	function optionValues(select) {
@@ -589,6 +624,7 @@
 	}
 
 	function buildPanel(select, attrKey) {
+		useLabels(select);
 		var values = optionValues(select);
 		if (values.length < 2) { return null; }
 
@@ -690,7 +726,8 @@
 					item.setAttribute('role', 'option');
 					item.setAttribute('data-value', value);
 					item.setAttribute('data-brand', group.id);
-					item.setAttribute('data-key', keyOf(value));
+					item.setAttribute('data-key', keyOf(optionLabel(select, value)));
+					item.setAttribute('data-alt', keyOf(decodeSafe(value)));
 					item.setAttribute('aria-selected', 'false');
 					item.appendChild(el('span', 'tcbv-item-text', optionLabel(select, value)));
 					itemWrap.appendChild(item);
@@ -777,11 +814,12 @@
 			}
 		}
 
-		function matchQuery(item) {
+		function matchQuery(item, brandHit) {
 			if (!state.query) { return true; }
+			if (brandHit) { return true; }
 			var key = item.getAttribute('data-key') || '';
-			var text = normalize(item.getAttribute('data-value'));
-			return key.indexOf(state.query) !== -1 || text.indexOf(state.query) !== -1;
+			var alt = item.getAttribute('data-alt') || '';
+			return key.indexOf(state.query) !== -1 || alt.indexOf(state.query) !== -1;
 		}
 
 		function applyFilter() {
@@ -789,10 +827,12 @@
 			for (var d = 0; d < drops.length; d++) {
 				var drop = drops[d];
 				var shown = 0;
+				// جست‌وجوی نام برند («سامسونگ»، «xiaomi») کل آن گروه را نشان می‌دهد.
+				var brandHit = !!state.query && keyOf(drop.label).indexOf(state.query) !== -1;
 				for (var i = 0; i < drop.items.length; i++) {
 					var item = drop.items[i];
 					var oosHidden = oosMode === 2 && state.oosSet && state.oosSet.indexOf(item.getAttribute('data-value')) === -1;
-					var show = matchQuery(item) && !oosHidden;
+					var show = matchQuery(item, brandHit) && !oosHidden;
 					item.hidden = !show;
 					if (show) { shown++; }
 				}
@@ -881,6 +921,7 @@
 		if (select.disabled && select.options.length < 2) { return; }
 
 		var attrKey = attrKeyOf(select);
+		useLabels(select);
 		var values = optionValues(select);
 		if (values.length < 2) { return; }
 

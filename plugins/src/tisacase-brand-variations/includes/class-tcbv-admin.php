@@ -361,6 +361,29 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 		}
 
 		/**
+		 * نقشهٔ «اسلاگ → نام ترم» برای ویژگی‌های سراسری، تا تشخیص برند و جست‌وجو
+		 * روی متن دیده‌شده انجام شود نه روی اسلاگ.
+		 *
+		 * @param string $name   نام ویژگی.
+		 * @param array  $values مقادیر.
+		 * @return array<string,string>
+		 */
+		private static function label_map( $name, $values ) {
+			$map = array();
+			$tax = (string) $name;
+			if ( ! taxonomy_exists( $tax ) ) {
+				return $map;
+			}
+			foreach ( (array) $values as $value ) {
+				$term = get_term_by( 'slug', $value, $tax );
+				if ( $term && ! is_wp_error( $term ) ) {
+					$map[ (string) $value ] = $term->name;
+				}
+			}
+			return $map;
+		}
+
+		/**
 		 * یک چیپ محصول آزمایشی (شامل input مخفی برای ذخیره).
 		 *
 		 * @param int $id شناسهٔ محصول.
@@ -1009,6 +1032,7 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 				}
 				$key   = sanitize_title( $name );
 				$label = isset( $labels[ $key ] ) ? $labels[ $key ] : wc_attribute_label( $name );
+				TCBV_Rules::set_labels( self::label_map( $name, $values ) );
 				$groups = TCBV_Rules::group( $values, $settings );
 				$compact = array();
 				foreach ( $groups as $group ) {
@@ -1079,6 +1103,7 @@ if ( ! class_exists( 'TCBV_Admin' ) ) {
 				wp_send_json_error( array( 'message' => 'لیستی برای تحلیل نیست.' ), 400 );
 			}
 
+			TCBV_Rules::set_labels( array() );
 			$groups = TCBV_Rules::group( $values, $settings );
 			$out    = array();
 			foreach ( $groups as $group ) {
