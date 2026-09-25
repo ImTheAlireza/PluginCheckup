@@ -46,6 +46,11 @@ Test mode (the card at the top of the settings page) is on by default. Add the p
 
 == Changelog ==
 
+= 1.5.0 =
+* Detection engine rewritten around multi-model values: `A20/A30`, `A12/m12`, `A30s/A50/A50s`, `Mi11t/tpro` are now split on `/ \ | , ، ; + &` and each part is matched on its own, so anchored brand patterns finally hit instead of falling into "other models".
+* Keyword matching understands glued model codes: `Mi13lite`, `Mi11lite`, `iphone13pro`, `redminote12`, `pocox3` match their brand (a keyword now also matches when the token continues with a digit, or as a prefix for keywords of 4+ characters). Single-letter keywords still require an exact token match.
+* Samsung default pattern extended (`note`/`tab`/`F` series, 3-digit numbers, hyphen separators); Xiaomi got a `mi/redmi/poco + number` pattern; a ready "ریلمی" brand (realme/realmi/narzo) is now part of the defaults and the preset library.
+
 = 1.1.0 =
 * Test mode (on by default): the plugin only affects the products you pick (up to 20), plus an admin-only "test mode" badge on those product pages and a one-click switch to apply it store-wide. Server-side `<optgroup>` grouping now respects the same scope (it previously ignored the scope setting).
 

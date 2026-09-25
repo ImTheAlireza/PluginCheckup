@@ -111,6 +111,43 @@
 		return clean;
 	}
 
+	var SEG_RE = /\s*(?:\/|\\|\||\u060C|,|;|\u061B|\+|&|\u2044|\bو\b)\s*/;
+
+	// «A30s/A50/A50s» سه مدل مستقل است؛ هر تکه جداگانه سنجیده می‌شود.
+	function segmentsOf(text) {
+		var norm = normalize(text);
+		if (!norm) { return []; }
+		var parts = norm.split(SEG_RE);
+		var out = [];
+		for (var i = 0; i < parts.length; i++) {
+			var part = String(parts[i] || '').trim();
+			if (part && out.indexOf(part) === -1) { out.push(part); }
+		}
+		return out;
+	}
+
+	function candidatesOf(text) {
+		var norm = normalize(text);
+		if (!norm) { return []; }
+		var out = [norm];
+		var segs = segmentsOf(text);
+		for (var i = 0; i < segs.length; i++) {
+			if (out.indexOf(segs[i]) === -1) { out.push(segs[i]); }
+		}
+		return out;
+	}
+
+	// برابری دقیق ← کد چسبیده به عدد (mi11t / iphone13) ← پیشوند کلیدواژهٔ بلند.
+	function tokenMatches(token, kw) {
+		if (!token || !kw) { return false; }
+		if (token === kw) { return true; }
+		if (kw.length < 2 || token.indexOf(kw) !== 0) { return false; }
+		var rest = token.slice(kw.length);
+		if (!rest) { return true; }
+		if (/^[0-9]/.test(rest)) { return true; }
+		return kw.length >= 4;
+	}
+
 	function escapeRegex(str) {
 		return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	}
@@ -154,35 +191,49 @@
 		var norm = normalize(value);
 		if (!norm) { return false; }
 
+		var cands = candidatesOf(value);
+		var c;
+
 		var exact = linesOf(brand.exact);
 		for (var i = 0; i < exact.length; i++) {
-			if (keyOf(exact[i]) === keyOf(value)) { return true; }
+			var needle = keyOf(exact[i]);
+			if (!needle) { continue; }
+			for (c = 0; c < cands.length; c++) {
+				if (keyOf(cands[c]) === needle) { return true; }
+			}
 		}
 
 		var patterns = linesOf(brand.regex);
 		for (var j = 0; j < patterns.length; j++) {
 			var rx = toRegex(patterns[j]);
-			if (rx && (rx.test(norm) || rx.test(String(value)))) { return true; }
+			if (!rx) { continue; }
+			if (rx.test(String(value))) { return true; }
+			for (c = 0; c < cands.length; c++) {
+				if (rx.test(cands[c])) { return true; }
+			}
 		}
 
-		var tokens = tokensOf(value);
 		var keywords = linesOf(brand.keywords);
-		for (var k = 0; k < keywords.length; k++) {
-			var kw = normalize(keywords[k]);
-			if (!kw) { continue; }
-			if (kw.indexOf(' ') !== -1) {
-				if (norm.indexOf(kw) !== -1) { return true; }
-				continue;
-			}
-			if (kw.charAt(kw.length - 1) === '*') {
-				var prefix = kw.slice(0, -1);
-				for (var t = 0; t < tokens.length; t++) {
-					if (tokens[t].indexOf(prefix) === 0) { return true; }
+		for (c = 0; c < cands.length; c++) {
+			var tokens = tokensOf(cands[c]);
+			for (var k = 0; k < keywords.length; k++) {
+				var kw = normalize(keywords[k]);
+				if (!kw) { continue; }
+				if (kw.indexOf(' ') !== -1) {
+					if (cands[c].indexOf(kw) !== -1) { return true; }
+					continue;
 				}
-				continue;
-			}
-			for (var u = 0; u < tokens.length; u++) {
-				if (tokens[u] === kw) { return true; }
+				if (kw.charAt(kw.length - 1) === '*') {
+					var prefix = kw.slice(0, -1);
+					if (!prefix) { continue; }
+					for (var t = 0; t < tokens.length; t++) {
+						if (tokens[t].indexOf(prefix) === 0) { return true; }
+					}
+					continue;
+				}
+				for (var u = 0; u < tokens.length; u++) {
+					if (tokenMatches(tokens[u], kw)) { return true; }
+				}
 			}
 		}
 		return false;

@@ -58,7 +58,7 @@ if ( ! class_exists( 'TCBV_Settings' ) ) {
 						'icon'     => '',
 						'enabled'  => 1,
 						'keywords' => "galaxy\nsamsung\nسامسونگ\nگلکسی",
-						'regex'    => '^(?:galaxy[\s\-]*)?(?:[asmjz]\s?\d{1,2}[a-z]{0,3}|z\s?(?:flip|fold)\s?\d?)(?:\s.*)?$',
+						'regex'    => '^(?:galaxy[\s\-]*)?(?:(?:note|tab)[\s\-]?\d{1,2}[a-z]{0,3}|[asmfjz][\s\-]?\d{1,3}[a-z]{0,3}|z[\s\-]?(?:flip|fold)[\s\-]?\d{0,2})(?:\s.*)?$',
 						'exact'    => '',
 					),
 					array(
@@ -68,6 +68,16 @@ if ( ! class_exists( 'TCBV_Settings' ) ) {
 						'icon'     => '',
 						'enabled'  => 1,
 						'keywords' => "redmi\npoco\nmi\nxiaomi\nردمی\nپوکو\nشیائومی",
+						'regex'    => '^(?:mi|redmi|poco)[\s\-]?\d{1,3}[a-z]{0,4}(?:\s.*)?$',
+						'exact'    => '',
+					),
+					array(
+						'id'       => 'realme',
+						'label'    => 'ریلمی',
+						'color'    => '#F9C400',
+						'icon'     => '',
+						'enabled'  => 1,
+						'keywords' => "realme\nrealmi\nrealmy\nnarzo\nریلمی\nرلمی",
 						'regex'    => '',
 						'exact'    => '',
 					),
@@ -482,7 +492,7 @@ if ( ! class_exists( 'TCBV_Settings' ) ) {
 					'label'    => 'سامسونگ',
 					'color'    => '#1428A0',
 					'keywords' => "galaxy\nsamsung\nسامسونگ\nگلکسی",
-					'regex'    => '^(?:galaxy[\s\-]*)?(?:[asmjz]\s?\d{1,2}[a-z]{0,3}|z\s?(?:flip|fold)\s?\d?)(?:\s.*)?$',
+					'regex'    => '^(?:galaxy[\s\-]*)?(?:(?:note|tab)[\s\-]?\d{1,2}[a-z]{0,3}|[asmfjz][\s\-]?\d{1,3}[a-z]{0,3}|z[\s\-]?(?:flip|fold)[\s\-]?\d{0,2})(?:\s.*)?$',
 				),
 				'xiaomi'   => array(
 					'label'    => 'شیائومی',
@@ -517,7 +527,7 @@ if ( ! class_exists( 'TCBV_Settings' ) ) {
 				'realme'   => array(
 					'label'    => 'ریلمی',
 					'color'    => '#F9C400',
-					'keywords' => "realme\nnarzo\nریلمی",
+					'keywords' => "realme\nrealmi\nrealmy\nnarzo\nریلمی\nرلمی\nریلمی",
 					'regex'    => '',
 				),
 				'oneplus'  => array(
