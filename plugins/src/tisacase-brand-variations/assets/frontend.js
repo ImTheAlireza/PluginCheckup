@@ -111,6 +111,59 @@
 		return clean;
 	}
 
+	var SEG_RE = /\s*(?:\/|\\|\||\u060C|,|;|\u061B|\+|&|\u2044|\bو\b)\s*/;
+
+	// «A30s/A50/A50s» سه مدل مستقل است؛ هر تکه جداگانه سنجیده می‌شود.
+	function segmentsOf(text) {
+		var norm = normalize(text);
+		if (!norm) { return []; }
+		var parts = norm.split(SEG_RE);
+		var out = [];
+		for (var i = 0; i < parts.length; i++) {
+			var part = String(parts[i] || '').trim();
+			if (part && out.indexOf(part) === -1) { out.push(part); }
+		}
+		return out;
+	}
+
+	function candidatesOf(text) {
+		var norm = normalize(text);
+		if (!norm) { return []; }
+		var out = [norm];
+		var segs = segmentsOf(text);
+		for (var i = 0; i < segs.length; i++) {
+			if (out.indexOf(segs[i]) === -1) { out.push(segs[i]); }
+		}
+		return out;
+	}
+
+	// برابری دقیق ← کد چسبیده به عدد (mi11t / iphone13) ← پیشوند کلیدواژهٔ بلند.
+	function tokenMatches(token, kw) {
+		if (!token || !kw) { return false; }
+		if (token === kw) { return true; }
+		if (kw.length < 2 || token.indexOf(kw) !== 0) { return false; }
+		var rest = token.slice(kw.length);
+		if (!rest) { return true; }
+		if (/^[0-9]/.test(rest)) { return true; }
+		return kw.length >= 4;
+	}
+
+	// پنهان‌سازی مقاوم: بعضی قالب‌ها با display روی کلاس، خاصیت hidden را بی‌اثر
+	// می‌کنند؛ پس علاوه بر hidden، display را هم inline و important می‌گذاریم.
+	function setHidden(node, on) {
+		if (!node) { return; }
+		node.hidden = !!on;
+		if (on) {
+			node.setAttribute('aria-hidden', 'true');
+			if (node.style.setProperty) { node.style.setProperty('display', 'none', 'important'); }
+			else { node.style.display = 'none'; }
+		} else {
+			node.removeAttribute('aria-hidden');
+			if (node.style.removeProperty) { node.style.removeProperty('display'); }
+			else { node.style.display = ''; }
+		}
+	}
+
 	function escapeRegex(str) {
 		return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	}
@@ -154,35 +207,49 @@
 		var norm = normalize(value);
 		if (!norm) { return false; }
 
+		var cands = candidatesOf(value);
+		var c;
+
 		var exact = linesOf(brand.exact);
 		for (var i = 0; i < exact.length; i++) {
-			if (keyOf(exact[i]) === keyOf(value)) { return true; }
+			var needle = keyOf(exact[i]);
+			if (!needle) { continue; }
+			for (c = 0; c < cands.length; c++) {
+				if (keyOf(cands[c]) === needle) { return true; }
+			}
 		}
 
 		var patterns = linesOf(brand.regex);
 		for (var j = 0; j < patterns.length; j++) {
 			var rx = toRegex(patterns[j]);
-			if (rx && (rx.test(norm) || rx.test(String(value)))) { return true; }
+			if (!rx) { continue; }
+			if (rx.test(String(value))) { return true; }
+			for (c = 0; c < cands.length; c++) {
+				if (rx.test(cands[c])) { return true; }
+			}
 		}
 
-		var tokens = tokensOf(value);
 		var keywords = linesOf(brand.keywords);
-		for (var k = 0; k < keywords.length; k++) {
-			var kw = normalize(keywords[k]);
-			if (!kw) { continue; }
-			if (kw.indexOf(' ') !== -1) {
-				if (norm.indexOf(kw) !== -1) { return true; }
-				continue;
-			}
-			if (kw.charAt(kw.length - 1) === '*') {
-				var prefix = kw.slice(0, -1);
-				for (var t = 0; t < tokens.length; t++) {
-					if (tokens[t].indexOf(prefix) === 0) { return true; }
+		for (c = 0; c < cands.length; c++) {
+			var tokens = tokensOf(cands[c]);
+			for (var k = 0; k < keywords.length; k++) {
+				var kw = normalize(keywords[k]);
+				if (!kw) { continue; }
+				if (kw.indexOf(' ') !== -1) {
+					if (cands[c].indexOf(kw) !== -1) { return true; }
+					continue;
 				}
-				continue;
-			}
-			for (var u = 0; u < tokens.length; u++) {
-				if (tokens[u] === kw) { return true; }
+				if (kw.charAt(kw.length - 1) === '*') {
+					var prefix = kw.slice(0, -1);
+					if (!prefix) { continue; }
+					for (var t = 0; t < tokens.length; t++) {
+						if (tokens[t].indexOf(prefix) === 0) { return true; }
+					}
+					continue;
+				}
+				for (var u = 0; u < tokens.length; u++) {
+					if (tokenMatches(tokens[u], kw)) { return true; }
+				}
 			}
 		}
 		return false;
@@ -190,10 +257,13 @@
 
 	function classifyValue(value) {
 		var hits = [];
+		var texts = textsOf(value);
 		for (var i = 0; i < CFG.brands.length; i++) {
 			var brand = CFG.brands[i];
 			if (!brand.enabled) { continue; }
-			if (matchesBrand(value, brand)) { hits.push(brand.id); }
+			for (var t = 0; t < texts.length; t++) {
+				if (matchesBrand(texts[t], brand)) { hits.push(brand.id); break; }
+			}
 		}
 		return { id: hits.length ? hits[0] : 'unknown', hits: hits };
 	}
@@ -270,6 +340,38 @@
 
 	function isColorAttr(attrKey) {
 		return listHas(CFG.swatchAttrs, attrKey);
+	}
+
+	// نقشهٔ «مقدار select → متن دیده‌شده». مقدارِ گزینه در ووکامرس اسلاگ است
+	// (مثلاً «a20-a30» یا برای فارسی درصدکدشده)، پس هم برای تشخیص برند و هم
+	// برای جست‌وجو باید متن واقعیِ گزینه ملاک باشد.
+	var LABELS = null;
+
+	function decodeSafe(value) {
+		var s = String(value === null || value === undefined ? '' : value);
+		if (s.indexOf('%') === -1) { return s; }
+		try { return decodeURIComponent(s); } catch (e) { return s; }
+	}
+
+	function useLabels(select) {
+		var map = {}, options = (select && select.options) || [];
+		for (var i = 0; i < options.length; i++) {
+			var v = options[i].value;
+			if (v === '' || v === null || typeof v === 'undefined') { continue; }
+			map[v] = clean(options[i].text) || decodeSafe(v);
+		}
+		LABELS = map;
+		return map;
+	}
+
+	// متن‌های قابل‌جست‌وجو/تطبیق یک مقدار: برچسب دیده‌شده + اسلاگ دیکدشده.
+	function textsOf(value) {
+		var out = [];
+		var label = LABELS ? LABELS[value] : '';
+		if (label) { out.push(label); }
+		var dec = decodeSafe(value).replace(/[-_]+/g, ' ');
+		if (dec && out.indexOf(dec) === -1) { out.push(dec); }
+		return out.length ? out : [String(value)];
 	}
 
 	function optionValues(select) {
@@ -538,6 +640,7 @@
 	}
 
 	function buildPanel(select, attrKey) {
+		useLabels(select);
 		var values = optionValues(select);
 		if (values.length < 2) { return null; }
 
@@ -566,14 +669,14 @@
 		var searchClear = el('button', 'tcbv-clear');
 		searchClear.type = 'button';
 		searchClear.setAttribute('aria-label', CFG.i18n.clear || 'پاک کردن');
-		searchClear.hidden = true;
+		setHidden(searchClear, true);
 		searchWrap.appendChild(searchClear);
 		root.appendChild(searchWrap);
 
 		var list = el('div', 'tcbv-dd-list');
 
 		function setDropOpen(drop, on) {
-			drop.pop.hidden = !on;
+			setHidden(drop.pop, !on);
 			drop.wrap.classList.toggle('is-open', on);
 			drop.trigger.setAttribute('aria-expanded', on ? 'true' : 'false');
 		}
@@ -626,7 +729,7 @@
 				wrap.appendChild(trigger);
 
 				var pop = el('div', 'tcbv-pop');
-				if (picker !== 'open') { pop.hidden = true; }
+				if (picker !== 'open') { setHidden(pop, true); }
 				pop.setAttribute('role', 'listbox');
 				pop.setAttribute('aria-label', group.label);
 
@@ -639,7 +742,8 @@
 					item.setAttribute('role', 'option');
 					item.setAttribute('data-value', value);
 					item.setAttribute('data-brand', group.id);
-					item.setAttribute('data-key', keyOf(value));
+					item.setAttribute('data-key', keyOf(optionLabel(select, value)));
+					item.setAttribute('data-alt', keyOf(decodeSafe(value)));
 					item.setAttribute('aria-selected', 'false');
 					item.appendChild(el('span', 'tcbv-item-text', optionLabel(select, value)));
 					itemWrap.appendChild(item);
@@ -649,7 +753,7 @@
 				pop.appendChild(itemWrap);
 
 				var empty = el('div', 'tcbv-empty', CFG.i18n.noResult || 'چیزی پیدا نشد');
-				empty.hidden = true;
+				setHidden(empty, true);
 				pop.appendChild(empty);
 				wrap.appendChild(pop);
 				list.appendChild(wrap);
@@ -726,11 +830,12 @@
 			}
 		}
 
-		function matchQuery(item) {
+		function matchQuery(item, brandHit) {
 			if (!state.query) { return true; }
+			if (brandHit) { return true; }
 			var key = item.getAttribute('data-key') || '';
-			var text = normalize(item.getAttribute('data-value'));
-			return key.indexOf(state.query) !== -1 || text.indexOf(state.query) !== -1;
+			var alt = item.getAttribute('data-alt') || '';
+			return key.indexOf(state.query) !== -1 || alt.indexOf(state.query) !== -1;
 		}
 
 		function applyFilter() {
@@ -738,19 +843,21 @@
 			for (var d = 0; d < drops.length; d++) {
 				var drop = drops[d];
 				var shown = 0;
+				// جست‌وجوی نام برند («سامسونگ»، «xiaomi») کل آن گروه را نشان می‌دهد.
+				var brandHit = !!state.query && keyOf(drop.label).indexOf(state.query) !== -1;
 				for (var i = 0; i < drop.items.length; i++) {
 					var item = drop.items[i];
 					var oosHidden = oosMode === 2 && state.oosSet && state.oosSet.indexOf(item.getAttribute('data-value')) === -1;
-					var show = matchQuery(item) && !oosHidden;
-					item.hidden = !show;
+					var show = matchQuery(item, brandHit) && !oosHidden;
+					setHidden(item, !show);
 					if (show) { shown++; }
 				}
-				drop.empty.hidden = shown !== 0;
-				drop.wrap.hidden = shown === 0 && !!state.query;
+				setHidden(drop.empty, shown !== 0);
+				setHidden(drop.wrap, shown === 0 && !!state.query);
 				if (drop.tCount) { drop.tCount.textContent = fa(shown); }
 				any += shown;
 			}
-			searchClear.hidden = !state.query;
+			setHidden(searchClear, !state.query);
 			searchWrap.classList.toggle('has-query', !!state.query);
 			if (picker !== 'open') {
 				if (state.query) { openMatches(); }
@@ -830,6 +937,7 @@
 		if (select.disabled && select.options.length < 2) { return; }
 
 		var attrKey = attrKeyOf(select);
+		useLabels(select);
 		var values = optionValues(select);
 		if (values.length < 2) { return; }
 

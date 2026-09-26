@@ -16,6 +16,45 @@ if ( ! class_exists( 'TCBV_Rules' ) ) {
 
 		const UNKNOWN = 'unknown';
 
+		/** @var array<string,string> نقشهٔ «مقدار گزینه → متن دیده‌شده». */
+		private static $labels = array();
+
+		/**
+		 * ثبت برچسب گزینه‌ها.
+		 *
+		 * مقدار گزینه در ووکامرس اسلاگ است (`a20-a30` یا برای فارسی درصدکدشده)؛
+		 * تشخیص برند باید روی متنی انجام شود که مشتری می‌بیند.
+		 *
+		 * @param array $map value => label.
+		 * @return void
+		 */
+		public static function set_labels( $map ) {
+			self::$labels = is_array( $map ) ? $map : array();
+		}
+
+		/**
+		 * متن‌های قابل‌تطبیق یک مقدار: برچسب + اسلاگ دیکدشده.
+		 *
+		 * @param string $value مقدار گزینه.
+		 * @return string[]
+		 */
+		public static function texts_for( $value ) {
+			$out = array();
+			$key = (string) $value;
+
+			if ( isset( self::$labels[ $key ] ) && '' !== trim( (string) self::$labels[ $key ] ) ) {
+				$out[] = (string) self::$labels[ $key ];
+			}
+
+			$decoded = rawurldecode( $key );
+			$decoded = str_replace( array( '-', '_' ), ' ', $decoded );
+			if ( '' !== trim( $decoded ) && ! in_array( $decoded, $out, true ) ) {
+				$out[] = $decoded;
+			}
+
+			return empty( $out ) ? array( $key ) : $out;
+		}
+
 		/**
 		 * نرمال‌سازی: نیم‌فاصله/فاصلهٔ مجازی، ی و ک عربی، اعراب، ارقام فارسی، حروف کوچک.
 		 *
@@ -76,6 +115,96 @@ if ( ! class_exists( 'TCBV_Rules' ) ) {
 			$text = self::normalize( $text );
 			$out  = preg_split( '/[^\p{L}\p{N}]+/u', $text, -1, PREG_SPLIT_NO_EMPTY );
 			return is_array( $out ) ? $out : array();
+		}
+
+		/**
+		 * تکه‌های یک مقدار چندمدلی.
+		 *
+		 * «A30s/A50/A50s» یا «A12, M12» یا «Mi11t | tpro» سه/دو مدل مستقل‌اند؛
+		 * برای تشخیص برند باید هر تکه جداگانه سنجیده شود، وگرنه الگوهای لنگرداشته
+		 * (^…$) هیچ‌وقت نمی‌خوانند و مقدار به «سایر مدل‌ها» می‌افتد.
+		 *
+		 * @param mixed $text ورودی.
+		 * @return string[] تکه‌های نرمال‌شده (بدون تکرار).
+		 */
+		public static function segments( $text ) {
+			$norm = self::normalize( $text );
+			if ( '' === $norm ) {
+				return array();
+			}
+
+			$parts = preg_split( '#\s*(?:/|\\\\|\||،|,|;|؛|\+|&|\x{2044}|\bو\b)\s*#u', $norm, -1, PREG_SPLIT_NO_EMPTY );
+			$parts = is_array( $parts ) ? $parts : array();
+
+			$out = array();
+			foreach ( $parts as $part ) {
+				$part = trim( $part );
+				if ( '' !== $part && ! in_array( $part, $out, true ) ) {
+					$out[] = $part;
+				}
+			}
+
+			return $out;
+		}
+
+		/**
+		 * نامزدهای تطبیق: کل مقدار + تک‌تک تکه‌ها.
+		 *
+		 * @param mixed $text ورودی.
+		 * @return string[]
+		 */
+		public static function candidates( $text ) {
+			$norm = self::normalize( $text );
+			if ( '' === $norm ) {
+				return array();
+			}
+
+			$out  = array( $norm );
+			foreach ( self::segments( $text ) as $segment ) {
+				if ( ! in_array( $segment, $out, true ) ) {
+					$out[] = $segment;
+				}
+			}
+
+			return $out;
+		}
+
+		/**
+		 * آیا این کلمه با این کلیدواژه می‌خواند؟
+		 *
+		 * قاعده‌ها (به‌ترتیب): برابری دقیق ← کد چسبیده به عدد («mi11t» با «mi»،
+		 * «iphone13» با «iphone») ← پیشوند برای کلیدواژه‌های بلند («redminote12»
+		 * با «redmi»). کلیدواژهٔ یک‌حرفی فقط برابری دقیق می‌گیرد تا «a» همه‌چیز را نبلعد.
+		 *
+		 * @param string $token کلمهٔ نرمال‌شده.
+		 * @param string $kw    کلیدواژهٔ نرمال‌شده.
+		 * @return bool
+		 */
+		private static function token_matches( $token, $kw ) {
+			if ( '' === $token || '' === $kw ) {
+				return false;
+			}
+			if ( $token === $kw ) {
+				return true;
+			}
+
+			$len = function_exists( 'mb_strlen' ) ? mb_strlen( $kw, 'UTF-8' ) : strlen( $kw );
+			if ( $len < 2 || 0 !== strpos( $token, $kw ) ) {
+				return false;
+			}
+
+			$rest = substr( $token, strlen( $kw ) );
+			if ( '' === $rest ) {
+				return true;
+			}
+
+			// «mi11t» / «iphone13pro»: بلافاصله بعد از نام برند، شمارهٔ مدل.
+			if ( preg_match( '/^\d/', $rest ) ) {
+				return true;
+			}
+
+			// کلیدواژهٔ بلند (≥۴ نویسه) به‌عنوان پیشوند: redminote12، pocox3، galaxya52.
+			return $len >= 4;
 		}
 
 		/**
@@ -142,51 +271,70 @@ if ( ! class_exists( 'TCBV_Rules' ) ) {
 				return false;
 			}
 
-			// ۱) فهرست دستی — همیشه برنده است.
+			$candidates = self::candidates( $value );
+
+			// ۱) فهرست دستی — همیشه برنده است (کل مقدار یا یکی از تکه‌ها).
 			foreach ( TCBV_Settings::lines( isset( $brand['exact'] ) ? $brand['exact'] : '' ) as $line ) {
-				if ( self::key( $line ) === self::key( $value ) ) {
-					return true;
+				$needle = self::key( $line );
+				if ( '' === $needle ) {
+					continue;
+				}
+				foreach ( $candidates as $candidate ) {
+					if ( self::key( $candidate ) === $needle ) {
+						return true;
+					}
 				}
 			}
 
-			// ۲) الگوهای regex.
+			// ۲) الگوهای regex — روی کل مقدار و روی هر تکه (پس «A20/A30» هم می‌خواند).
 			foreach ( TCBV_Settings::lines( isset( $brand['regex'] ) ? $brand['regex'] : '' ) as $line ) {
 				$rx = self::to_regex( $line );
 				if ( '' === $rx ) {
 					continue;
 				}
-				if ( @preg_match( $rx, $norm ) || @preg_match( $rx, (string) $value ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+				if ( @preg_match( $rx, (string) $value ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 					return true;
+				}
+				foreach ( $candidates as $candidate ) {
+					if ( @preg_match( $rx, $candidate ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+						return true;
+					}
 				}
 			}
 
-			// ۳) کلیدواژه‌ها.
-			$tokens = self::tokens( $value );
-			foreach ( TCBV_Settings::lines( isset( $brand['keywords'] ) ? $brand['keywords'] : '' ) as $line ) {
-				$kw = self::normalize( $line );
-				if ( '' === $kw ) {
-					continue;
-				}
-				if ( false !== strpos( $kw, ' ' ) ) {
-					// کلیدواژهٔ چندکلمه‌ای: جست‌وجوی عبارت.
-					if ( false !== strpos( $norm, $kw ) ) {
-						return true;
+			// ۳) کلیدواژه‌ها — روی هر تکه جداگانه.
+			$keywords = TCBV_Settings::lines( isset( $brand['keywords'] ) ? $brand['keywords'] : '' );
+			foreach ( $candidates as $candidate ) {
+				$tokens = self::tokens( $candidate );
+				foreach ( $keywords as $line ) {
+					$kw = self::normalize( $line );
+					if ( '' === $kw ) {
+						continue;
 					}
-					continue;
-				}
-				if ( '*' === substr( $kw, -1 ) ) {
-					// پیشوند: «redmi*» → redmini و redmi را می‌گیرد.
-					$prefix = substr( $kw, 0, -1 );
-					foreach ( $tokens as $token ) {
-						if ( 0 === strpos( $token, $prefix ) ) {
+					if ( false !== strpos( $kw, ' ' ) ) {
+						// کلیدواژهٔ چندکلمه‌ای: جست‌وجوی عبارت.
+						if ( false !== strpos( $candidate, $kw ) ) {
 							return true;
 						}
+						continue;
 					}
-					continue;
-				}
-				foreach ( $tokens as $token ) {
-					if ( $token === $kw ) {
-						return true;
+					if ( '*' === substr( $kw, -1 ) ) {
+						// پیشوند: «redmi*» → redmini و redmi را می‌گیرد.
+						$prefix = substr( $kw, 0, -1 );
+						if ( '' === $prefix ) {
+							continue;
+						}
+						foreach ( $tokens as $token ) {
+							if ( 0 === strpos( $token, $prefix ) ) {
+								return true;
+							}
+						}
+						continue;
+					}
+					foreach ( $tokens as $token ) {
+						if ( self::token_matches( $token, $kw ) ) {
+							return true;
+						}
 					}
 				}
 			}
@@ -202,13 +350,17 @@ if ( ! class_exists( 'TCBV_Rules' ) ) {
 		 * @return array{id:string,hits:string[]}
 		 */
 		public static function classify( $value, $brands ) {
-			$hits = array();
+			$hits  = array();
+			$texts = self::texts_for( $value );
 			foreach ( $brands as $brand ) {
 				if ( isset( $brand['enabled'] ) && empty( $brand['enabled'] ) ) {
 					continue;
 				}
-				if ( self::matches( $value, $brand ) ) {
-					$hits[] = (string) $brand['id'];
+				foreach ( $texts as $text ) {
+					if ( self::matches( $text, $brand ) ) {
+						$hits[] = (string) $brand['id'];
+						break;
+					}
 				}
 			}
 			return array(
