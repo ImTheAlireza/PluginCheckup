@@ -1,0 +1,57 @@
+﻿وضعیت اجرا,نام افزونه,پوشه,نسخه,فعال شد,خطای فعال‌سازی,خطای مرگبار,خطای نحو,منسوخ‌شده,اخطار,صفحه‌های خراب,نتیجهٔ ماشین,تحلیل استاتیک,نخستین خطا
+سایت را از کار می‌اندازد,دکمه تماس شناور,cta-button,1.0,خیر,,0,0,0,0,7,رمزگذاری‌شده — سایت از کار افتاد,بحرانی,Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extensio
+سایت را از کار می‌اندازد,DIGITS: WordPress Mobile Number Signup and Login,digits,9.2.1,خیر,,0,8,0,0,7,خطای مرگبار,بحرانی,خطای مرگبار
+سایت را از کار می‌اندازد,Elementor Pro,elementor-pro,3.8.1,خیر,,0,0,0,0,9,رمزگذاری‌شده — سایت از کار افتاد,بحرانی,PHP script '/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php' is protected by SourceGuardian a
+سایت را از کار می‌اندازد,Zhaket Smart Updater,zhaket-updater,4.2.4,خیر,,0,0,0,0,8,رمزگذاری‌شده — سایت از کار افتاد,بحرانی,Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extensio
+سایت بالاست ولی افزونه از کار می‌افتد,افزونه مدیریت هوشمند راست چین,RTL-CareUnit,2.5.2,بله,,0,0,0,0,5,لودر ندارد — سایت بالاست، افزونه بی‌کار,بحرانی,لودر ندارد — سایت بالاست، افزونه بی‌کار
+سایت بالاست ولی افزونه از کار می‌افتد,فاکتور حرفه‌ای ووکامرس,woocommerce-invoice,7.0.3,بله,,0,0,0,0,9,لودر ندارد — سایت بالاست، افزونه بی‌کار,بحرانی,لودر ندارد — سایت بالاست، افزونه بی‌کار
+بالا می‌آید، اخطار در لاگ,Code Snippets,code-snippets,3.6.8,بله,,0,0,2,3,0,با اخطار اجرا شد,تقریباً سالم,با اخطار اجرا شد
+بالا می‌آید، اخطار در لاگ,افزونه حمل و نقل ووکامرس,persian-woocommerce-shipping,4.2.8,بله,,0,0,31,1,0,با اخطار اجرا شد,پرخطر,با اخطار اجرا شد
+بالا می‌آید، اخطار در لاگ,افزونه وردپرس پنل پیامکی ایده پردازان,SMSIRApp,1.0.26,خیر,unexpected_output,0,0,0,3,0,فعال نشد,تقریباً سالم,OUTPUT: Warning:  Private methods cannot be final as they are never overridden by other classes in /tmp/wp/wordpress/wp-content/plugins/SMSIRApp/includes/SMSIRA
+بالا می‌آید، اخطار در لاگ,SnappPay Woocommerce Gateway,snapppay-woocommerce-gateway,1.4.2,خیر,unexpected_output,0,0,54,8,0,فعال نشد,تقریباً سالم,OUTPUT: Warning:  Trying to access array offset on false in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/functions.php on line 330
+بالا می‌آید، اخطار در لاگ,Surenapost,surenapost,1.3.13,بله,,0,0,42,0,0,با اخطار اجرا شد,تقریباً سالم,با اخطار اجرا شد
+بالا می‌آید، اخطار در لاگ,اختصاصی تیساکیس (TisaCase Hub),tisacase-hub,1.9.15,بله,,0,0,0,1,0,با اخطار اجرا شد,تقریباً سالم,با اخطار اجرا شد
+خطای محیط تست (ربطی به 8.2 ندارد),Elementor,elementor,3.27.4,بله,,1,0,1,8,2,خطای مرگبار,نیاز به توجه,[01-Nov-2026 18:18:00 UTC] PHP Fatal error:  Uncaught TypeError: Elementor\Modules\Home\Transformations\Filter_Plugins::get_add_ons_installation_status(): Argum
+سالم,Admin Menu Editor,admin-menu-editor,1.15.2,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,FiboSearch - AJAX Search for WooCommerce (Pro),ajax-search-for-woocommerce-premium,1.30.1,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,Bulk Product Cleaner (Drafts + Images),bulk-product-cleaner,12.6.3,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,Automatic Postal Tracking for WooCommerce,bulk-tracking-upload,3.7.0,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,پکیج ویژه قاب موبایل,case-special-package,1.5.4,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,DIGITS: One Click Login/Signup Addon,digoneclickls,4.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,LiteSpeed Cache,litespeed-cache,7.9.1,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,Loco Translate,loco-translate,2.7.1,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,Members,members,3.2.18,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,Order Export & Order Import for WooCommerce,order-import-export-for-woocommerce,2.5.9,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,Page Links To,page-links-to,3.3.7,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,PeproDev WooCommerce Receipt Uploader,pepro-bacs-receipt-upload-for-woocommerce,2.8.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,ووکامرس فارسی,persian-woocommerce,9.3.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,Plugin Check (PCP),plugin-check,2.1.0,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,Product Import Export for WooCommerce,product-import-export-for-woo,2.4.4,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,WC Sadad Payment gateway,sadad-woocommerce2,5.1.0,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,Tisa Product ZIP Importer,tisa-product-importer,0.8.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,TisaCase — همگام‌سازی موجودی با همکار,tisacase-ariocase-sync,1.28.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,TisaCase — مدیریت انبوه موجودی,tisacase-bulk-stock-manager,1.4.3,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,TisaCase — مدیریت گروهی متغیرها و مدل‌ها,tisacase-bulk-variation-manager,2.3.1,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,TisaCase — کارت به کارت تیساکیس,tisacase-card-to-card,1.4.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,TisaCase Exporter — مرکز خروجی تیساکیس,tisacase-exporter,2.1.6,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,مرکز بهینه‌سازی تیساکیس (TisaCase Optimizer),tisacase-optimizer,1.3.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,TisaCase Order Phone Exporter,tisacase-order-phone-exporter,1.5.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,TisaCase Order Wallet Reporter,tisacase-order-wallet-reporter,1.0.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,TisaCase Pricing,tisacase-pricing,1.4.2,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,TisaCase — قوانین توضیحات محصول,tisacase-product-description,1.6.2,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,Waitlist woocommerce( Back in stock notifier ),waitlist-woocommerce,2.8.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,WooCommerce SKU Prefix Bar,wc-sku-prefix-bar,1.5.3,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,ارسال سفارش‌ها به تلگرام ووکامرس,wc-telegram-orders,1.14.3,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,Behpardakht Woocommerce,woo-behpardakht,2.6.5,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,Checkout Field Editor for WooCommerce,woo-checkout-field-editor-pro,2.1.4,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,Advanced Order Export For WooCommerce,woo-order-export-lite,3.6.0,بله,,0,0,0,0,0,سالم,پرخطر,سالم
+سالم,Variation Swatches for WooCommerce,woo-variation-swatches,2.2.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,Variation Swatches for WooCommerce - Pro,woo-variation-swatches-pro,2.2.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,TeraWallet,woo-wallet,1.5.10,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,WooCommerce,woocommerce,10.3.7,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,Woodmart Core,woodmart-core,1.1.0,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,Yoast SEO,wordpress-seo,24.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,"WP-Optimize - Clean, Compress, Cache",wp-optimize,4.5.3,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,WP-Parsidate,wp-parsidate,5.1.5,بله,,0,0,0,0,0,سالم,پرخطر,سالم
+سالم,WP Statistics,wp-statistics,14.12.6,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,افزونه درگاه پرداخت الکترونیک سامان (سپ) ووکامرس,zhaket-woo-sep,1.3.0,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم

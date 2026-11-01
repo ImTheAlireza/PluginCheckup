@@ -10,12 +10,13 @@ import { spawn } from 'node:child_process';
 import http from 'node:http';
 
 export const WP_ROOT = process.env.WP_ROOT || '/tmp/wp/wordpress';
+export const PHPV = process.env.PHPV || '8.2';   // 8.1 / 8.2 / 8.3 / 8.4 ...
 export const PORT = Number(process.env.PORT || 9400);
 
 let seq = Number(process.env.PHPPID || 1);
 
 async function makePhp() {
-  const id = await loadNodeRuntime('8.2', { emscriptenOptions: { processId: seq++ } });
+  const id = await loadNodeRuntime(PHPV, { emscriptenOptions: { processId: seq++ } });
   const php = new PHP(id);
   useHostFilesystem(php);
   await php.setSapiName('cli');

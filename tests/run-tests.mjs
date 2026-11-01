@@ -15,7 +15,7 @@
 //   WARNINGS  runs, but PHP warnings/deprecations were emitted
 //   OK        runs clean
 //   NO_ACT    WordPress refused to activate it (dependency missing etc.)
-import { createHandler, request, login } from './wp.mjs';
+import { createHandler, request, login, PHPV } from './wp.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
@@ -38,6 +38,7 @@ const META = JSON.parse(fs.readFileSync('/tmp/scan/meta.json', 'utf8'));
 
 // plugins that stay installed in wp-content/plugins as dependencies
 const KEEP = new Set(['woocommerce', 'elementor', 'persian-woocommerce']);
+const isBaseSlug = /^(woocommerce|elementor|persian-woocommerce)$/;
 const BASE_PLUGINS = ['woocommerce/woocommerce.php'];
 
 // ------------------------------------------------------------------ helpers
@@ -211,7 +212,7 @@ const handler = await createHandler();
 const php = await handler.getPrimaryPhp();
 const session = await login(handler);
 const jar = session.jar;
-console.log('[login] logged-in =', session.loggedIn);
+console.log('[login] logged-in =', session.loggedIn, '| php', PHPV);
 
 // sanity check: the site must be alive before we start (SQLite drop-in present)
 {
@@ -226,9 +227,14 @@ console.log('[login] logged-in =', session.loggedIn);
 // baseline admin menu (only the dependency plugins are active)
 for (const dep of KEEP) copyPlugin(dep);
 await setActive(php, BASE_PLUGINS);
+// warm up: WooCommerce builds its menu/ tables on the first requests
+for (const w of ['/wp-admin/', '/wp-admin/admin.php?page=wc-settings', '/wp-admin/plugins.php', '/wp-admin/']) {
+  try { await request(handler, 'GET', w, undefined, {}, jar); } catch {}
+}
 const baseHtml = (await request(handler, 'GET', '/wp-admin/', undefined, {}, jar)).text || '';
 const BASE_MENU = menuPages(baseHtml);
-console.log('[baseline] admin menu entries:', BASE_MENU.size);
+console.log('[baseline] admin menu entries:', BASE_MENU.size, '(must be > 5)');
+if (BASE_MENU.size < 5) { console.error('[fatal] baseline admin menu is too small, aborting'); process.exit(3); }
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 const results = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : {};
@@ -256,7 +262,7 @@ for (const slug of plugins) {
   const t0 = Date.now();
   console.log(`\n[test] ${slug} (${pluginFile || 'no main file'})`);
 
-  const entry = { slug, name: meta.hdr_Plugin_Name || slug, version: meta.hdr_Version, pluginFile };
+  const entry = { slug, name: meta['hdr_Plugin Name'] || meta.hdr_Plugin_Name || slug, version: meta.hdr_Version, pluginFile, php: PHPV };
   try { fs.rmSync(path.join(PLUGINS_DST, slug), { recursive: true, force: true }); } catch {}
   if (!copyPlugin(slug)) {
     entry.verdict = 'NO_SOURCE'; entry.done = true; results[slug] = entry;
@@ -323,8 +329,13 @@ for (const slug of plugins) {
   if (!process.env.NO_MENU_PAGES && BASE_MENU) {
     const activeNames = new Set(active.map((f) => f.split('/')[0]));
     const foreign = [...KEEP].filter((k) => !activeNames.has(k));
+    // pages owned by the base plugins (WooCommerce: wc-*, Elementor: elementor-*) are not the
+    // tested plugin's pages - they would only add noise (and their own bugs) to every result
+    const FOREIGN_PAGE = /page=(wc-|woocommerce|elementor|persian-woocommerce|pws-)/;
     const menuSlugs = (await discoverMenuPages(handler, jar, BASE_MENU))
-      .filter((u) => !foreign.some((f) => u.includes(`page=${f}`)));
+      .filter((u) => !foreign.some((f) => u.includes(`page=${f}`)))
+      // base plugins keep their own pages; other plugins must not inherit theirs
+      .filter((u) => isBaseSlug.test(slug) || !FOREIGN_PAGE.test(u));
     entry.admin_pages_menu = menuSlugs;
     for (const s of menuSlugs) pages.push(s);
   }
@@ -359,6 +370,7 @@ for (const slug of plugins) {
     warning: logs.warning.slice(0, 6),
     deprecated: logs.deprecated.slice(0, 8),
     counts: { fatal: logs.fatal.length, parse: logs.parse.length, warning: logs.warning.length, deprecated: logs.deprecated.length, db: logs.db.length, infra: logs.infra.length, network: logs.network.length },
+
   };
 
   const encPages = probes.filter((p) => p.fatal && ENCODER.test(p.fatal || ''));

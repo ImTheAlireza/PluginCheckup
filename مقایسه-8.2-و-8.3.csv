@@ -1,0 +1,57 @@
+﻿افزونه,پوشه,نسخه,وضعیت 8.2,وضعیت 8.3,تغییر,فعال(8.2),فعال(8.3),مرگبار,منسوخ,اخطار,خطا در 8.2,خطا در 8.3
+دکمه تماس شناور,cta-button,1.0,سایت را از کار می‌اندازد,سایت را از کار می‌اندازد,بدون تغییر,خیر,خیر,0,0,0,"Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP insta","Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP insta"
+DIGITS: WordPress Mobile Number Signup and Login,digits,9.2.1,سایت را از کار می‌اندازد,سایت را از کار می‌اندازد,بدون تغییر,خیر,خیر,8,0,0,"[01-Nov-2026 12:54:38 UTC] PHP Parse error:  syntax error, unexpected token ""<"", expecting end of file in /tmp/wp/wordpress/wp-content/plugins/digits/digit.php on line 2","[01-Nov-2026 18:11:02 UTC] PHP Parse error:  syntax error, unexpected token ""<"", expecting end of file in /tmp/wp/wordpress/wp-content/plugins/digits/digit.php on line 2"
+Elementor Pro,elementor-pro,3.8.1,سایت را از کار می‌اندازد,سایت را از کار می‌اندازد,بدون تغییر,خیر,خیر,0,0,0,PHP script '/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php' is protected by SourceGuardian and requires a SourceGuardian loader 'ixed.8.2.ems' to be installed. 1) Download ,PHP script '/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php' is protected by SourceGuardian and requires a SourceGuardian loader 'ixed.8.3.ems' to be installed. 1) Download 
+Zhaket Smart Updater,zhaket-updater,4.2.4,سایت را از کار می‌اندازد,سایت را از کار می‌اندازد,بدون تغییر,خیر,خیر,0,0,0,"Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP insta","Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP insta"
+افزونه مدیریت هوشمند راست چین,RTL-CareUnit,2.5.2,سایت بالاست، افزونه بی‌کار است,سایت بالاست، افزونه بی‌کار است,بدون تغییر,بله,بله,0,0,0,"افزونه قادر به ارائه خدمات نخواهد بود</p> <p>آخرین نسخه ionCube Loader روی سرور شما نصب و فعال باشد.</p> <span>در این زمینه می بایست با پشتیبانی هاست خود در تماس باشید.</span> </div> </div> <div id=""message"" class=""updated woocommerce-message""> <a cl","افزونه قادر به ارائه خدمات نخواهد بود</p> <p>آخرین نسخه ionCube Loader روی سرور شما نصب و فعال باشد.</p> <span>در این زمینه می بایست با پشتیبانی هاست خود در تماس باشید.</span> </div> </div> <div id=""message"" class=""updated woocommerce-message""> <a cl"
+فاکتور حرفه‌ای ووکامرس,woocommerce-invoice,7.0.3,سالم,سایت بالاست، افزونه بی‌کار است,بدون تغییر,بله,بله,0,0,0,,"v class=""notice notice-error""> <p><b>هشدار: </b> فعالسازی «فاکتور ووکامرس» انجام نشد. لودر سورس گاردین روی هاست شما فعال نیست، لطفا به هاستینگ خود تیکت بزنید و درخواست کنید لودر سورس گاردین را برای شما نصب و فعالسازی نمایند. </p> </div> <div class=""n"
+Code Snippets,code-snippets,3.6.8,با اخطار اجرا می‌شود,با اخطار اجرا می‌شود,بدون تغییر,بله,بله,0,2,3,,
+افزونه حمل و نقل ووکامرس,persian-woocommerce-shipping,4.2.8,با اخطار اجرا می‌شود,با اخطار اجرا می‌شود,بدون تغییر,بله,بله,0,31,1,,
+افزونه وردپرس پنل پیامکی ایده پردازان,SMSIRApp,1.0.26,با اخطار اجرا می‌شود,با اخطار اجرا می‌شود,بدون تغییر,خیر,خیر,0,0,3,OUTPUT: Warning:  Private methods cannot be final as they are never overridden by other classes in /tmp/wp/wordpress/wp-content/plugins/SMSIRApp/includes/SMSIRAppClass.php on line 42,OUTPUT: Warning:  Private methods cannot be final as they are never overridden by other classes in /tmp/wp/wordpress/wp-content/plugins/SMSIRApp/includes/SMSIRAppClass.php on line 42
+SnappPay Woocommerce Gateway,snapppay-woocommerce-gateway,1.4.2,با اخطار اجرا می‌شود,با اخطار اجرا می‌شود,بدون تغییر,خیر,خیر,0,54,8,OUTPUT: Warning:  Trying to access array offset on value of type bool in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/functions.php on line 330,OUTPUT: Warning:  Trying to access array offset on false in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/functions.php on line 330
+Surenapost,surenapost,1.3.13,با اخطار اجرا می‌شود,با اخطار اجرا می‌شود,بدون تغییر,بله,بله,0,42,0,,
+اختصاصی تیساکیس (TisaCase Hub),tisacase-hub,1.9.15,با اخطار اجرا می‌شود,با اخطار اجرا می‌شود,بدون تغییر,بله,بله,0,0,1,,
+Elementor,elementor,3.27.4,خطای محیط تست (ربطی به نسخه ندارد),خطای محیط تست (ربطی به نسخه ندارد),بدون تغییر,بله,بله,1,1,8,"[01-Nov-2026 12:55:58 UTC] PHP Fatal error:  Uncaught TypeError: Elementor\Modules\Home\Transformations\Filter_Plugins::get_add_ons_installation_status(): Argument #1 ($add_ons) must be of type array, null given, called in /tmp/wp/wordpress/wp-conten","[01-Nov-2026 18:18:00 UTC] PHP Fatal error:  Uncaught TypeError: Elementor\Modules\Home\Transformations\Filter_Plugins::get_add_ons_installation_status(): Argument #1 ($add_ons) must be of type array, null given, called in /tmp/wp/wordpress/wp-conten"
+Admin Menu Editor,admin-menu-editor,1.15.2,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+FiboSearch - AJAX Search for WooCommerce (Pro),ajax-search-for-woocommerce-premium,1.30.1,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Bulk Product Cleaner (Drafts + Images),bulk-product-cleaner,12.6.3,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Automatic Postal Tracking for WooCommerce,bulk-tracking-upload,3.7.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+پکیج ویژه قاب موبایل,case-special-package,1.5.4,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+DIGITS: One Click Login/Signup Addon,digoneclickls,4.4,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+LiteSpeed Cache,litespeed-cache,7.9.1,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Loco Translate,loco-translate,2.7.1,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Members,members,3.2.18,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Order Export & Order Import for WooCommerce,order-import-export-for-woocommerce,2.5.9,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Page Links To,page-links-to,3.3.7,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+PeproDev WooCommerce Receipt Uploader,pepro-bacs-receipt-upload-for-woocommerce,2.8.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+ووکامرس فارسی,persian-woocommerce,9.3.4,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Plugin Check (PCP),plugin-check,2.1.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Product Import Export for WooCommerce,product-import-export-for-woo,2.4.4,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+WC Sadad Payment gateway,sadad-woocommerce2,5.1.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Tisa Product ZIP Importer,tisa-product-importer,0.8.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TisaCase — همگام‌سازی موجودی با همکار,tisacase-ariocase-sync,1.28.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TisaCase — مدیریت انبوه موجودی,tisacase-bulk-stock-manager,1.4.3,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TisaCase — مدیریت گروهی متغیرها و مدل‌ها,tisacase-bulk-variation-manager,2.3.1,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TisaCase — کارت به کارت تیساکیس,tisacase-card-to-card,1.4.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TisaCase Exporter — مرکز خروجی تیساکیس,tisacase-exporter,2.1.6,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+مرکز بهینه‌سازی تیساکیس (TisaCase Optimizer),tisacase-optimizer,1.3.4,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TisaCase Order Phone Exporter,tisacase-order-phone-exporter,1.5.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TisaCase Order Wallet Reporter,tisacase-order-wallet-reporter,1.0.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TisaCase Pricing,tisacase-pricing,1.4.2,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TisaCase — قوانین توضیحات محصول,tisacase-product-description,1.6.2,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Waitlist woocommerce( Back in stock notifier ),waitlist-woocommerce,2.8.4,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+WooCommerce SKU Prefix Bar,wc-sku-prefix-bar,1.5.3,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+ارسال سفارش‌ها به تلگرام ووکامرس,wc-telegram-orders,1.14.3,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Behpardakht Woocommerce,woo-behpardakht,2.6.5,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Checkout Field Editor for WooCommerce,woo-checkout-field-editor-pro,2.1.4,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Advanced Order Export For WooCommerce,woo-order-export-lite,3.6.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Variation Swatches for WooCommerce,woo-variation-swatches,2.2.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Variation Swatches for WooCommerce - Pro,woo-variation-swatches-pro,2.2.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+TeraWallet,woo-wallet,1.5.10,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+WooCommerce,woocommerce,10.3.7,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Woodmart Core,woodmart-core,1.1.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+Yoast SEO,wordpress-seo,24.4,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+"WP-Optimize - Clean, Compress, Cache",wp-optimize,4.5.3,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+WP-Parsidate,wp-parsidate,5.1.5,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+WP Statistics,wp-statistics,14.12.6,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,
+افزونه درگاه پرداخت الکترونیک سامان (سپ) ووکامرس,zhaket-woo-sep,1.3.0,سالم,سالم,بدون تغییر,بله,بله,0,0,0,,

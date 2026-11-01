@@ -1,0 +1,883 @@
+<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>گزارش تست عملی سازگاری با PHP 8.3</title><style>
+:root{--bg:#0f1420;--card:#171d2b;--card2:#1e2536;--line:#2c3448;--txt:#e8ecf5;
+--muted:#98a2b8;--red:#ff5f6d;--orange:#ff9f43;--yellow:#f7d154;--green:#3ddc97;--blue:#5aa9ff;}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);
+font-family:"Vazirmatn","Vazir",Tahoma,"Segoe UI",system-ui,sans-serif;direction:rtl;line-height:1.75}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:26px;margin:0 0 6px}h2{font-size:20px;margin:34px 0 12px;border-bottom:1px solid var(--line);padding-bottom:8px}
+p,li{font-size:15px;color:#dbe2f0}
+.muted{color:var(--muted);font-size:13.5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card .n{font-size:26px;font-weight:700}.card .l{color:var(--muted);font-size:13px}
+.verdict{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12.5px;font-weight:700}
+.v-critical{background:#3a1620;color:#ff8f99;border:1px solid #7d2233}
+.v-high{background:#3a2a16;color:#ffb877;border:1px solid #7d5322}
+.v-medium{background:#37320f;color:#f7d154;border:1px solid #77700f}
+.v-ok{background:#123326;color:#7ce7b6;border:1px solid #1d6b4c}
+.v-info{background:#1b2434;color:#9fb6d6;border:1px solid #2c3448}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+th{color:var(--muted);font-size:12.5px;font-weight:600;position:sticky;top:0;background:var(--bg)}
+tr.row{cursor:pointer}tr.row:hover{background:var(--card)}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden}
+summary{padding:14px 16px;cursor:pointer;font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.body{padding:4px 18px 18px}
+.badge{font-size:12px;color:var(--muted);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:1px 8px}
+.reason{border-radius:12px;padding:10px 14px;margin:9px 0;border:1px solid var(--line);background:var(--card2)}
+.reason .t{font-weight:700;margin-bottom:3px}
+.r-critical{border-color:#7d2233;background:#2a1219}.r-high{border-color:#7d5322;background:#2a1f12}
+.r-medium{border-color:#77700f;background:#262310}.r-info{border-color:#2c3448}
+.r-ok{border-color:#1d6b4c;background:#11251d}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;direction:ltr;display:inline-block}
+pre{background:#0b1017;border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;direction:ltr;
+font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6;color:#cfe3ff}
+ul.f{margin:6px 0 0 0;padding-right:18px}ul.f li{margin:3px 0;font-size:13.5px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}
+input,select{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:8px 12px;font-size:14px;font-family:inherit}
+button.f{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit;font-size:13.5px}
+button.f.on{background:#25324a;border-color:#3f6699;color:#cfe3ff}
+.note{background:#152033;border:1px solid #24405f;border-radius:14px;padding:14px 16px;margin:14px 0}
+.warnbox{background:#2a1219;border:1px solid #7d2233;border-radius:14px;padding:14px 16px;margin:14px 0}
+.kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12.5px}
+.st{font-size:12.5px;color:var(--muted)}
+</style></head><body><div class="wrap">
+<h1>تست عملی روی وردپرس واقعی با PHP 8.3</h1>
+<p class="muted">56 افزونه · نصب و فعال‌سازی روی WordPress 6.9.11 · موتور PHP 8.2.33 · ووکامرس به‌عنوان پایه فعال بود · هر افزونه روی صفحهٔ اصلی، پیشخوان، فهرست افزونه‌ها، تنظیمات، تنظیمات ووکامرس و صفحات اختصاصی خودش باز شد.</p>
+<div class="warnbox"><b>جواب کوتاه:</b> در عمل <b>4 افزونه</b> سایت را کاملاً از کار می‌اندازند: <b>دکمه تماس شناور</b>، <b>DIGITS: WordPress Mobile Number Signup and Login</b>، <b>Elementor Pro</b>، <b>Zhaket Smart Updater</b>. و <b>2 افزونه</b> سایت را بالا نگه می‌دارند ولی خودشان بی‌کار می‌مانند: <b>افزونه مدیریت هوشمند راست چین</b>، <b>فاکتور حرفه‌ای ووکامرس</b>. بقیهٔ افزونه‌ها روی PHP 8.2 بالا آمدند.
+<p style="margin-bottom:0">یعنی اگر فقط همین افزونه‌ها را غیرفعال کنید (پوشه‌شان را تغییر نام بدهید)، سایت شما روی 8.2 بالا می‌آید و بعد می‌توانید بقیه را یکی‌یکی برگردانید.</p>
+</div>
+<div class="cards">
+<div class="card"><div class="n" style="color:var(--critical)">4</div><div class="l">سایت را از کار می‌اندازد</div></div>
+<div class="card"><div class="n" style="color:var(--high)">2</div><div class="l">سایت بالاست ولی افزونه از کار می‌افتد</div></div>
+<div class="card"><div class="n" style="color:var(--medium)">6</div><div class="l">بالا می‌آید، اخطار در لاگ</div></div>
+<div class="card"><div class="n" style="color:var(--blue)">1</div><div class="l">خطای محیط تست (ربطی به 8.2 ندارد)</div></div>
+<div class="card"><div class="n" style="color:var(--ok)">43</div><div class="l">سالم</div></div>
+</div>
+<h2>۱) افزونه‌هایی که سایت را از کار می‌اندازند</h2>
+<table><tr><th>افزونه</th><th>نسخه</th><th>چه اتفاقی افتاد</th><th>صفحه‌های خراب</th></tr>
+<tr><td><b>دکمه تماس شناور</b><br><span class="st">cta-button</span></td><td>1.0</td><td>Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added e</td><td>7 صفحه</td></tr>
+<tr><td><b>DIGITS: WordPress Mobile Number Signup and Login</b><br><span class="st">digits</span></td><td>9.2.1</td><td><code>[01-Nov-2026 18:11:02 UTC] PHP Parse error:  syntax error, unexpected token &quot;&lt;&quot;, expecting end of file in /tmp/wp/wordpress/wp-content/plugins/digits/digit.php on line 2</code></td><td>7 صفحه</td></tr>
+<tr><td><b>Elementor Pro</b><br><span class="st">elementor-pro</span></td><td>3.8.1</td><td>PHP script &#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&#x27; is protected by SourceGuardian and requires a SourceGuardian loader &#x27;ixed.8.3.ems&#x27; to be ins</td><td>9 صفحه</td></tr>
+<tr><td><b>Zhaket Smart Updater</b><br><span class="st">zhaket-updater</span></td><td>4.2.4</td><td>Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added e</td><td>8 صفحه</td></tr>
+</table>
+<h2>۲) افزونه‌هایی که بالا می‌مانند ولی بی‌کار می‌شوند</h2>
+<table><tr><th>افزونه</th><th>نسخه</th><th>پیام</th></tr>
+<tr><td><b>افزونه مدیریت هوشمند راست چین</b><br><span class="st">RTL-CareUnit</span></td><td>2.5.2</td><td></td></tr>
+<tr><td><b>فاکتور حرفه‌ای ووکامرس</b><br><span class="st">woocommerce-invoice</span></td><td>7.0.3</td><td></td></tr>
+</table>
+<h2>۳) جدول کامل نتایج</h2>
+<div class="toolbar"><input id="q" placeholder="جستجو در نام، پوشه، پیام خطا…" style="min-width:280px">
+<button class="f" data-v="down" onclick="setC('down')">سایت را از کار می‌اندازد (4)</button>
+<button class="f" data-v="inert" onclick="setC('inert')">سایت بالاست ولی افزونه از کار می‌افتد (2)</button>
+<button class="f" data-v="warn" onclick="setC('warn')">بالا می‌آید، اخطار در لاگ (6)</button>
+<button class="f" data-v="env" onclick="setC('env')">خطای محیط تست (ربطی به 8.2 ندارد) (1)</button>
+<button class="f" data-v="ok" onclick="setC('ok')">سالم (43)</button>
+<button class="f on" data-v="" onclick="setC('')">همه</button></div>
+<table><thead><tr><th>وضعیت</th><th>افزونه</th><th>نسخه</th><th>فعال شد</th><th>خطای مرگبار</th><th>منسوخ/اخطار</th><th>تحلیل استاتیک</th></tr></thead><tbody>
+<tr class="row" data-cls="down" data-search="cta-button دکمه تماس شناور encoded بحرانی script error: the ioncube loader for php needs to be installed. the ioncube loader is the industry standard php extension for running protected php code, and can usually be added easily to a php installation. for loaders please visit: https://get-loader.ioncube.com for an i script error: the ioncube loader for php needs to be installed. the ioncube loader is the industry standard php extension for running protected php code, and can usually be added e" onclick="open_('cta-button')">
+<td><span class="verdict v-critical">سایت را از کار می‌اندازد</span></td>
+<td><b>دکمه تماس شناور</b><br><span class="st">cta-button</span></td>
+<td>1.0</td>
+<td>خیر</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-critical">بحرانی</span></td>
+</tr>
+<tr class="row" data-cls="down" data-search="digits digits: wordpress mobile number signup and login crash بحرانی  &lt;code&gt;[01-nov-2026 18:11:02 utc] php parse error:  syntax error, unexpected token &amp;quot;&amp;lt;&amp;quot;, expecting end of file in /tmp/wp/wordpress/wp-content/plugins/digits/digit.php on line 2&lt;/code&gt;" onclick="open_('digits')">
+<td><span class="verdict v-critical">سایت را از کار می‌اندازد</span></td>
+<td><b>DIGITS: WordPress Mobile Number Signup and Login</b><br><span class="st">digits</span></td>
+<td>9.2.1</td>
+<td>خیر</td>
+<td>8</td>
+<td>0 / 0</td>
+<td><span class="verdict v-critical">بحرانی</span></td>
+</tr>
+<tr class="row" data-cls="down" data-search="elementor-pro elementor pro encoded بحرانی php script &#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&#x27; is protected by sourceguardian and requires a sourceguardian loader &#x27;ixed.8.3.ems&#x27; to be installed. 1) download the required loader &#x27;ixed.8.3.ems&#x27; from the sourceguardian site: https://www.sourceguardian.com/loaders/download.php?php_v=8.3.33&amp;php_ts=0&amp;php_is=8 php script &amp;#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&amp;#x27; is protected by sourceguardian and requires a sourceguardian loader &amp;#x27;ixed.8.3.ems&amp;#x27; to be ins" onclick="open_('elementor-pro')">
+<td><span class="verdict v-critical">سایت را از کار می‌اندازد</span></td>
+<td><b>Elementor Pro</b><br><span class="st">elementor-pro</span></td>
+<td>3.8.1</td>
+<td>خیر</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-critical">بحرانی</span></td>
+</tr>
+<tr class="row" data-cls="down" data-search="zhaket-updater zhaket smart updater encoded بحرانی script error: the ioncube loader for php needs to be installed. the ioncube loader is the industry standard php extension for running protected php code, and can usually be added easily to a php installation. for loaders please visit: https://get-loader.ioncube.com for an i script error: the ioncube loader for php needs to be installed. the ioncube loader is the industry standard php extension for running protected php code, and can usually be added e" onclick="open_('zhaket-updater')">
+<td><span class="verdict v-critical">سایت را از کار می‌اندازد</span></td>
+<td><b>Zhaket Smart Updater</b><br><span class="st">zhaket-updater</span></td>
+<td>4.2.4</td>
+<td>خیر</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-critical">بحرانی</span></td>
+</tr>
+<tr class="row" data-cls="inert" data-search="rtl-careunit افزونه مدیریت هوشمند راست چین loader_notice بحرانی  &lt;code&gt;افزونه قادر به ارائه خدمات نخواهد بود&amp;lt;/p&amp;gt; &amp;lt;p&amp;gt;آخرین نسخه ioncube loader روی سرور شما نصب و فعال باشد.&amp;lt;/p&amp;gt; &amp;lt;span&amp;gt;در این زمینه می بایست با پشتیبانی هاست خود در تماس باشید.&amp;lt;/span&amp;gt; &amp;lt;/di&lt;/code&gt;" onclick="open_('RTL-CareUnit')">
+<td><span class="verdict v-high">سایت بالاست ولی افزونه از کار می‌افتد</span></td>
+<td><b>افزونه مدیریت هوشمند راست چین</b><br><span class="st">RTL-CareUnit</span></td>
+<td>2.5.2</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-critical">بحرانی</span></td>
+</tr>
+<tr class="row" data-cls="inert" data-search="woocommerce-invoice فاکتور حرفه‌ای ووکامرس loader_notice بحرانی  &lt;code&gt;v class=&amp;quot;notice notice-error&amp;quot;&amp;gt; &amp;lt;p&amp;gt;&amp;lt;b&amp;gt;هشدار: &amp;lt;/b&amp;gt; فعالسازی «فاکتور ووکامرس» انجام نشد. لودر سورس گاردین روی هاست شما فعال نیست، لطفا به هاستینگ خود تیکت بزنید و درخواست کنید لودر سو&lt;/code&gt;" onclick="open_('woocommerce-invoice')">
+<td><span class="verdict v-high">سایت بالاست ولی افزونه از کار می‌افتد</span></td>
+<td><b>فاکتور حرفه‌ای ووکامرس</b><br><span class="st">woocommerce-invoice</span></td>
+<td>7.0.3</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-critical">بحرانی</span></td>
+</tr>
+<tr class="row" data-cls="warn" data-search="code-snippets code snippets warnings تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('code-snippets')">
+<td><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span></td>
+<td><b>Code Snippets</b><br><span class="st">code-snippets</span></td>
+<td>3.6.8</td>
+<td>بله</td>
+<td>0</td>
+<td>2 / 3</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="warn" data-search="persian-woocommerce-shipping افزونه حمل و نقل ووکامرس warnings پرخطر  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('persian-woocommerce-shipping')">
+<td><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span></td>
+<td><b>افزونه حمل و نقل ووکامرس</b><br><span class="st">persian-woocommerce-shipping</span></td>
+<td>4.2.8</td>
+<td>بله</td>
+<td>0</td>
+<td>31 / 1</td>
+<td><span class="verdict v-high">پرخطر</span></td>
+</tr>
+<tr class="row" data-cls="warn" data-search="smsirapp افزونه وردپرس پنل پیامکی ایده پردازان no_act تقریباً سالم  &lt;code&gt;output: warning:  private methods cannot be final as they are never overridden by other classes in /tmp/wp/wordpress/wp-content/plugins/smsirapp/includes/smsirappclass.php on line &lt;/code&gt;" onclick="open_('SMSIRApp')">
+<td><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span></td>
+<td><b>افزونه وردپرس پنل پیامکی ایده پردازان</b><br><span class="st">SMSIRApp</span></td>
+<td>1.0.26</td>
+<td>خیر</td>
+<td>0</td>
+<td>0 / 3</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="warn" data-search="snapppay-woocommerce-gateway snapppay woocommerce gateway no_act تقریباً سالم  &lt;code&gt;output: warning:  trying to access array offset on false in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/functions.php on line 330&lt;/code&gt;" onclick="open_('snapppay-woocommerce-gateway')">
+<td><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span></td>
+<td><b>SnappPay Woocommerce Gateway</b><br><span class="st">snapppay-woocommerce-gateway</span></td>
+<td>1.4.2</td>
+<td>خیر</td>
+<td>0</td>
+<td>54 / 8</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="warn" data-search="surenapost surenapost warnings تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('surenapost')">
+<td><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span></td>
+<td><b>Surenapost</b><br><span class="st">surenapost</span></td>
+<td>1.3.13</td>
+<td>بله</td>
+<td>0</td>
+<td>42 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="warn" data-search="tisacase-hub اختصاصی تیساکیس (tisacase hub) warnings تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-hub')">
+<td><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span></td>
+<td><b>اختصاصی تیساکیس (TisaCase Hub)</b><br><span class="st">tisacase-hub</span></td>
+<td>1.9.15</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 1</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="env" data-search="elementor elementor crash نیاز به توجه  &lt;code&gt;[01-nov-2026 18:18:00 utc] php fatal error:  uncaught typeerror: elementor\modules\home\transformations\filter_plugins::get_add_ons_installation_status(): argument #1 ($add_ons) mu&lt;/code&gt;" onclick="open_('elementor')">
+<td><span class="verdict v-info">خطای محیط تست (ربطی به 8.2 ندارد)</span></td>
+<td><b>Elementor</b><br><span class="st">elementor</span></td>
+<td>3.27.4</td>
+<td>بله</td>
+<td>1</td>
+<td>1 / 8</td>
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="admin-menu-editor admin menu editor ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('admin-menu-editor')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Admin Menu Editor</b><br><span class="st">admin-menu-editor</span></td>
+<td>1.15.2</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="ajax-search-for-woocommerce-premium fibosearch - ajax search for woocommerce (pro) ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('ajax-search-for-woocommerce-premium')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>FiboSearch - AJAX Search for WooCommerce (Pro)</b><br><span class="st">ajax-search-for-woocommerce-premium</span></td>
+<td>1.30.1</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="bulk-product-cleaner bulk product cleaner (drafts + images) ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('bulk-product-cleaner')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Bulk Product Cleaner (Drafts + Images)</b><br><span class="st">bulk-product-cleaner</span></td>
+<td>12.6.3</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="bulk-tracking-upload automatic postal tracking for woocommerce ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('bulk-tracking-upload')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Automatic Postal Tracking for WooCommerce</b><br><span class="st">bulk-tracking-upload</span></td>
+<td>3.7.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="case-special-package پکیج ویژه قاب موبایل ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('case-special-package')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>پکیج ویژه قاب موبایل</b><br><span class="st">case-special-package</span></td>
+<td>1.5.4</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="digoneclickls digits: one click login/signup addon ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('digoneclickls')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>DIGITS: One Click Login/Signup Addon</b><br><span class="st">digoneclickls</span></td>
+<td>4.4</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="litespeed-cache litespeed cache ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('litespeed-cache')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>LiteSpeed Cache</b><br><span class="st">litespeed-cache</span></td>
+<td>7.9.1</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="loco-translate loco translate ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('loco-translate')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Loco Translate</b><br><span class="st">loco-translate</span></td>
+<td>2.7.1</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="members members ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('members')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Members</b><br><span class="st">members</span></td>
+<td>3.2.18</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="order-import-export-for-woocommerce order export &amp; order import for woocommerce ok نیاز به توجه  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('order-import-export-for-woocommerce')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Order Export &amp; Order Import for WooCommerce</b><br><span class="st">order-import-export-for-woocommerce</span></td>
+<td>2.5.9</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="page-links-to page links to ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('page-links-to')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Page Links To</b><br><span class="st">page-links-to</span></td>
+<td>3.3.7</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="pepro-bacs-receipt-upload-for-woocommerce peprodev woocommerce receipt uploader ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('pepro-bacs-receipt-upload-for-woocommerce')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>PeproDev WooCommerce Receipt Uploader</b><br><span class="st">pepro-bacs-receipt-upload-for-woocommerce</span></td>
+<td>2.8.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="persian-woocommerce ووکامرس فارسی ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('persian-woocommerce')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>ووکامرس فارسی</b><br><span class="st">persian-woocommerce</span></td>
+<td>9.3.4</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="plugin-check plugin check (pcp) ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('plugin-check')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Plugin Check (PCP)</b><br><span class="st">plugin-check</span></td>
+<td>2.1.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="product-import-export-for-woo product import export for woocommerce ok نیاز به توجه  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('product-import-export-for-woo')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Product Import Export for WooCommerce</b><br><span class="st">product-import-export-for-woo</span></td>
+<td>2.4.4</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="sadad-woocommerce2 wc sadad payment gateway ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('sadad-woocommerce2')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>WC Sadad Payment gateway</b><br><span class="st">sadad-woocommerce2</span></td>
+<td>5.1.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisa-product-importer tisa product zip importer ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisa-product-importer')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Tisa Product ZIP Importer</b><br><span class="st">tisa-product-importer</span></td>
+<td>0.8.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-ariocase-sync tisacase — همگام‌سازی موجودی با همکار ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-ariocase-sync')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — همگام‌سازی موجودی با همکار</b><br><span class="st">tisacase-ariocase-sync</span></td>
+<td>1.28.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-bulk-stock-manager tisacase — مدیریت انبوه موجودی ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-bulk-stock-manager')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — مدیریت انبوه موجودی</b><br><span class="st">tisacase-bulk-stock-manager</span></td>
+<td>1.4.3</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-bulk-variation-manager tisacase — مدیریت گروهی متغیرها و مدل‌ها ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-bulk-variation-manager')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — مدیریت گروهی متغیرها و مدل‌ها</b><br><span class="st">tisacase-bulk-variation-manager</span></td>
+<td>2.3.1</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-card-to-card tisacase — کارت به کارت تیساکیس ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-card-to-card')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — کارت به کارت تیساکیس</b><br><span class="st">tisacase-card-to-card</span></td>
+<td>1.4.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-exporter tisacase exporter — مرکز خروجی تیساکیس ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-exporter')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase Exporter — مرکز خروجی تیساکیس</b><br><span class="st">tisacase-exporter</span></td>
+<td>2.1.6</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-optimizer مرکز بهینه‌سازی تیساکیس (tisacase optimizer) ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-optimizer')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>مرکز بهینه‌سازی تیساکیس (TisaCase Optimizer)</b><br><span class="st">tisacase-optimizer</span></td>
+<td>1.3.4</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-order-phone-exporter tisacase order phone exporter ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-order-phone-exporter')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase Order Phone Exporter</b><br><span class="st">tisacase-order-phone-exporter</span></td>
+<td>1.5.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-order-wallet-reporter tisacase order wallet reporter ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-order-wallet-reporter')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase Order Wallet Reporter</b><br><span class="st">tisacase-order-wallet-reporter</span></td>
+<td>1.0.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-pricing tisacase pricing ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-pricing')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase Pricing</b><br><span class="st">tisacase-pricing</span></td>
+<td>1.4.2</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="tisacase-product-description tisacase — قوانین توضیحات محصول ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('tisacase-product-description')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — قوانین توضیحات محصول</b><br><span class="st">tisacase-product-description</span></td>
+<td>1.6.2</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="waitlist-woocommerce waitlist woocommerce( back in stock notifier ) ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('waitlist-woocommerce')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Waitlist woocommerce( Back in stock notifier )</b><br><span class="st">waitlist-woocommerce</span></td>
+<td>2.8.4</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="wc-sku-prefix-bar woocommerce sku prefix bar ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('wc-sku-prefix-bar')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>WooCommerce SKU Prefix Bar</b><br><span class="st">wc-sku-prefix-bar</span></td>
+<td>1.5.3</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="wc-telegram-orders ارسال سفارش‌ها به تلگرام ووکامرس ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('wc-telegram-orders')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>ارسال سفارش‌ها به تلگرام ووکامرس</b><br><span class="st">wc-telegram-orders</span></td>
+<td>1.14.3</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="woo-behpardakht behpardakht woocommerce ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('woo-behpardakht')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Behpardakht Woocommerce</b><br><span class="st">woo-behpardakht</span></td>
+<td>2.6.5</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="woo-checkout-field-editor-pro checkout field editor for woocommerce ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('woo-checkout-field-editor-pro')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Checkout Field Editor for WooCommerce</b><br><span class="st">woo-checkout-field-editor-pro</span></td>
+<td>2.1.4</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="woo-order-export-lite advanced order export for woocommerce ok پرخطر  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('woo-order-export-lite')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Advanced Order Export For WooCommerce</b><br><span class="st">woo-order-export-lite</span></td>
+<td>3.6.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-high">پرخطر</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="woo-variation-swatches variation swatches for woocommerce ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('woo-variation-swatches')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Variation Swatches for WooCommerce</b><br><span class="st">woo-variation-swatches</span></td>
+<td>2.2.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="woo-variation-swatches-pro variation swatches for woocommerce - pro ok سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('woo-variation-swatches-pro')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Variation Swatches for WooCommerce - Pro</b><br><span class="st">woo-variation-swatches-pro</span></td>
+<td>2.2.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-ok">سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="woo-wallet terawallet ok نیاز به توجه  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('woo-wallet')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TeraWallet</b><br><span class="st">woo-wallet</span></td>
+<td>1.5.10</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="woocommerce woocommerce ok نیاز به توجه  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('woocommerce')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>WooCommerce</b><br><span class="st">woocommerce</span></td>
+<td>10.3.7</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="woodmart-core woodmart core ok نیاز به توجه  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('woodmart-core')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Woodmart Core</b><br><span class="st">woodmart-core</span></td>
+<td>1.1.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="wordpress-seo yoast seo ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('wordpress-seo')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Yoast SEO</b><br><span class="st">wordpress-seo</span></td>
+<td>24.4</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="wp-optimize wp-optimize - clean, compress, cache ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('wp-optimize')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>WP-Optimize - Clean, Compress, Cache</b><br><span class="st">wp-optimize</span></td>
+<td>4.5.3</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="wp-parsidate wp-parsidate ok پرخطر  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('wp-parsidate')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>WP-Parsidate</b><br><span class="st">wp-parsidate</span></td>
+<td>5.1.5</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-high">پرخطر</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="wp-statistics wp statistics ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('wp-statistics')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>WP Statistics</b><br><span class="st">wp-statistics</span></td>
+<td>14.12.6</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+<tr class="row" data-cls="ok" data-search="zhaket-woo-sep افزونه درگاه پرداخت الکترونیک سامان (سپ) ووکامرس ok تقریباً سالم  &lt;span class=muted&gt;—&lt;/span&gt;" onclick="open_('zhaket-woo-sep')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>افزونه درگاه پرداخت الکترونیک سامان (سپ) ووکامرس</b><br><span class="st">zhaket-woo-sep</span></td>
+<td>1.3.0</td>
+<td>بله</td>
+<td>0</td>
+<td>0 / 0</td>
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+</tr>
+</tbody></table>
+<p class="muted">برای دیدن جزئیات هر افزونه روی ردیفش کلیک کنید.</p>
+<h2>۴) جزئیات هر افزونه</h2>
+<details id="p-cta-button"><summary><span class="verdict v-critical">سایت را از کار می‌اندازد</span> دکمه تماس شناور <span class="badge">cta-button</span> <span class="badge">v1.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: رمزگذاری‌شده — سایت از کار افتاد · فعال‌سازی: ناموفق · تحلیل استاتیک قبلی: بحرانی</p>
+<div class="reason r-critical"><div class="t">توضیح</div>فایل <span class='kbd'>includes.php</span> با ionCube رمزگذاری شده؛ هنگام لودرِ افزونه، PHP پیام «Script error: the ionCube Loader …» را چاپ می‌کند و ادامه نمی‌دهد. هر ۱۱ صفحه‌ای که تست شد خطای 500 گرفتند.</div>
+<div class="reason r-critical"><div class="t">پیام لودر</div><pre>Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></div>
+<div class="reason"><div class="t">صفحه‌هایی که خطا دادند</div><ul class="f">
+<li><span class="kbd">/</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/plugins.php</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/options-general.php</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/edit.php?post_type=product</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=wc-settings</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+</ul></div>
+</div></details>
+<details id="p-digits"><summary><span class="verdict v-critical">سایت را از کار می‌اندازد</span> DIGITS: WordPress Mobile Number Signup and Login <span class="badge">digits</span> <span class="badge">v9.2.1</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: خطای مرگبار · فعال‌سازی: ناموفق · تحلیل استاتیک قبلی: بحرانی</p>
+<div class="reason r-critical"><div class="t">توضیح</div>فایل اصلی با ionCube رمزگذاری شده و چون لودر 8.2 نصب نیست، PHP آن را «نویسهٔ ناشناس» می‌بیند و همان خط ۲ متوقف می‌شود؛ در نتیجه <b>همهٔ صفحه‌ها</b> (حتی پیشخوان) خطای 500 می‌گیرند. این همان چیزی است که شما «دان شدن سایت» می‌نامید.</div>
+<div class="reason"><div class="t">لاگ خطا در طول تست</div>مرگبار: 0 · خطای نحو: 8 · اخطار: 0 · منسوخ‌شده: 0</div>
+<pre>[01-Nov-2026 18:11:02 UTC] PHP Parse error:  syntax error, unexpected token &quot;&lt;&quot;, expecting end of file in /tmp/wp/wordpress/wp-content/plugins/digits/digit.php on line 2</pre>
+<pre>[01-Nov-2026 18:11:02 UTC] PHP Parse error:  syntax error, unexpected token &quot;&lt;&quot;, expecting end of file in /tmp/wp/wordpress/wp-content/plugins/digits/digit.php on line 2</pre>
+<div class="reason"><div class="t">صفحه‌هایی که خطا دادند</div><ul class="f">
+<li><span class="kbd">/</span> → کد 500<br><pre style="margin:6px 0 0">&lt;br /&gt; &lt;b&gt;Parse error&lt;/b&gt;: syntax error, unexpected token &amp;quot;&amp;lt;&amp;quot;, expecting end of file in &lt;b&gt;/tmp/wp/wordpress/wp-content/plugins/digits/digit.php&lt;/b&gt; on line &lt;b&gt;2&lt;/b&gt;&lt;br /&gt; &lt;br /&gt; &lt;b&gt;Notice&lt;/b&gt;: Function _load_textdomain_just_in_time was called &lt;strong&gt;inc</pre></li>
+<li><span class="kbd">/wp-admin/</span> → کد 500<br><pre style="margin:6px 0 0">&lt;br /&gt; &lt;b&gt;Parse error&lt;/b&gt;: syntax error, unexpected token &amp;quot;&amp;lt;&amp;quot;, expecting end of file in &lt;b&gt;/tmp/wp/wordpress/wp-content/plugins/digits/digit.php&lt;/b&gt; on line &lt;b&gt;2&lt;/b&gt;&lt;br /&gt; &lt;!DOCTYPE html&gt; &lt;html lang=&quot;en-US&quot;&gt; &lt;head&gt; &lt;meta http-equiv=&quot;Content-Type&quot; content=</pre></li>
+<li><span class="kbd">/wp-admin/plugins.php</span> → کد 500<br><pre style="margin:6px 0 0">&lt;br /&gt; &lt;b&gt;Parse error&lt;/b&gt;: syntax error, unexpected token &amp;quot;&amp;lt;&amp;quot;, expecting end of file in &lt;b&gt;/tmp/wp/wordpress/wp-content/plugins/digits/digit.php&lt;/b&gt; on line &lt;b&gt;2&lt;/b&gt;&lt;br /&gt; &lt;!DOCTYPE html&gt; &lt;html lang=&quot;en-US&quot;&gt; &lt;head&gt; &lt;meta http-equiv=&quot;Content-Type&quot; content=</pre></li>
+<li><span class="kbd">/wp-admin/options-general.php</span> → کد 500<br><pre style="margin:6px 0 0">&lt;br /&gt; &lt;b&gt;Parse error&lt;/b&gt;: syntax error, unexpected token &amp;quot;&amp;lt;&amp;quot;, expecting end of file in &lt;b&gt;/tmp/wp/wordpress/wp-content/plugins/digits/digit.php&lt;/b&gt; on line &lt;b&gt;2&lt;/b&gt;&lt;br /&gt; &lt;!DOCTYPE html&gt; &lt;html lang=&quot;en-US&quot;&gt; &lt;head&gt; &lt;meta http-equiv=&quot;Content-Type&quot; content=</pre></li>
+<li><span class="kbd">/wp-admin/edit.php?post_type=product</span> → کد 500<br><pre style="margin:6px 0 0">&lt;br /&gt; &lt;b&gt;Parse error&lt;/b&gt;: syntax error, unexpected token &amp;quot;&amp;lt;&amp;quot;, expecting end of file in &lt;b&gt;/tmp/wp/wordpress/wp-content/plugins/digits/digit.php&lt;/b&gt; on line &lt;b&gt;2&lt;/b&gt;&lt;br /&gt; &lt;!DOCTYPE html&gt; &lt;html lang=&quot;en-US&quot;&gt; &lt;head&gt; &lt;meta http-equiv=&quot;Content-Type&quot; content=</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=wc-settings</span> → کد 500<br><pre style="margin:6px 0 0">&lt;br /&gt; &lt;b&gt;Parse error&lt;/b&gt;: syntax error, unexpected token &amp;quot;&amp;lt;&amp;quot;, expecting end of file in &lt;b&gt;/tmp/wp/wordpress/wp-content/plugins/digits/digit.php&lt;/b&gt; on line &lt;b&gt;2&lt;/b&gt;&lt;br /&gt; &lt;!DOCTYPE html&gt; &lt;html lang=&quot;en-US&quot;&gt; &lt;head&gt; &lt;meta http-equiv=&quot;Content-Type&quot; content=</pre></li>
+</ul></div>
+</div></details>
+<details id="p-elementor-pro"><summary><span class="verdict v-critical">سایت را از کار می‌اندازد</span> Elementor Pro <span class="badge">elementor-pro</span> <span class="badge">v3.8.1</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: رمزگذاری‌شده — سایت از کار افتاد · فعال‌سازی: ناموفق · تحلیل استاتیک قبلی: بحرانی</p>
+<div class="reason r-critical"><div class="t">توضیح</div>فایل <span class='kbd'>abzarwp/abzarwp-v13.php</span> با SourceGuardian رمزگذاری شده و لودر <span class='kbd'>ixed.8.2.ems</span> را می‌خواهد. صفحه‌ها کد 200 می‌گیرند ولی محتوایشان فقط همان پیام خطاست، یعنی عملاً سایت از دسترس خارج است.</div>
+<div class="reason r-critical"><div class="t">پیام لودر</div><pre>PHP script &#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&#x27; is protected by SourceGuardian and requires a SourceGuardian loader &#x27;ixed.8.3.ems&#x27; to be installed. 1) Download the required loader &#x27;ixed.8.3.ems&#x27; from the SourceGuardian site: https://www.sourceguardian.com/loaders/download.php?php_v=8.3.33&amp;php_ts=0&amp;php_is=8</pre></div>
+<div class="reason"><div class="t">صفحه‌هایی که خطا دادند</div><ul class="f">
+<li><span class="kbd">/</span> → کد 200<br><pre style="margin:6px 0 0">PHP script &#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&#x27; is protected by SourceGuardian and requires a SourceGuardian loader &#x27;ixed.8.3.ems&#x27; to be installed. 1) Download the required loader &#x27;ixed.8.3.ems&#x27; from the SourceGuardian site: https://www.sourceguardian.com/loaders/download.php?php_v=8.3.33&amp;php_ts=0&amp;php_is=8</pre></li>
+<li><span class="kbd">/wp-admin/</span> → کد 200<br><pre style="margin:6px 0 0">PHP script &#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&#x27; is protected by SourceGuardian and requires a SourceGuardian loader &#x27;ixed.8.3.ems&#x27; to be installed. 1) Download the required loader &#x27;ixed.8.3.ems&#x27; from the SourceGuardian site: https://www.sourceguardian.com/loaders/download.php?php_v=8.3.33&amp;php_ts=0&amp;php_is=8</pre></li>
+<li><span class="kbd">/wp-admin/plugins.php</span> → کد 200<br><pre style="margin:6px 0 0">PHP script &#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&#x27; is protected by SourceGuardian and requires a SourceGuardian loader &#x27;ixed.8.3.ems&#x27; to be installed. 1) Download the required loader &#x27;ixed.8.3.ems&#x27; from the SourceGuardian site: https://www.sourceguardian.com/loaders/download.php?php_v=8.3.33&amp;php_ts=0&amp;php_is=8</pre></li>
+<li><span class="kbd">/wp-admin/options-general.php</span> → کد 200<br><pre style="margin:6px 0 0">PHP script &#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&#x27; is protected by SourceGuardian and requires a SourceGuardian loader &#x27;ixed.8.3.ems&#x27; to be installed. 1) Download the required loader &#x27;ixed.8.3.ems&#x27; from the SourceGuardian site: https://www.sourceguardian.com/loaders/download.php?php_v=8.3.33&amp;php_ts=0&amp;php_is=8</pre></li>
+<li><span class="kbd">/wp-admin/edit.php?post_type=product</span> → کد 200<br><pre style="margin:6px 0 0">PHP script &#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&#x27; is protected by SourceGuardian and requires a SourceGuardian loader &#x27;ixed.8.3.ems&#x27; to be installed. 1) Download the required loader &#x27;ixed.8.3.ems&#x27; from the SourceGuardian site: https://www.sourceguardian.com/loaders/download.php?php_v=8.3.33&amp;php_ts=0&amp;php_is=8</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=wc-settings</span> → کد 200<br><pre style="margin:6px 0 0">PHP script &#x27;/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php&#x27; is protected by SourceGuardian and requires a SourceGuardian loader &#x27;ixed.8.3.ems&#x27; to be installed. 1) Download the required loader &#x27;ixed.8.3.ems&#x27; from the SourceGuardian site: https://www.sourceguardian.com/loaders/download.php?php_v=8.3.33&amp;php_ts=0&amp;php_is=8</pre></li>
+</ul></div>
+</div></details>
+<details id="p-zhaket-updater"><summary><span class="verdict v-critical">سایت را از کار می‌اندازد</span> Zhaket Smart Updater <span class="badge">zhaket-updater</span> <span class="badge">v4.2.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: رمزگذاری‌شده — سایت از کار افتاد · فعال‌سازی: ناموفق · تحلیل استاتیک قبلی: بحرانی</p>
+<div class="reason r-critical"><div class="t">توضیح</div>فایل <span class='kbd'>vendor/autoload.php</span> با ionCube رمزگذاری شده و همان ابتدای لودِ افزونه صدا زده می‌شود؛ کل سایت 500 می‌شود.</div>
+<div class="reason r-critical"><div class="t">پیام لودر</div><pre>Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></div>
+<div class="reason"><div class="t">صفحه‌هایی که خطا دادند</div><ul class="f">
+<li><span class="kbd">/</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/plugins.php</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/options-general.php</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/edit.php?post_type=product</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=wc-settings</span> → کد 500<br><pre style="margin:6px 0 0">Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extension for running protected PHP code, and can usually be added easily to a PHP installation. For Loaders please visit: https://get-loader.ioncube.com For an i</pre></li>
+</ul></div>
+</div></details>
+<details id="p-RTL-CareUnit"><summary><span class="verdict v-high">سایت بالاست ولی افزونه از کار می‌افتد</span> افزونه مدیریت هوشمند راست چین <span class="badge">RTL-CareUnit</span> <span class="badge">v2.5.2</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: لودر ندارد — سایت بالاست، افزونه بی‌کار · فعال‌سازی: موفق · تحلیل استاتیک قبلی: بحرانی</p>
+<div class="reason r-high"><div class="t">توضیح</div>افزونه فعال می‌شود و سایت بالا می‌ماند، اما چون ionCube Loader نصب نیست در بالای همهٔ صفحه‌های مدیریت اخطار می‌دهد: «آخرین نسخه ionCube Loader روی سرور شما نصب و فعال باشد… افزونه قادر به ارائه خدمات نخواهد بود». پس سایت دان نمی‌شود، ولی عملاً این افزونه کار نمی‌کند.</div>
+<div class="reason"><div class="t">صفحه‌هایی که خطا دادند</div><ul class="f">
+<li><span class="kbd">/wp-admin/</span> → کد 200<br><pre style="margin:6px 0 0">افزونه قادر به ارائه خدمات نخواهد بود&lt;/p&gt; &lt;p&gt;آخرین نسخه ionCube Loader روی سرور شما نصب و فعال باشد.&lt;/p&gt; &lt;span&gt;در این زمینه می بایست با پشتیبانی هاست خود در تماس باشید.&lt;/span&gt; &lt;/div&gt; &lt;/div&gt; &lt;div id=&quot;message&quot; class=&quot;updated woocommerce-message&quot;&gt; &lt;a class=&quot;woocommer</pre></li>
+<li><span class="kbd">/wp-admin/plugins.php</span> → کد 200<br><pre style="margin:6px 0 0">افزونه قادر به ارائه خدمات نخواهد بود&lt;/p&gt; &lt;p&gt;آخرین نسخه ionCube Loader روی سرور شما نصب و فعال باشد.&lt;/p&gt; &lt;span&gt;در این زمینه می بایست با پشتیبانی هاست خود در تماس باشید.&lt;/span&gt; &lt;/div&gt; &lt;/div&gt; &lt;div id=&quot;message&quot; class=&quot;updated woocommerce-message&quot;&gt; &lt;a class=&quot;woocommer</pre></li>
+<li><span class="kbd">/wp-admin/options-general.php</span> → کد 200<br><pre style="margin:6px 0 0">افزونه قادر به ارائه خدمات نخواهد بود&lt;/p&gt; &lt;p&gt;آخرین نسخه ionCube Loader روی سرور شما نصب و فعال باشد.&lt;/p&gt; &lt;span&gt;در این زمینه می بایست با پشتیبانی هاست خود در تماس باشید.&lt;/span&gt; &lt;/div&gt; &lt;/div&gt; &lt;div class=&quot;wrap&quot;&gt; &lt;h1&gt;General Settings&lt;/h1&gt; &lt;form method=&quot;post&quot; action=&quot;</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=wc-settings</span> → کد 200<br><pre style="margin:6px 0 0">افزونه قادر به ارائه خدمات نخواهد بود&lt;/p&gt; &lt;p&gt;آخرین نسخه ionCube Loader روی سرور شما نصب و فعال باشد.&lt;/p&gt; &lt;span&gt;در این زمینه می بایست با پشتیبانی هاست خود در تماس باشید.&lt;/span&gt; &lt;/div&gt; &lt;/div&gt; &lt;div id=&quot;message&quot; class=&quot;updated woocommerce-message&quot;&gt; &lt;a class=&quot;woocommer</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=wc-settings&amp;tab=shipping</span> → کد 200<br><pre style="margin:6px 0 0">افزونه قادر به ارائه خدمات نخواهد بود&lt;/p&gt; &lt;p&gt;آخرین نسخه ionCube Loader روی سرور شما نصب و فعال باشد.&lt;/p&gt; &lt;span&gt;در این زمینه می بایست با پشتیبانی هاست خود در تماس باشید.&lt;/span&gt; &lt;/div&gt; &lt;/div&gt; &lt;div id=&quot;message&quot; class=&quot;updated woocommerce-message&quot;&gt; &lt;a class=&quot;woocommer</pre></li>
+</ul></div>
+</div></details>
+<details id="p-woocommerce-invoice"><summary><span class="verdict v-high">سایت بالاست ولی افزونه از کار می‌افتد</span> فاکتور حرفه‌ای ووکامرس <span class="badge">woocommerce-invoice</span> <span class="badge">v7.0.3</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: لودر ندارد — سایت بالاست، افزونه بی‌کار · فعال‌سازی: موفق · تحلیل استاتیک قبلی: بحرانی</p>
+<div class="reason r-high"><div class="t">توضیح</div>برخلاف بقیهٔ افزونه‌های رمزگذاری‌شده، این یکی خوش‌رفتار است: در فایل اصلی بررسی می‌کند <code>if ( ! function_exists( 'sg_load' ) )</code> و اگر لودر نباشد فقط یک اخطار مدیریتی نشان می‌دهد و <code>return</code> می‌کند. در تست هم دقیقاً همین اتفاق افتاد: سایت با کد 200 بالا ماند و در بالای همهٔ صفحه‌های مدیریت این پیام آمد — «<b>هشدار:</b> فعالسازی «فاکتور ووکامرس» انجام نشد. لودر سورس گاردین روی هاست شما فعال نیست…». پس سایت دان نمی‌شود، ولی خودِ افزونه بی‌کار می‌ماند.</div>
+<div class="reason"><div class="t">صفحه‌هایی که خطا دادند</div><ul class="f">
+<li><span class="kbd">/wp-admin/</span> → کد 200<br><pre style="margin:6px 0 0">v class=&quot;notice notice-error&quot;&gt; &lt;p&gt;&lt;b&gt;هشدار: &lt;/b&gt; فعالسازی «فاکتور ووکامرس» انجام نشد. لودر سورس گاردین روی هاست شما فعال نیست، لطفا به هاستینگ خود تیکت بزنید و درخواست کنید لودر سورس گاردین را برای شما نصب و فعالسازی نمایند. &lt;/p&gt; &lt;/div&gt; &lt;div class=&quot;notice notice-error&quot;&gt; &lt;p&gt;WooCommerce has detected that some of your active plu</pre></li>
+<li><span class="kbd">/wp-admin/plugins.php</span> → کد 200<br><pre style="margin:6px 0 0">v class=&quot;notice notice-error&quot;&gt; &lt;p&gt;&lt;b&gt;هشدار: &lt;/b&gt; فعالسازی «فاکتور ووکامرس» انجام نشد. لودر سورس گاردین روی هاست شما فعال نیست، لطفا به هاستینگ خود تیکت بزنید و درخواست کنید لودر سورس گاردین را برای شما نصب و فعالسازی نمایند. &lt;/p&gt; &lt;/div&gt; &lt;div class=&quot;notice notice-error&quot;&gt; &lt;p&gt;WooCommerce has detected that some of your active plu</pre></li>
+<li><span class="kbd">/wp-admin/options-general.php</span> → کد 200<br><pre style="margin:6px 0 0">v class=&quot;notice notice-error&quot;&gt; &lt;p&gt;&lt;b&gt;هشدار: &lt;/b&gt; فعالسازی «فاکتور ووکامرس» انجام نشد. لودر سورس گاردین روی هاست شما فعال نیست، لطفا به هاستینگ خود تیکت بزنید و درخواست کنید لودر سورس گاردین را برای شما نصب و فعالسازی نمایند. &lt;/p&gt; &lt;/div&gt; &lt;div class=&quot;notice notice-error&quot;&gt; &lt;p&gt;WooCommerce has detected that some of your active plu</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=wc-settings</span> → کد 200<br><pre style="margin:6px 0 0">v class=&quot;notice notice-error&quot;&gt; &lt;p&gt;&lt;b&gt;هشدار: &lt;/b&gt; فعالسازی «فاکتور ووکامرس» انجام نشد. لودر سورس گاردین روی هاست شما فعال نیست، لطفا به هاستینگ خود تیکت بزنید و درخواست کنید لودر سورس گاردین را برای شما نصب و فعالسازی نمایند. &lt;/p&gt; &lt;/div&gt; &lt;div class=&quot;notice notice-error&quot;&gt; &lt;p&gt;WooCommerce has detected that some of your active plu</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=wc-settings&amp;tab=shipping</span> → کد 200<br><pre style="margin:6px 0 0">v class=&quot;notice notice-error&quot;&gt; &lt;p&gt;&lt;b&gt;هشدار: &lt;/b&gt; فعالسازی «فاکتور ووکامرس» انجام نشد. لودر سورس گاردین روی هاست شما فعال نیست، لطفا به هاستینگ خود تیکت بزنید و درخواست کنید لودر سورس گاردین را برای شما نصب و فعالسازی نمایند. &lt;/p&gt; &lt;/div&gt; &lt;div class=&quot;notice notice-error&quot;&gt; &lt;p&gt;WooCommerce has detected that some of your active plu</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=persian-wc</span> → کد 200<br><pre style="margin:6px 0 0">v class=&quot;notice notice-error&quot;&gt; &lt;p&gt;&lt;b&gt;هشدار: &lt;/b&gt; فعالسازی «فاکتور ووکامرس» انجام نشد. لودر سورس گاردین روی هاست شما فعال نیست، لطفا به هاستینگ خود تیکت بزنید و درخواست کنید لودر سورس گاردین را برای شما نصب و فعالسازی نمایند. &lt;/p&gt; &lt;/div&gt; &lt;div class=&quot;notice notice-error&quot;&gt; &lt;p&gt;WooCommerce has detected that some of your active plu</pre></li>
+</ul></div>
+</div></details>
+<details id="p-code-snippets"><summary><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span> Code Snippets <span class="badge">code-snippets</span> <span class="badge">v3.6.8</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: با اخطار اجرا شد · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+<div class="reason r-medium"><div class="t">توضیح</div>اخطارهای <code>Undefined array key</code> در صفحهٔ خوش‌آمدگوییِ افزونه (<span class='kbd'>php/views/welcome.php</span>) که ریشه‌شان خالی ماندنِ پاسخِ API راهنما به‌خاطر بی‌اینترنتیِ محیط تست است. روی سایت واقعی با اینترنت احتمالاً دیده نمی‌شود.</div>
+<div class="reason"><div class="t">لاگ خطا در طول تست</div>مرگبار: 0 · خطای نحو: 0 · اخطار: 3 · منسوخ‌شده: 2</div>
+<div class="reason"><div class="t">نمونه اخطارهای منسوخ‌شده</div><ul class="f">
+<li><code>[01-Nov-2026 18:13:45 UTC] PHP Deprecated:  ltrim(): Passing null to parameter #1 ($string) of type string is deprecated in /tmp/wp/wordpress/wp-includes/formatting.php on line 4496</code></li>
+<li><code>[01-Nov-2026 18:13:45 UTC] PHP Deprecated:  ltrim(): Passing null to parameter #1 ($string) of type string is deprecated in /tmp/wp/wordpress/wp-includes/formatting.php on line 4496</code></li>
+</ul></div>
+</div></details>
+<details id="p-persian-woocommerce-shipping"><summary><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span> افزونه حمل و نقل ووکامرس <span class="badge">persian-woocommerce-shipping</span> <span class="badge">v4.2.8</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: با اخطار اجرا شد · فعال‌سازی: موفق · تحلیل استاتیک قبلی: پرخطر</p>
+<div class="reason r-medium"><div class="t">توضیح</div>سایت بالا می‌ماند؛ فقط اخطارهای منسوخ‌شدگی «ایجاد ویژگی پویا» در کلاس‌های روش‌های حمل‌ونقل دیده شد. نکتهٔ مهم: خط <code>create_function()</code> در <span class='kbd'>includes/admin/class-settings.php</span>:113 که در تحلیل استاتیک بحرانی به‌نظر می‌رسید، در عمل اجرا نشد چون هیچ‌کدام از بخش‌های تعریف‌شده توضیح (desc) ندارند و آن شاخه هیچ‌وقت صدا زده نمی‌شود. با این حال یک بمب ساعتی است: با اولین بخشی که desc بگیرد، سایت فوراً خطای مرگبار می‌گیرد.</div>
+<div class="reason"><div class="t">لاگ خطا در طول تست</div>مرگبار: 0 · خطای نحو: 0 · اخطار: 1 · منسوخ‌شده: 31</div>
+<div class="reason"><div class="t">نمونه اخطارهای منسوخ‌شده</div><ul class="f">
+<li><code>[01-Nov-2026 18:11:27 UTC] PHP Deprecated:  Creation of dynamic property WC_Forehand_Method::$extra_cost is deprecated in /tmp/wp/wordpress/wp-content/plugins/persian-woocommerce-shipping/methods/pws-pishtaz-method.php o</code></li>
+<li><code>[01-Nov-2026 18:11:27 UTC] PHP Deprecated:  Creation of dynamic property WC_Forehand_Method::$extra_cost_percent is deprecated in /tmp/wp/wordpress/wp-content/plugins/persian-woocommerce-shipping/methods/pws-pishtaz-meth</code></li>
+<li><code>[01-Nov-2026 18:11:27 UTC] PHP Deprecated:  Creation of dynamic property WC_Forehand_Method::$source_state is deprecated in /tmp/wp/wordpress/wp-content/plugins/persian-woocommerce-shipping/methods/pws-pishtaz-method.php</code></li>
+<li><code>[01-Nov-2026 18:11:29 UTC] PHP Deprecated:  Creation of dynamic property WC_Forehand_Method::$extra_cost is deprecated in /tmp/wp/wordpress/wp-content/plugins/persian-woocommerce-shipping/methods/pws-pishtaz-method.php o</code></li>
+</ul></div>
+</div></details>
+<details id="p-SMSIRApp"><summary><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span> افزونه وردپرس پنل پیامکی ایده پردازان <span class="badge">SMSIRApp</span> <span class="badge">v1.0.26</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: فعال نشد · فعال‌سازی: ناموفق · دلیل: unexpected_output · تحلیل استاتیک قبلی: تقریباً سالم</p>
+<div class="reason r-medium"><div class="t">توضیح</div>فعال‌سازی به‌خاطر یک اخطار PHP 8 رد شد: <code>Private methods cannot be final as they are never overridden by other classes</code> در <span class='kbd'>includes/SMSIRAppClass.php</span> خط 42. متد final-private از PHP 8.0 به بعد اخطار می‌دهد. وقتی <code>display_errors</code> روشن است وردپرس جلوی فعال‌سازی را می‌گیرد («unexpected output»)؛ در سایت واقعی (نمایش خطا خاموش) فعال می‌ماند و فقط لاگ پر می‌شود.</div>
+<div class="reason"><div class="t">لاگ خطا در طول تست</div>مرگبار: 0 · خطای نحو: 0 · اخطار: 3 · منسوخ‌شده: 0</div>
+<div class="reason r-medium"><div class="t">خروجی هنگام فعال‌سازی</div><pre>OUTPUT: Warning:  Private methods cannot be final as they are never overridden by other classes in /tmp/wp/wordpress/wp-content/plugins/SMSIRApp/includes/SMSIRAppClass.php on line 42</pre></div>
+</div></details>
+<details id="p-snapppay-woocommerce-gateway"><summary><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span> SnappPay Woocommerce Gateway <span class="badge">snapppay-woocommerce-gateway</span> <span class="badge">v1.4.2</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: فعال نشد · فعال‌سازی: ناموفق · دلیل: unexpected_output · تحلیل استاتیک قبلی: تقریباً سالم</p>
+<div class="reason r-medium"><div class="t">توضیح</div>یک اخطار PHP 7.4+ (<code>Trying to access array offset on value of type bool</code> در <span class='kbd'>functions.php</span>:330) به‌علاوه تعداد زیادی «ایجاد ویژگی پویا» (Dynamic property) که در PHP 8.2 منسوخ شده‌اند. سایت بالا می‌ماند.</div>
+<div class="reason"><div class="t">لاگ خطا در طول تست</div>مرگبار: 0 · خطای نحو: 0 · اخطار: 8 · منسوخ‌شده: 54</div>
+<div class="reason r-medium"><div class="t">خروجی هنگام فعال‌سازی</div><pre>OUTPUT: Warning:  Trying to access array offset on false in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/functions.php on line 330</pre></div>
+<div class="reason"><div class="t">نمونه اخطارهای منسوخ‌شده</div><ul class="f">
+<li><code>[01-Nov-2026 18:15:08 UTC] PHP Deprecated:  Creation of dynamic property WC_Gateway_SnappPay::$author is deprecated in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/class-wc-gateway-snapppay.php on li</code></li>
+<li><code>[01-Nov-2026 18:15:08 UTC] PHP Deprecated:  Creation of dynamic property WC_Gateway_SnappPay::$client_id is deprecated in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/class-wc-gateway-snapppay.php on</code></li>
+<li><code>[01-Nov-2026 18:15:08 UTC] PHP Deprecated:  Creation of dynamic property WC_Gateway_SnappPay::$client_secret is deprecated in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/class-wc-gateway-snapppay.ph</code></li>
+<li><code>[01-Nov-2026 18:15:08 UTC] PHP Deprecated:  Creation of dynamic property WC_Gateway_SnappPay::$client_username is deprecated in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/class-wc-gateway-snapppay.</code></li>
+</ul></div>
+</div></details>
+<details id="p-surenapost"><summary><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span> Surenapost <span class="badge">surenapost</span> <span class="badge">v1.3.13</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: با اخطار اجرا شد · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+<div class="reason r-medium"><div class="t">توضیح</div>سایت بالا می‌ماند؛ فقط اخطارهای منسوخ‌شدگیِ «فرستادن null به توابع رشته‌ای» (<code>strpos()</code> / <code>str_replace()</code>) از طرف این افزونه به هستهٔ وردپرس می‌رسد. بخش بزرگی از اخطارها هم به‌خاطر نبودِ اینترنت در محیط تست است (وب‌سرویس پست).</div>
+<div class="reason"><div class="t">لاگ خطا در طول تست</div>مرگبار: 0 · خطای نحو: 0 · اخطار: 0 · منسوخ‌شده: 42</div>
+<div class="reason"><div class="t">نمونه اخطارهای منسوخ‌شده</div><ul class="f">
+<li><code>[01-Nov-2026 18:12:42 UTC] PHP Deprecated:  strpos(): Passing null to parameter #1 ($haystack) of type string is deprecated in /tmp/wp2/wordpress/wp-includes/functions.php on line 7374</code></li>
+<li><code>[01-Nov-2026 18:12:42 UTC] PHP Deprecated:  str_replace(): Passing null to parameter #3 ($subject) of type array|string is deprecated in /tmp/wp2/wordpress/wp-includes/functions.php on line 2196</code></li>
+<li><code>[01-Nov-2026 18:12:43 UTC] PHP Deprecated:  strpos(): Passing null to parameter #1 ($haystack) of type string is deprecated in /tmp/wp2/wordpress/wp-includes/functions.php on line 7374</code></li>
+<li><code>[01-Nov-2026 18:12:43 UTC] PHP Deprecated:  str_replace(): Passing null to parameter #3 ($subject) of type array|string is deprecated in /tmp/wp2/wordpress/wp-includes/functions.php on line 2196</code></li>
+</ul></div>
+</div></details>
+<details id="p-tisacase-hub"><summary><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span> اختصاصی تیساکیس (TisaCase Hub) <span class="badge">tisacase-hub</span> <span class="badge">v1.9.15</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: با اخطار اجرا شد · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+<div class="reason r-medium"><div class="t">توضیح</div>یک اخطار <code>Undefined array key "screens"</code> در <span class='kbd'>includes/class-tsh-admin.php</span>:510؛ در PHP 7 یک Notice بود و از PHP 8 به بعد Warning است. سایت بالا می‌ماند و فقط لاگ پر می‌شود.</div>
+<div class="reason"><div class="t">لاگ خطا در طول تست</div>مرگبار: 0 · خطای نحو: 0 · اخطار: 1 · منسوخ‌شده: 0</div>
+</div></details>
+<details id="p-elementor"><summary><span class="verdict v-info">خطای محیط تست (ربطی به 8.2 ندارد)</span> Elementor <span class="badge">elementor</span> <span class="badge">v3.27.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: خطای مرگبار · فعال‌سازی: موفق · تحلیل استاتیک قبلی: نیاز به توجه</p>
+<div class="reason r-info"><div class="t">توضیح</div>تنها خطای دیده‌شده روی صفحهٔ «پیشخوان المنتور» (<span class='kbd'>wp-admin/admin.php?page=elementor</span>) است: <code>Filter_Plugins::get_add_ons_installation_status(): Argument #1 ($add_ons) must be of type array, null given</code>. دلیلش نبودِ اینترنت در محیط تست است: المنتور داده‌های آن صفحه را از API خودش می‌گیرد و وقتی پاسخی نرسد آرایه خالی می‌ماند. این TypeError در PHP 7.4 و 8.2 و 8.3 یکسان رخ می‌دهد، پس ربطی به نسخهٔ PHP ندارد. اگر هاست شما دسترسی خروجی (outbound) را بسته باشد همین خطا را می‌بینید.</div>
+<div class="reason"><div class="t">لاگ خطا در طول تست</div>مرگبار: 1 · خطای نحو: 0 · اخطار: 8 · منسوخ‌شده: 1</div>
+<pre>[01-Nov-2026 18:18:00 UTC] PHP Fatal error:  Uncaught TypeError: Elementor\Modules\Home\Transformations\Filter_Plugins::get_add_ons_installation_status(): Argument #1 ($add_ons) must be of type array, null given, called in /tmp/wp/wordpress/wp-content/plugins/elementor/modules/home/transformations/filter-plugins.php on line 21 and defined in /tmp/wp/wordpress/wp-content/plugins/elementor/modules/h…</pre>
+<div class="reason"><div class="t">صفحه‌هایی که خطا دادند</div><ul class="f">
+<li><span class="kbd">/wp-admin/admin.php?page=elementor</span> → کد 500<br><pre style="margin:6px 0 0">ins/elementor/modules/home/transformations/filter-plugins.php&lt;/b&gt; on line &lt;b&gt;21&lt;/b&gt;&lt;br /&gt; &lt;br /&gt; &lt;b&gt;Fatal error&lt;/b&gt;: Uncaught TypeError: Elementor\Modules\Home\Transformations\Filter_Plugins::get_add_ons_installation_status(): Argument #1 ($add_ons) must be of type array, null given, called in /tmp/wp/wordpress/wp-content/plugins/elementor/modules/home/tran</pre></li>
+<li><span class="kbd">/wp-admin/admin.php?page=elementor-system-info</span> → کد 200<br><pre style="margin:6px 0 0">/tmp/wp/wordpress/wp-content/plugins/elementor/modules/home/transformations/filter-plugins.php::30] Uncaught TypeError: Elementor\Modules\Home\Transformations\Filter_Plugins::get_add_ons_installation_status(): Argument #1 ($add_ons) must be of type array, null given, called in /tmp/wp/wordpress/wp-content/plugins/elementor/modules/home/transformations/filter</pre></li>
+</ul></div>
+<div class="reason"><div class="t">نمونه اخطارهای منسوخ‌شده</div><ul class="f">
+<li><code>[01-Nov-2026 18:17:56 UTC] PHP Deprecated:  strip_tags(): Passing null to parameter #1 ($string) of type string is deprecated in /tmp/wp/wordpress/wp-admin/admin-header.php on line 41</code></li>
+</ul></div>
+</div></details>
+<details id="p-admin-menu-editor"><summary><span class="verdict v-ok">سالم</span> Admin Menu Editor <span class="badge">admin-menu-editor</span> <span class="badge">v1.15.2</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-ajax-search-for-woocommerce-premium"><summary><span class="verdict v-ok">سالم</span> FiboSearch - AJAX Search for WooCommerce (Pro) <span class="badge">ajax-search-for-woocommerce-premium</span> <span class="badge">v1.30.1</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-bulk-product-cleaner"><summary><span class="verdict v-ok">سالم</span> Bulk Product Cleaner (Drafts + Images) <span class="badge">bulk-product-cleaner</span> <span class="badge">v12.6.3</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-bulk-tracking-upload"><summary><span class="verdict v-ok">سالم</span> Automatic Postal Tracking for WooCommerce <span class="badge">bulk-tracking-upload</span> <span class="badge">v3.7.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-case-special-package"><summary><span class="verdict v-ok">سالم</span> پکیج ویژه قاب موبایل <span class="badge">case-special-package</span> <span class="badge">v1.5.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-digoneclickls"><summary><span class="verdict v-ok">سالم</span> DIGITS: One Click Login/Signup Addon <span class="badge">digoneclickls</span> <span class="badge">v4.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-litespeed-cache"><summary><span class="verdict v-ok">سالم</span> LiteSpeed Cache <span class="badge">litespeed-cache</span> <span class="badge">v7.9.1</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-loco-translate"><summary><span class="verdict v-ok">سالم</span> Loco Translate <span class="badge">loco-translate</span> <span class="badge">v2.7.1</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-members"><summary><span class="verdict v-ok">سالم</span> Members <span class="badge">members</span> <span class="badge">v3.2.18</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-order-import-export-for-woocommerce"><summary><span class="verdict v-ok">سالم</span> Order Export &amp; Order Import for WooCommerce <span class="badge">order-import-export-for-woocommerce</span> <span class="badge">v2.5.9</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: نیاز به توجه</p>
+</div></details>
+<details id="p-page-links-to"><summary><span class="verdict v-ok">سالم</span> Page Links To <span class="badge">page-links-to</span> <span class="badge">v3.3.7</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-pepro-bacs-receipt-upload-for-woocommerce"><summary><span class="verdict v-ok">سالم</span> PeproDev WooCommerce Receipt Uploader <span class="badge">pepro-bacs-receipt-upload-for-woocommerce</span> <span class="badge">v2.8.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-persian-woocommerce"><summary><span class="verdict v-ok">سالم</span> ووکامرس فارسی <span class="badge">persian-woocommerce</span> <span class="badge">v9.3.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-plugin-check"><summary><span class="verdict v-ok">سالم</span> Plugin Check (PCP) <span class="badge">plugin-check</span> <span class="badge">v2.1.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-product-import-export-for-woo"><summary><span class="verdict v-ok">سالم</span> Product Import Export for WooCommerce <span class="badge">product-import-export-for-woo</span> <span class="badge">v2.4.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: نیاز به توجه</p>
+</div></details>
+<details id="p-sadad-woocommerce2"><summary><span class="verdict v-ok">سالم</span> WC Sadad Payment gateway <span class="badge">sadad-woocommerce2</span> <span class="badge">v5.1.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-tisa-product-importer"><summary><span class="verdict v-ok">سالم</span> Tisa Product ZIP Importer <span class="badge">tisa-product-importer</span> <span class="badge">v0.8.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-tisacase-ariocase-sync"><summary><span class="verdict v-ok">سالم</span> TisaCase — همگام‌سازی موجودی با همکار <span class="badge">tisacase-ariocase-sync</span> <span class="badge">v1.28.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-tisacase-bulk-stock-manager"><summary><span class="verdict v-ok">سالم</span> TisaCase — مدیریت انبوه موجودی <span class="badge">tisacase-bulk-stock-manager</span> <span class="badge">v1.4.3</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-tisacase-bulk-variation-manager"><summary><span class="verdict v-ok">سالم</span> TisaCase — مدیریت گروهی متغیرها و مدل‌ها <span class="badge">tisacase-bulk-variation-manager</span> <span class="badge">v2.3.1</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-tisacase-card-to-card"><summary><span class="verdict v-ok">سالم</span> TisaCase — کارت به کارت تیساکیس <span class="badge">tisacase-card-to-card</span> <span class="badge">v1.4.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-tisacase-exporter"><summary><span class="verdict v-ok">سالم</span> TisaCase Exporter — مرکز خروجی تیساکیس <span class="badge">tisacase-exporter</span> <span class="badge">v2.1.6</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-tisacase-optimizer"><summary><span class="verdict v-ok">سالم</span> مرکز بهینه‌سازی تیساکیس (TisaCase Optimizer) <span class="badge">tisacase-optimizer</span> <span class="badge">v1.3.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-tisacase-order-phone-exporter"><summary><span class="verdict v-ok">سالم</span> TisaCase Order Phone Exporter <span class="badge">tisacase-order-phone-exporter</span> <span class="badge">v1.5.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-tisacase-order-wallet-reporter"><summary><span class="verdict v-ok">سالم</span> TisaCase Order Wallet Reporter <span class="badge">tisacase-order-wallet-reporter</span> <span class="badge">v1.0.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-tisacase-pricing"><summary><span class="verdict v-ok">سالم</span> TisaCase Pricing <span class="badge">tisacase-pricing</span> <span class="badge">v1.4.2</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-tisacase-product-description"><summary><span class="verdict v-ok">سالم</span> TisaCase — قوانین توضیحات محصول <span class="badge">tisacase-product-description</span> <span class="badge">v1.6.2</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-waitlist-woocommerce"><summary><span class="verdict v-ok">سالم</span> Waitlist woocommerce( Back in stock notifier ) <span class="badge">waitlist-woocommerce</span> <span class="badge">v2.8.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-wc-sku-prefix-bar"><summary><span class="verdict v-ok">سالم</span> WooCommerce SKU Prefix Bar <span class="badge">wc-sku-prefix-bar</span> <span class="badge">v1.5.3</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-wc-telegram-orders"><summary><span class="verdict v-ok">سالم</span> ارسال سفارش‌ها به تلگرام ووکامرس <span class="badge">wc-telegram-orders</span> <span class="badge">v1.14.3</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-woo-behpardakht"><summary><span class="verdict v-ok">سالم</span> Behpardakht Woocommerce <span class="badge">woo-behpardakht</span> <span class="badge">v2.6.5</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-woo-checkout-field-editor-pro"><summary><span class="verdict v-ok">سالم</span> Checkout Field Editor for WooCommerce <span class="badge">woo-checkout-field-editor-pro</span> <span class="badge">v2.1.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-woo-order-export-lite"><summary><span class="verdict v-ok">سالم</span> Advanced Order Export For WooCommerce <span class="badge">woo-order-export-lite</span> <span class="badge">v3.6.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: پرخطر</p>
+<div class="reason r-ok"><div class="t">توضیح</div>در تست عملی سالم بود. خط <code>@get_magic_quotes_runtime()</code> در PCLZip فقط هنگام ساخت فایل ZIP صدا زده می‌شود؛ یعنی موقع «خروجی گرفتن دسته‌ای» ممکن است خراب شود، نه در لودِ عادی.</div>
+</div></details>
+<details id="p-woo-variation-swatches"><summary><span class="verdict v-ok">سالم</span> Variation Swatches for WooCommerce <span class="badge">woo-variation-swatches</span> <span class="badge">v2.2.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-woo-variation-swatches-pro"><summary><span class="verdict v-ok">سالم</span> Variation Swatches for WooCommerce - Pro <span class="badge">woo-variation-swatches-pro</span> <span class="badge">v2.2.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: سالم</p>
+</div></details>
+<details id="p-woo-wallet"><summary><span class="verdict v-ok">سالم</span> TeraWallet <span class="badge">woo-wallet</span> <span class="badge">v1.5.10</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: نیاز به توجه</p>
+</div></details>
+<details id="p-woocommerce"><summary><span class="verdict v-ok">سالم</span> WooCommerce <span class="badge">woocommerce</span> <span class="badge">v10.3.7</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: نیاز به توجه</p>
+</div></details>
+<details id="p-woodmart-core"><summary><span class="verdict v-ok">سالم</span> Woodmart Core <span class="badge">woodmart-core</span> <span class="badge">v1.1.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: نیاز به توجه</p>
+</div></details>
+<details id="p-wordpress-seo"><summary><span class="verdict v-ok">سالم</span> Yoast SEO <span class="badge">wordpress-seo</span> <span class="badge">v24.4</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-wp-optimize"><summary><span class="verdict v-ok">سالم</span> WP-Optimize - Clean, Compress, Cache <span class="badge">wp-optimize</span> <span class="badge">v4.5.3</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-wp-parsidate"><summary><span class="verdict v-ok">سالم</span> WP-Parsidate <span class="badge">wp-parsidate</span> <span class="badge">v5.1.5</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: پرخطر</p>
+<div class="reason r-ok"><div class="t">توضیح</div>در تست عملی هیچ خطایی نداد. مورد مشکوک تحلیل استاتیک (<code>implode()</code> با آرگومان‌های جابه‌جا در <span class='kbd'>includes/plugins/wc-gateways/lib/class-rsa.php</span>:218) در مسیرِ درگاه بانکی است و با صفحه‌هایی که باز شد اجرا نشد؛ اگر از آن درگاه استفاده می‌کنید باید موقع پرداخت هم بررسی شود.</div>
+</div></details>
+<details id="p-wp-statistics"><summary><span class="verdict v-ok">سالم</span> WP Statistics <span class="badge">wp-statistics</span> <span class="badge">v14.12.6</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<details id="p-zhaket-woo-sep"><summary><span class="verdict v-ok">سالم</span> افزونه درگاه پرداخت الکترونیک سامان (سپ) ووکامرس <span class="badge">zhaket-woo-sep</span> <span class="badge">v1.3.0</span></summary><div class="body">
+<p class="muted">نتیجهٔ ماشین: سالم · فعال‌سازی: موفق · تحلیل استاتیک قبلی: تقریباً سالم</p>
+</div></details>
+<h2>۵) مقایسه با تحلیل استاتیک</h2>
+<p>تحلیل استاتیک (اسکن کد) همهٔ مسیرهای اجرا را نمی‌بیند و تست عملی هم فقط صفحه‌هایی را باز می‌کند که ما می‌شناسیم. جدول زیر جاهایی را نشان می‌دهد که این دو نظر متفاوتی داشتند:</p>
+<table><tr><th>افزونه</th><th>نظر تحلیل استاتیک</th><th>آنچه در عمل دیده شد</th></tr>
+<tr><td><b>افزونه حمل و نقل ووکامرس</b><br><span class="st">persian-woocommerce-shipping</span></td><td><span class="verdict v-high">پرخطر</span></td><td><span class="verdict v-medium">بالا می‌آید، اخطار در لاگ</span> — با اخطار اجرا شد</td></tr>
+<tr><td><b>Advanced Order Export For WooCommerce</b><br><span class="st">woo-order-export-lite</span></td><td><span class="verdict v-high">پرخطر</span></td><td><span class="verdict v-ok">سالم</span> — سالم</td></tr>
+<tr><td><b>WP-Parsidate</b><br><span class="st">wp-parsidate</span></td><td><span class="verdict v-high">پرخطر</span></td><td><span class="verdict v-ok">سالم</span> — سالم</td></tr>
+</table>
+<h2>۶) روش تست و محدودیت‌ها</h2>
+<ul class="f"><li>وردپرس 6.9.11 نصب شد و هر افزونه با ووکامرسِ فعال، یکی‌یکی کپی، فعال و سپس تست شد.</li><li>برای هر افزونه این صفحه‌ها باز شد: صفحهٔ اصلی، پیشخوان، فهرست افزونه‌ها، تنظیمات عمومی، فهرست محصولات، تنظیمات ووکامرس، تنظیمات حمل‌ونقل، و همهٔ صفحه‌هایی که خود افزونه به منوی مدیریت اضافه می‌کند.</li><li>همچنین حالت «افزونه از قبل فعال است» شبیه‌سازی شد (درج مستقیم در <span class="kbd">active_plugins</span>) چون سناریوی شما دقیقاً همین است: سایت روشن است و بعد PHP عوض می‌شود.</li><li>در محیط تست هیچ لودر ionCube / SourceGuardian ای نصب نیست — یعنی همان وضعیتی که اگر هاست شما لودرِ مخصوص 8.2 را نصب نکرده باشد دارید. اگر هاست لودر را نصب کند، آن افزونه‌ها درست کار می‌کنند.</li><li>موتور PHP در این محیط WebAssembly است (همان نسخهٔ 8.2.33) و به‌جای MySQL از دیتابیس SQLite استفاده شد؛ بنابراین خطاهایی که فقط در MySQL رخ می‌دهند دیده نشدند (آن‌ها را جداگانه به‌عنوان خطای دیتابیس فیلتر کردیم).</li><li>دسترسی به اینترنت نداشتیم؛ هر جا افزونه‌ای به API خارجی وابسته بود (مثل صفحهٔ خانهٔ المنتور) خطایش را جداگانه علامت زدیم.</li><li>تست عملی فقط صفحه‌هایی را پوشش می‌دهد که باز شدند؛ مسیرهایی مثل پرداخت، ارسال پیامک یا خروجی گرفتن فایل هنوز باید روی سایت واقعی چک شوند.</li></ul>
+<h2>۷) پیشنهاد عملی</h2>
+<ol class="f"><li>پوشه‌های این افزونه‌ها را با FTP به نام‌های <span class="kbd">digits</span>، <span class="kbd">cta-button</span>، <span class="kbd">zhaket-updater</span>، <span class="kbd">elementor-pro</span> تغییر نام بدهید (مثلاً به <span class="kbd">digits.off</span>).</li><li>سایت را روی PHP 8.2 بگذارید؛ باید بالا بیاید.</li><li>برای هر کدام از این چهار افزونه از فروشنده/هاست نسخهٔ سازگار یا لودر 8.2 را بگیرید.</li><li>RTL-CareUnit و فاکتور حرفه‌ای ووکامرس را هم یا لودر بگیرید یا با جایگزینِ بدون رمزگذاری عوض کنید.</li><li>برای SMSIRApp و اسنپ‌پی، نمایش خطا را در محیط production خاموش نگه دارید و اخطارها را در لاگ پیگیری کنید.</li></ol>
+</div><script>
+const q=document.getElementById('q');const rows=[...document.querySelectorAll('tr.row')];
+let cls='';
+function apply(){const t=(q.value||'').trim().toLowerCase();
+ rows.forEach(r=>{const ok=(!cls||r.dataset.cls===cls)&&(!t||r.dataset.search.includes(t));r.style.display=ok?'':'none';});}
+q.addEventListener('input',apply);
+function setC(c){cls=c;document.querySelectorAll('button.f').forEach(b=>b.classList.toggle('on',b.dataset.v===c));apply();}
+
+function open_(slug){const d=document.getElementById('p-'+slug);if(!d)return;d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'});}
+
+</script></body></html>

@@ -42,7 +42,8 @@ NOTES = {
         "تنها خطای دیده‌شده روی صفحهٔ «پیشخوان المنتور» (<span class='kbd'>wp-admin/admin.php?page=elementor</span>) است: "
         "<code>Filter_Plugins::get_add_ons_installation_status(): Argument #1 ($add_ons) must be of type array, null given</code>. "
         "دلیلش نبودِ اینترنت در محیط تست است: المنتور داده‌های آن صفحه را از API خودش می‌گیرد و وقتی پاسخی نرسد آرایه خالی می‌ماند. "
-        "این TypeError در PHP 7.4 هم رخ می‌دهد، پس ربطی به 8.2 ندارد. اگر هاست شما دسترسی خروجی (outbound) را بسته باشد همین خطا را می‌بینید.",
+        "این TypeError در PHP 7.4 و 8.2 و 8.3 یکسان رخ می‌دهد، پس ربطی به نسخهٔ PHP ندارد. "
+        "اگر هاست شما دسترسی خروجی (outbound) را بسته باشد همین خطا را می‌بینید.",
     ),
     "digits": (
         "down",
@@ -163,16 +164,17 @@ def classify(entry):
 
 
 def main():
-    args = sys.argv[1:] or [
-        "/tmp/wptest/results-a.json", "/tmp/wptest/results-b.json",
-    ]
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    label = next((a[8:] for a in sys.argv[1:] if a.startswith("--label=")), None)
     runtime = load_runtime(args)
     static = json.load(open(STATIC, encoding="utf-8"))
     smap = {p["slug"]: p for p in static["plugins"]}
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    json.dump(runtime, open(os.path.join(OUT_DIR, "runtime.json"), "w", encoding="utf-8"),
-              ensure_ascii=False, indent=1)
+    _phpv = label or (next(iter(runtime.values())).get("php") if runtime else "8.2")
+    raw_out = os.path.join(OUT_DIR, "runtime.json" if _phpv == "8.2" else f"runtime-{_phpv}.json")
+    json.dump(runtime, open(raw_out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    print("[ok] raw results ->", raw_out)
 
     rows = []
     for slug, e in sorted(runtime.items(), key=lambda kv: kv[0].lower()):
@@ -203,10 +205,11 @@ def main():
         })
     rows.sort(key=lambda r: (list(CLASSES).index(r["cls"]), r["slug"].lower()))
 
+    phpv = label or (rows[0].get("php") if rows and rows[0].get("php") else "8.2")
     counts = Counter(r["cls"] for r in rows)
-    write_html(rows, counts, static)
-    write_md(rows, counts, static)
-    write_csv(rows)
+    write_html(rows, counts, static, phpv)
+    write_md(rows, counts, static, phpv)
+    write_csv(rows, phpv)
     print("[ok] plugins:", len(rows), dict(counts))
 
 
@@ -281,7 +284,7 @@ def stat_badge(v):
     return f'<span class="verdict v-{m.get(v,"info")}">{esc(v or "—")}</span>'
 
 
-def write_html(rows, counts, static):
+def write_html(rows, counts, static, phpv="8.2"):
     down = [r for r in rows if r["cls"] == "down"]
     inert = [r for r in rows if r["cls"] == "inert"]
     warn = [r for r in rows if r["cls"] == "warn"]
@@ -293,8 +296,8 @@ def write_html(rows, counts, static):
     h = []
     h.append('<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">')
     h.append('<meta name="viewport" content="width=device-width,initial-scale=1">')
-    h.append('<title>گزارش تست عملی سازگاری با PHP 8.2</title><style>' + STYLE + '</style></head><body><div class="wrap">')
-    h.append('<h1>تست عملی روی وردپرس واقعی با PHP 8.2</h1>')
+    h.append(f'<title>گزارش تست عملی سازگاری با PHP {phpv}</title><style>' + STYLE + '</style></head><body><div class="wrap">')
+    h.append(f'<h1>تست عملی روی وردپرس واقعی با PHP {phpv}</h1>')
     h.append(f'<p class="muted">{len(rows)} افزونه · نصب و فعال‌سازی روی WordPress 6.9.11 · '
              'موتور PHP 8.2.33 · ووکامرس به‌عنوان پایه فعال بود · هر افزونه روی صفحهٔ اصلی، پیشخوان، '
              'فهرست افزونه‌ها، تنظیمات، تنظیمات ووکامرس و صفحات اختصاصی خودش باز شد.</p>')
@@ -445,7 +448,7 @@ function open_(slug){const d=document.getElementById('p-'+slug);if(!d)return;d.o
 """)
     h.append('</script></body></html>')
 
-    out = os.path.join(REPO, "گزارش-تست-عملی-PHP-8.2.html")
+    out = os.path.join(REPO, f"گزارش-تست-عملی-PHP-{phpv}.html")
     open(out, "w", encoding="utf-8").write("\n".join(h))
     print("[ok]", out, os.path.getsize(out), "bytes")
 
@@ -474,9 +477,9 @@ def short_reason(r):
     return VERDICT_FA.get(r["runtime_verdict"], "")
 
 
-def write_md(rows, counts, static):
+def write_md(rows, counts, static, phpv="8.2"):
     o = []
-    o.append("# گزارش تست عملی سازگاری با PHP 8.2\n")
+    o.append(f"# گزارش تست عملی سازگاری با PHP {phpv}\n")
     o.append("تست واقعی روی WordPress 6.9.11 با موتور PHP 8.2.33 (ووکامرس فعال، هر افزونه یکی‌یکی نصب، "
              "فعال و روی صفحه‌های اصلی/مدیریت باز شد).\n")
     o.append("## خلاصه\n")
@@ -515,13 +518,13 @@ def write_md(rows, counts, static):
              "- هیچ لودر ionCube / SourceGuardian در محیط تست نصب نیست (همان وضعیت هاستی که لودر 8.2 ندارد).\n"
              "- اینترنت نداشتیم و به‌جای MySQL از SQLite استفاده شد؛ خطاهای وابسته به این دو فیلتر شدند.\n"
              "- مسیرهایی مثل پرداخت آنلاین، ارسال پیامک و خروجی فایل هنوز روی سایت واقعی باید چک شوند.\n")
-    out = os.path.join(REPO, "گزارش-تست-عملی-PHP-8.2.md")
+    out = os.path.join(REPO, f"گزارش-تست-عملی-PHP-{phpv}.md")
     open(out, "w", encoding="utf-8").write("\n".join(o))
     print("[ok]", out, os.path.getsize(out), "bytes")
 
 
-def write_csv(rows):
-    out = os.path.join(REPO, "نتایج-تست-عملی.csv")
+def write_csv(rows, phpv="8.2"):
+    out = os.path.join(REPO, f"نتایج-تست-عملی-{phpv}.csv")
     with open(out, "w", encoding="utf-8-sig", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["وضعیت اجرا", "نام افزونه", "پوشه", "نسخه", "فعال شد", "خطای فعال‌سازی",
