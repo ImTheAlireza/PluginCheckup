@@ -1,0 +1,933 @@
+<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>گزارش سازگاری افزونه‌ها با PHP 8.2</title><style>
+:root{--bg:#0f1420;--card:#171d2b;--card2:#1e2536;--line:#2c3448;--txt:#e8ecf5;
+--muted:#98a2b8;--red:#ff5f6d;--orange:#ff9f43;--yellow:#f7d154;--green:#3ddc97;--blue:#5aa9ff;}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);
+font-family:"Vazirmatn","Vazir",Tahoma,"Segoe UI",system-ui,sans-serif;direction:rtl;line-height:1.75}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:26px;margin:0 0 6px}h2{font-size:20px;margin:34px 0 12px;border-bottom:1px solid var(--line);padding-bottom:8px}
+p,li{font-size:15px;color:#dbe2f0}
+.muted{color:var(--muted);font-size:13.5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:18px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.card .n{font-size:26px;font-weight:700}.card .l{color:var(--muted);font-size:13px}
+.verdict{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12.5px;font-weight:700}
+.v-critical{background:#3a1620;color:#ff8f99;border:1px solid #7d2233}
+.v-high{background:#3a2a16;color:#ffb877;border:1px solid #7d5322}
+.v-medium{background:#37320f;color:#f7d154;border:1px solid #77700f}
+.v-ok{background:#123326;color:#7ce7b6;border:1px solid #1d6b4c}
+.v-info{background:#1b2434;color:#9fb6d6;border:1px solid #2c3448}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+th{color:var(--muted);font-size:12.5px;font-weight:600;position:sticky;top:0;background:var(--bg)}
+tr.row{cursor:pointer}tr.row:hover{background:var(--card)}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden}
+summary{padding:14px 16px;cursor:pointer;font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.body{padding:4px 18px 18px}
+.badge{font-size:12px;color:var(--muted);background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:1px 8px}
+.reason{border-radius:12px;padding:10px 14px;margin:9px 0;border:1px solid var(--line);background:var(--card2)}
+.reason .t{font-weight:700;margin-bottom:3px}
+.r-critical{border-color:#7d2233;background:#2a1219}.r-high{border-color:#7d5322;background:#2a1f12}
+.r-medium{border-color:#77700f;background:#262310}.r-info{border-color:#2c3448}
+.r-ok{border-color:#1d6b4c;background:#11251d}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;direction:ltr;display:inline-block}
+ul.f{margin:6px 0 0 0;padding-right:18px}ul.f li{margin:3px 0;font-size:13.5px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}
+input,select{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:8px 12px;font-size:14px;font-family:inherit}
+button.f{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:8px 14px;cursor:pointer;font-family:inherit;font-size:13.5px}
+button.f.on{background:#25324a;border-color:#3f6699;color:#cfe3ff}
+.note{background:#152033;border:1px solid #24405f;border-radius:14px;padding:14px 16px;margin:14px 0}
+.kbd{background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:12.5px}
+</style></head><body><div class="wrap">
+<h1>گزارش سازگاری افزونه‌های سایت با PHP 8.2</h1>
+<p class="muted">تحلیل خودکارِ 56 افزونه · 13,462 فایل PHP · 2,874,924 خط کد
+· ابزار: PHP_CodeSniffer + PHPCompatibility روی موتور PHP 8.2.33 · تاریخ: 2026-11-01 11:33</p>
+<div class="note"><b>جواب کوتاه:</b> به احتمال خیلی زیاد مشکل شما از <b>کدهای رمزگذاری‌شده</b> است، نه از نسخهٔ PHP.
+<b>6 افزونه</b> فایل‌هایی دارند که با ionCube یا SourceGuardian رمزگذاری شده‌اند
+(Elementor Pro، DIGITS: WordPress Mobile Number Signup and Login، Zhaket Smart Updater، افزونه مدیریت هوشمند راست چین، دکمه تماس شناور، فاکتور حرفه‌ای ووکامرس).
+این فایل‌ها برای اجرا به «لودر» مخصوص همان نسخهٔ PHP نیاز دارند. وقتی PHP را به 8.2 تغییر می‌دهید و لودر 8.2 روی هاست نصب نیست،
+همان اولین فایلِ رمزگذاری‌شده پیام خطا چاپ می‌کند و <b>کل سایت از کار می‌افتد</b> (صفحه سفید / Script error).
+<br>بعد از آن، <b>3 افزونه</b> فراخوانیِ توابع کاملاً حذف‌شده در PHP 8 دارند که در مسیر اجرا هستند.</div>
+<div class="note" style="border-color:#7d2233;background:#2a1219">
+<b>اگر همین الان سایت بالا نمی‌آید (راه نجات سریع):</b>
+<ol style="margin:8px 0 0">
+<li>PHP را در هاست دوباره روی همان نسخهٔ قبلی (مثلاً 8.1 یا 7.4) بگذارید تا سایت برگردد.</li>
+<li>اگر به محیط مدیریت دسترسی دارید، افزونه‌های زیر را غیرفعال کنید: <span class='kbd'>elementor-pro</span>، <span class='kbd'>digits</span>، <span class='kbd'>zhaket-updater</span>، <span class='kbd'>RTL-CareUnit</span>، <span class='kbd'>cta-button</span>، <span class='kbd'>woocommerce-invoice</span></li>
+<li>اگر به پیشخوان دسترسی ندارید، با FTP/File Manager پوشهٔ
+<span class="kbd">wp-content/plugins/&lt;نام-پوشه&gt;</span> را به چیزی مثل
+<span class="kbd">digits.off</span> تغییر نام دهید؛ وردپرس افزونه را خودکار غیرفعال می‌کند و سایت بالا می‌آید.</li>
+<li>بعد از بالا آمدن سایت، لودرها را درست کنید یا نسخهٔ سازگار افزونه را نصب کنید و دوباره به 8.2 بروید.</li>
+</ol></div>
+<div class="cards">
+<div class="card"><div class="n" style="color:var(--red)">6</div><div class="l">افزونهٔ رمزگذاری‌شده (بحرانی)</div></div>
+<div class="card"><div class="n" style="color:var(--orange)">3</div><div class="l">افزونه با خطای Fatal واقعی</div></div>
+<div class="card"><div class="n" style="color:var(--yellow)">9</div><div class="l">افزونه با اخطار Deprecated در 8.2</div></div>
+<div class="card"><div class="n" style="color:var(--green)">41</div><div class="l">افزونهٔ سالم</div></div>
+</div>
+<h2>۱) افزونه‌های رمزگذاری‌شده (مهم‌ترین عامل قطع شدن سایت)</h2>
+<p>این فایل‌ها با <span class="kbd">die()</span> و پیام «Script error: ... requires the ionCube/SourceGuardian PHP Loader»
+    خاتمه پیدا می‌کنند اگر لودرِ متناسب با PHP 8.2 نصب نباشد. چون فایل اصلیِ افزونه (یا فایلی که مستقیماً include می‌شود) رمزگذاری است،
+    این اتفاق در <b>هر بار بالا آمدن وردپرس</b> می‌افتد — یعنی کل سایت، نه فقط یک بخش.</p>
+<table><tr><th>افزونه</th><th>نسخه</th><th>نوع رمزگذاری</th><th>تعداد فایل</th><th>نقطهٔ ورود</th></tr>
+<tr><td><b>Elementor Pro</b><br><span class="mono muted">elementor-pro</span></td>
+<td>3.8.1</td><td>SourceGuardian</td><td>6</td>
+<td class="mono" style="font-size:12px">elementor-pro/abzarwp/abzarwp.php</td></tr>
+<tr><td><b>DIGITS: WordPress Mobile Number Signup and Login</b><br><span class="mono muted">digits</span></td>
+<td>9.2.1</td><td>ionCube</td><td>268</td>
+<td class="mono" style="font-size:12px">فایل اصلی افزونه</td></tr>
+<tr><td><b>Zhaket Smart Updater</b><br><span class="mono muted">zhaket-updater</span></td>
+<td>4.2.4</td><td>ionCube</td><td>38</td>
+<td class="mono" style="font-size:12px">zhaket-updater/vendor/autoload.php</td></tr>
+<tr><td><b>افزونه مدیریت هوشمند راست چین</b><br><span class="mono muted">RTL-CareUnit</span></td>
+<td>2.5.2</td><td>ionCube</td><td>114</td>
+<td class="mono" style="font-size:12px">RTL-CareUnit/vendor/autoload.php</td></tr>
+<tr><td><b>دکمه تماس شناور</b><br><span class="mono muted">cta-button</span></td>
+<td>1.0</td><td>ionCube</td><td>1</td>
+<td class="mono" style="font-size:12px">cta-button/includes.php</td></tr>
+<tr><td><b>فاکتور حرفه‌ای ووکامرس</b><br><span class="mono muted">woocommerce-invoice</span></td>
+<td>7.0.3</td><td>SourceGuardian</td><td>24</td>
+<td class="mono" style="font-size:12px">فایل اصلی افزونه</td></tr>
+</table>
+<div class="note"><b>چه باید کرد؟</b><br>
+۱) در هاست (cPanel &gt; Select PHP Version &gt; Extensions یا MultiPHP INI Editor) تیک
+<span class="kbd">ioncube</span> و <span class="kbd">sourceguardian</span> را برای PHP 8.2 فعال کنید و نسخهٔ لودر را چک کنید.<br>
+۲) اگر بعد از فعال‌سازی باز هم خطا می‌گیرید، یعنی فایل با انکودر قدیمی رمزگذاری شده و فقط برای نسخه‌های قدیمی PHP مجاز است؛
+در این صورت باید از فروشنده/ناشر افزونه نسخهٔ سازگار با 8.2 را بگیرید.<br>
+۳) راهِ تست: افزونه را از مسیر <span class="kbd">wp-content/plugins</span> موقتاً تغییر نام دهید تا وردپرس آن را غیرفعال کند،
+بعد PHP را به 8.2 ببرید و سایت را چک کنید.</div>
+<h2>۲) خطاهای Fatal واقعی (تابع/ساختار حذف‌شده در مسیر اجرا)</h2>
+<p>این موارد را خط‌به‌خط بررسی کردم: نه در کتابخانهٔ بی‌استفاده‌اند، نه پشت شرطِ نسخه پنهان شده‌اند.
+با فعال بودن افزونه و رسیدن اجرا به این خط، PHP 8.x با خطای <span class="kbd">Fatal error: Uncaught Error: Call to undefined function ...</span>
+متوقف می‌شود.</p>
+<details open><summary><b>Advanced Order Export For WooCommerce</b> <span class="badge">woo-order-export-lite</span> <span class="badge">نسخه 3.6.0</span></summary><div class="body">
+<div class="reason r-high"><div class="t">تابع/اکستنشن حذف‌شده — get_magic_quotes_runtimeDeprecatedRemoved</div>
+<div class="muted mono">woo-order-export-lite/woo-order-export-lite/classes/PHPExcel/Shared/PCLZip/pclzip.lib.php:4851</div>
+<div style="margin-top:4px">Function get_magic_quotes_runtime() is deprecated since PHP 7.4 and removed since PHP 8.0</div>
+<div class="muted" style="margin-top:4px">در PCLZip هنگام ساخت فایل زیپ خروجی اجرا می‌شود و روی PHP 8 خطای Fatal می‌دهد</div></div>
+</div></details>
+<details open><summary><b>WP-Parsidate</b> <span class="badge">wp-parsidate</span> <span class="badge">نسخه 5.1.5</span></summary><div class="body">
+<div class="reason r-high"><div class="t">ترتیب آرگومان‌های implode — Removed</div>
+<div class="muted mono">wp-parsidate/wp-parsidate/includes/plugins/wc-gateways/lib/class-rsa.php:218</div>
+<div style="margin-top:4px">Passing the $glue and $pieces parameters in reverse order to implode has been deprecated since PHP 7.4 and is removed since PHP 8.0; $glue should be the first parameter and $pieces the second</div>
+<div class="muted" style="margin-top:4px">در PHP 8.0 حذف شده و فراخوانی آن خطای Fatal می‌دهد</div></div>
+</div></details>
+<details open><summary><b>افزونه حمل و نقل ووکامرس</b> <span class="badge">persian-woocommerce-shipping</span> <span class="badge">نسخه 4.2.8</span></summary><div class="body">
+<div class="reason r-high"><div class="t">تابع/اکستنشن حذف‌شده — create_functionDeprecatedRemoved</div>
+<div class="muted mono">persian-woocommerce-shipping/persian-woocommerce-shipping/includes/admin/class-settings.php:113</div>
+<div style="margin-top:4px">Function create_function() is deprecated since PHP 7.2 and removed since PHP 8.0; Use an anonymous function instead</div>
+<div class="muted" style="margin-top:4px">در ساخت صفحهٔ تنظیمات حمل‌ونقل (مدیریت) اجرا می‌شود و روی PHP 8 خطای Fatal می‌دهد</div></div>
+</div></details>
+<h2>۳) اخطارهای Deprecated مرتبط با 8.2 (سایت را نمی‌اندازد ولی باید رفع شود)</h2>
+<p>این‌ها «اخطار» هستند نه خطای مرگبار؛ ولی لاگ خطا را پر می‌کنند و اگر خروجی‌شان در پاسخ AJAX/REST چاپ شود،
+درخواست را خراب می‌کنند. بیشترشان مربوط به <span class="kbd">utf8_encode/utf8_decode</span> (منسوخ در 8.2)،
+<span class="kbd">strftime</span> (منسوخ در 8.1)، <span class="kbd">auto_detect_line_endings</span>،
+<span class="kbd">libxml_disable_entity_loader</span> و نوشتن <span class="kbd">${var}</span> در رشته است.</p>
+<details><summary><b>Elementor Pro</b> <span class="badge">19 مورد</span></summary><div class="body"><ul class="f">
+<li><span class="mono">elementor-pro/abzarwp/abzarwp-v12.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/abzarwp-v12.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/abzarwp-v12.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/abzarwp-v12.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/abzarwp-v13.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/abzarwp-v13.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/abzarwp-v13.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/abzarwp-v13.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/update-v12.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/update-v12.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/update-v12.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+<li><span class="mono">elementor-pro/abzarwp/update-v12.php:2</span> — تابع/اکستنشن حذف‌شده: Function dl() is deprecated since PHP 5.3</li>
+</ul></div></details>
+<details><summary><b>DIGITS: WordPress Mobile Number Signup and Login</b> <span class="badge">16 مورد</span></summary><div class="body"><ul class="f">
+<li><span class="mono">digits/gateways/1b1/nusoap-php5.3.php:960</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+<li><span class="mono">digits/gateways/1b1/nusoap-php5.3.php:2767</span> — پارامتر اختیاری پیش از اجباری: Declaring an optional parameter before a required parameter is deprecated since PHP 8.0. Parameter $timeout is</li>
+<li><span class="mono">digits/gateways/1b1/nusoap-php5.3.php:2767</span> — پارامتر اختیاری پیش از اجباری: Declaring an optional parameter before a required parameter is deprecated since PHP 8.0. Parameter $response_t</li>
+<li><span class="mono">digits/gateways/1b1/nusoap-php5.3.php:7225</span> — تابع/اکستنشن حذف‌شده: Function utf8_decode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+<li><span class="mono">digits/gateways/1b1/nusoap-php7.php:890</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+<li><span class="mono">digits/gateways/1b1/nusoap-php7.php:2673</span> — پارامتر اختیاری پیش از اجباری: Declaring an optional parameter before a required parameter is deprecated since PHP 8.0. Parameter $timeout is</li>
+<li><span class="mono">digits/gateways/1b1/nusoap-php7.php:2673</span> — پارامتر اختیاری پیش از اجباری: Declaring an optional parameter before a required parameter is deprecated since PHP 8.0. Parameter $response_t</li>
+<li><span class="mono">digits/gateways/1b1/nusoap-php7.php:7086</span> — تابع/اکستنشن حذف‌شده: Function utf8_decode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+<li><span class="mono">digits/gateways/aradpayamak/nusoap-php5.3.php:960</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+<li><span class="mono">digits/gateways/aradpayamak/nusoap-php5.3.php:2767</span> — پارامتر اختیاری پیش از اجباری: Declaring an optional parameter before a required parameter is deprecated since PHP 8.0. Parameter $timeout is</li>
+<li><span class="mono">digits/gateways/aradpayamak/nusoap-php5.3.php:2767</span> — پارامتر اختیاری پیش از اجباری: Declaring an optional parameter before a required parameter is deprecated since PHP 8.0. Parameter $response_t</li>
+<li><span class="mono">digits/gateways/aradpayamak/nusoap-php5.3.php:7225</span> — تابع/اکستنشن حذف‌شده: Function utf8_decode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+</ul></div></details>
+<details><summary><b>Advanced Order Export For WooCommerce</b> <span class="badge">10 مورد</span></summary><div class="body"><ul class="f">
+<li><span class="mono">woo-order-export-lite/classes/FPDF/class-woe-pdf-mc-table.php:549</span> — تابع/اکستنشن حذف‌شده: Function utf8_encode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+<li><span class="mono">woo-order-export-lite/classes/PHPExcel/Calculation/DateTime.php:537</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+<li><span class="mono">woo-order-export-lite/classes/PHPExcel/Calculation/DateTime.php:557</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+<li><span class="mono">woo-order-export-lite/classes/PHPExcel/Calculation/DateTime.php:563</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+<li><span class="mono">woo-order-export-lite/classes/PHPExcel/Calculation/DateTime.php:566</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+<li><span class="mono">woo-order-export-lite/classes/PHPExcel/Reader/CSV.php:248</span> — تنظیم ini حذف‌شده: INI directive &#x27;auto_detect_line_endings&#x27; is deprecated since PHP 8.1</li>
+<li><span class="mono">woo-order-export-lite/classes/PHPExcel/Reader/CSV.php:249</span> — تنظیم ini حذف‌شده: INI directive &#x27;auto_detect_line_endings&#x27; is deprecated since PHP 8.1</li>
+<li><span class="mono">woo-order-export-lite/classes/PHPExcel/Reader/CSV.php:307</span> — تنظیم ini حذف‌شده: INI directive &#x27;auto_detect_line_endings&#x27; is deprecated since PHP 8.1</li>
+<li><span class="mono">woo-order-export-lite/classes/PHPExcel/Settings.php:366</span> — تابع/اکستنشن حذف‌شده: Function libxml_disable_entity_loader() is deprecated since PHP 8.0</li>
+<li><span class="mono">woo-order-export-lite/classes/PHPExcel/Settings.php:385</span> — تابع/اکستنشن حذف‌شده: Function libxml_disable_entity_loader() is deprecated since PHP 8.0</li>
+</ul></div></details>
+<details><summary><b>Elementor</b> <span class="badge">6 مورد</span></summary><div class="body"><ul class="f">
+<li><span class="mono">elementor/core/utils/import-export/parsers/wxr-parser-simple-xml.php:47</span> — تابع/اکستنشن حذف‌شده: Function libxml_disable_entity_loader() is deprecated since PHP 8.0</li>
+<li><span class="mono">elementor/core/utils/import-export/parsers/wxr-parser-simple-xml.php:53</span> — تابع/اکستنشن حذف‌شده: Function libxml_disable_entity_loader() is deprecated since PHP 8.0</li>
+<li><span class="mono">elementor/core/utils/import-export/wp-exporter.php:170</span> — تابع/اکستنشن حذف‌شده: Function utf8_encode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+<li><span class="mono">elementor/core/utils/svg/svg-sanitizer.php:87</span> — تابع/اکستنشن حذف‌شده: Function libxml_disable_entity_loader() is deprecated since PHP 8.0</li>
+<li><span class="mono">elementor/core/utils/svg/svg-sanitizer.php:112</span> — تابع/اکستنشن حذف‌شده: Function libxml_disable_entity_loader() is deprecated since PHP 8.0</li>
+<li><span class="mono">elementor/modules/global-classes/global-classes-repository.php:35</span> — نوشتن ${var} داخل رشته: Using ${var} in strings is deprecated since PHP 8.2, use {$var} instead. Found: ${id}</li>
+</ul></div></details>
+<details><summary><b>Order Export &amp; Order Import for WooCommerce</b> <span class="badge">6 مورد</span></summary><div class="body"><ul class="f">
+<li><span class="mono">order-import-export-for-woocommerce/admin/classes/class-csvreader.php:39</span> — تنظیم ini حذف‌شده: INI directive &#x27;auto_detect_line_endings&#x27; is deprecated since PHP 8.1</li>
+<li><span class="mono">order-import-export-for-woocommerce/admin/classes/class-csvreader.php:130</span> — تنظیم ini حذف‌شده: INI directive &#x27;auto_detect_line_endings&#x27; is deprecated since PHP 8.1</li>
+<li><span class="mono">order-import-export-for-woocommerce/admin/classes/class-csvreader.php:262</span> — تابع/اکستنشن حذف‌شده: Function utf8_encode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+<li><span class="mono">order-import-export-for-woocommerce/admin/modules/order/import/import.php:697</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+<li><span class="mono">order-import-export-for-woocommerce/admin/modules/order/import/import.php:758</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+<li><span class="mono">order-import-export-for-woocommerce/admin/modules/order/import/import.php:1611</span> — تابع/اکستنشن حذف‌شده: Function strftime() is deprecated since PHP 8.1; Use date() or IntlDateFormatter::format() instead</li>
+</ul></div></details>
+<details><summary><b>Product Import Export for WooCommerce</b> <span class="badge">6 مورد</span></summary><div class="body"><ul class="f">
+<li><span class="mono">product-import-export-for-woo/admin/classes/class-csvreader.php:39</span> — تنظیم ini حذف‌شده: INI directive &#x27;auto_detect_line_endings&#x27; is deprecated since PHP 8.1</li>
+<li><span class="mono">product-import-export-for-woo/admin/classes/class-csvreader.php:130</span> — تنظیم ini حذف‌شده: INI directive &#x27;auto_detect_line_endings&#x27; is deprecated since PHP 8.1</li>
+<li><span class="mono">product-import-export-for-woo/admin/classes/class-csvreader.php:263</span> — تابع/اکستنشن حذف‌شده: Function utf8_encode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+<li><span class="mono">product-import-export-for-woo/admin/classes/class-csvwriter.php:122</span> — تابع/اکستنشن حذف‌شده: Function utf8_encode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+<li><span class="mono">product-import-export-for-woo/admin/modules/product/export/class-wt-prodimpexpcsv-basic-exporter.php:662</span> — تابع/اکستنشن حذف‌شده: Function utf8_encode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+<li><span class="mono">product-import-export-for-woo/admin/modules/product/export/export.php:648</span> — تابع/اکستنشن حذف‌شده: Function utf8_encode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+</ul></div></details>
+<details><summary><b>Woodmart Core</b> <span class="badge">2 مورد</span></summary><div class="body"><ul class="f">
+<li><span class="mono">woodmart-core/importer/parsers/class-wxr-parser-simplexml.php:21</span> — تابع/اکستنشن حذف‌شده: Function libxml_disable_entity_loader() is deprecated since PHP 8.0</li>
+<li><span class="mono">woodmart-core/importer/parsers/class-wxr-parser-simplexml.php:25</span> — تابع/اکستنشن حذف‌شده: Function libxml_disable_entity_loader() is deprecated since PHP 8.0</li>
+</ul></div></details>
+<details><summary><b>TeraWallet</b> <span class="badge">1 مورد</span></summary><div class="body"><ul class="f">
+<li><span class="mono">woo-wallet/includes/export/class-terawallet-csv-exporter.php:414</span> — تابع/اکستنشن حذف‌شده: Function utf8_encode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+</ul></div></details>
+<details><summary><b>WooCommerce</b> <span class="badge">1 مورد</span></summary><div class="body"><ul class="f">
+<li><span class="mono">woocommerce/includes/admin/importers/class-wc-tax-rate-importer.php:128</span> — تابع/اکستنشن حذف‌شده: Function utf8_encode() is deprecated since PHP 8.2; Use mb_convert_encoding(), UConverter::transcode() or icon</li>
+</ul></div></details>
+<h2>۴) جدول کامل همهٔ افزونه‌ها</h2>
+<div class="toolbar"><input id="q" placeholder="جستجوی نام افزونه..." oninput="filterAll()">
+<button class="f on" data-v="all" onclick="setV('all')">همه</button>
+<button class="f" data-v="بحرانی" onclick="setV('بحرانی')">بحرانی</button>
+<button class="f" data-v="پرخطر" onclick="setV('پرخطر')">پرخطر</button>
+<button class="f" data-v="نیاز به توجه" onclick="setV('نیاز به توجه')">نیاز به توجه</button>
+<button class="f" data-v="سالم" onclick="setV('سالم')">سالم</button></div>
+<table><thead><tr><th>وضعیت</th><th>افزونه</th><th>نسخه</th><th>Requires PHP</th>
+<th>فایل‌های PHP</th><th>رمزگذاری</th><th>Fatal</th><th>Deprecated 8.2</th><th>آینده (8.3+)</th></tr></thead><tbody id="tb">
+<tr class="row" data-v="بحرانی" data-n="elementor pro elementor-pro" onclick="openSlug('elementor-pro')">
+<td><span class="verdict v-critical">بحرانی</span></td>
+<td><b>Elementor Pro</b><br><span class="mono muted">elementor-pro</span></td>
+<td>3.8.1</td><td>—</td>
+<td>509</td>
+<td><b style="color:var(--red)">6 SourceGuardian</b></td>
+<td>—</td><td>19</td><td>27</td></tr>
+<tr class="row" data-v="بحرانی" data-n="digits: wordpress mobile number signup and login digits" onclick="openSlug('digits')">
+<td><span class="verdict v-critical">بحرانی</span></td>
+<td><b>DIGITS: WordPress Mobile Number Signup and Login</b><br><span class="mono muted">digits</span></td>
+<td>9.2.1</td><td>5.5</td>
+<td>1,294</td>
+<td><b style="color:var(--red)">268 ionCube</b></td>
+<td>—</td><td>16</td><td>97</td></tr>
+<tr class="row" data-v="بحرانی" data-n="zhaket smart updater zhaket-updater" onclick="openSlug('zhaket-updater')">
+<td><span class="verdict v-critical">بحرانی</span></td>
+<td><b>Zhaket Smart Updater</b><br><span class="mono muted">zhaket-updater</span></td>
+<td>4.2.4</td><td>7.4</td>
+<td>69</td>
+<td><b style="color:var(--red)">38 ionCube</b></td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="بحرانی" data-n="افزونه مدیریت هوشمند راست چین rtl-careunit" onclick="openSlug('RTL-CareUnit')">
+<td><span class="verdict v-critical">بحرانی</span></td>
+<td><b>افزونه مدیریت هوشمند راست چین</b><br><span class="mono muted">RTL-CareUnit</span></td>
+<td>2.5.2</td><td>7.4</td>
+<td>115</td>
+<td><b style="color:var(--red)">114 ionCube</b></td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="بحرانی" data-n="دکمه تماس شناور cta-button" onclick="openSlug('cta-button')">
+<td><span class="verdict v-critical">بحرانی</span></td>
+<td><b>دکمه تماس شناور</b><br><span class="mono muted">cta-button</span></td>
+<td>1.0</td><td>—</td>
+<td>3</td>
+<td><b style="color:var(--red)">1 ionCube</b></td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="بحرانی" data-n="فاکتور حرفه‌ای ووکامرس woocommerce-invoice" onclick="openSlug('woocommerce-invoice')">
+<td><span class="verdict v-critical">بحرانی</span></td>
+<td><b>فاکتور حرفه‌ای ووکامرس</b><br><span class="mono muted">woocommerce-invoice</span></td>
+<td>7.0.3</td><td>—</td>
+<td>564</td>
+<td><b style="color:var(--red)">24 SourceGuardian</b></td>
+<td>—</td><td>—</td><td>41</td></tr>
+<tr class="row" data-v="پرخطر" data-n="advanced order export for woocommerce woo-order-export-lite" onclick="openSlug('woo-order-export-lite')">
+<td><span class="verdict v-high">پرخطر</span></td>
+<td><b>Advanced Order Export For WooCommerce</b><br><span class="mono muted">woo-order-export-lite</span></td>
+<td>3.6.0</td><td>7.1.0</td>
+<td>269</td>
+<td>—</td>
+<td>1</td><td>10</td><td>89</td></tr>
+<tr class="row" data-v="پرخطر" data-n="wp-parsidate wp-parsidate" onclick="openSlug('wp-parsidate')">
+<td><span class="verdict v-high">پرخطر</span></td>
+<td><b>WP-Parsidate</b><br><span class="mono muted">wp-parsidate</span></td>
+<td>5.1.5</td><td>7.4</td>
+<td>42</td>
+<td>—</td>
+<td>1</td><td>—</td><td>16</td></tr>
+<tr class="row" data-v="پرخطر" data-n="افزونه حمل و نقل ووکامرس persian-woocommerce-shipping" onclick="openSlug('persian-woocommerce-shipping')">
+<td><span class="verdict v-high">پرخطر</span></td>
+<td><b>افزونه حمل و نقل ووکامرس</b><br><span class="mono muted">persian-woocommerce-shipping</span></td>
+<td>4.2.8</td><td>7.4</td>
+<td>43</td>
+<td>—</td>
+<td>1</td><td>—</td><td>4</td></tr>
+<tr class="row" data-v="نیاز به توجه" data-n="elementor elementor" onclick="openSlug('elementor')">
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+<td><b>Elementor</b><br><span class="mono muted">elementor</span></td>
+<td>3.27.4</td><td>7.4</td>
+<td>838</td>
+<td>—</td>
+<td>—</td><td>6</td><td>57</td></tr>
+<tr class="row" data-v="نیاز به توجه" data-n="order export &amp; order import for woocommerce order-import-export-for-woocommerce" onclick="openSlug('order-import-export-for-woocommerce')">
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+<td><b>Order Export &amp; Order Import for WooCommerce</b><br><span class="mono muted">order-import-export-for-woocommerce</span></td>
+<td>2.5.9</td><td>5.6</td>
+<td>85</td>
+<td>—</td>
+<td>—</td><td>6</td><td>4</td></tr>
+<tr class="row" data-v="نیاز به توجه" data-n="product import export for woocommerce product-import-export-for-woo" onclick="openSlug('product-import-export-for-woo')">
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+<td><b>Product Import Export for WooCommerce</b><br><span class="mono muted">product-import-export-for-woo</span></td>
+<td>2.4.4</td><td>5.6</td>
+<td>89</td>
+<td>—</td>
+<td>—</td><td>6</td><td>5</td></tr>
+<tr class="row" data-v="نیاز به توجه" data-n="woodmart core woodmart-core" onclick="openSlug('woodmart-core')">
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+<td><b>Woodmart Core</b><br><span class="mono muted">woodmart-core</span></td>
+<td>1.1.0</td><td>—</td>
+<td>31</td>
+<td>—</td>
+<td>—</td><td>2</td><td>12</td></tr>
+<tr class="row" data-v="نیاز به توجه" data-n="terawallet woo-wallet" onclick="openSlug('woo-wallet')">
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+<td><b>TeraWallet</b><br><span class="mono muted">woo-wallet</span></td>
+<td>1.5.10</td><td>7.4</td>
+<td>57</td>
+<td>—</td>
+<td>—</td><td>1</td><td>2</td></tr>
+<tr class="row" data-v="نیاز به توجه" data-n="woocommerce woocommerce" onclick="openSlug('woocommerce')">
+<td><span class="verdict v-medium">نیاز به توجه</span></td>
+<td><b>WooCommerce</b><br><span class="mono muted">woocommerce</span></td>
+<td>10.3.7</td><td>7.4</td>
+<td>3,316</td>
+<td>—</td>
+<td>—</td><td>1</td><td>15</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="admin menu editor admin-menu-editor" onclick="openSlug('admin-menu-editor')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>Admin Menu Editor</b><br><span class="mono muted">admin-menu-editor</span></td>
+<td>1.15.2</td><td>7.4</td>
+<td>246</td>
+<td>—</td>
+<td>—</td><td>—</td><td>1</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="automatic postal tracking for woocommerce bulk-tracking-upload" onclick="openSlug('bulk-tracking-upload')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>Automatic Postal Tracking for WooCommerce</b><br><span class="mono muted">bulk-tracking-upload</span></td>
+<td>3.7.0</td><td>7.4</td>
+<td>3</td>
+<td>—</td>
+<td>—</td><td>—</td><td>1</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="behpardakht woocommerce woo-behpardakht" onclick="openSlug('woo-behpardakht')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>Behpardakht Woocommerce</b><br><span class="mono muted">woo-behpardakht</span></td>
+<td>2.6.5</td><td>7.4</td>
+<td>25</td>
+<td>—</td>
+<td>—</td><td>—</td><td>23</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="code snippets code-snippets" onclick="openSlug('code-snippets')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>Code Snippets</b><br><span class="mono muted">code-snippets</span></td>
+<td>3.6.8</td><td>7.4</td>
+<td>158</td>
+<td>—</td>
+<td>—</td><td>—</td><td>3</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="digits: one click login/signup addon digoneclickls" onclick="openSlug('digoneclickls')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>DIGITS: One Click Login/Signup Addon</b><br><span class="mono muted">digoneclickls</span></td>
+<td>4.4</td><td>5.5</td>
+<td>40</td>
+<td>—</td>
+<td>—</td><td>—</td><td>6</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="fibosearch - ajax search for woocommerce (pro) ajax-search-for-woocommerce-premium" onclick="openSlug('ajax-search-for-woocommerce-premium')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>FiboSearch - AJAX Search for WooCommerce (Pro)</b><br><span class="mono muted">ajax-search-for-woocommerce-premium</span></td>
+<td>1.30.1</td><td>7.4</td>
+<td>422</td>
+<td>—</td>
+<td>—</td><td>—</td><td>12</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="loco translate loco-translate" onclick="openSlug('loco-translate')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>Loco Translate</b><br><span class="mono muted">loco-translate</span></td>
+<td>2.7.1</td><td>7.2.24</td>
+<td>241</td>
+<td>—</td>
+<td>—</td><td>—</td><td>23</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="plugin check (pcp) plugin-check" onclick="openSlug('plugin-check')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>Plugin Check (PCP)</b><br><span class="mono muted">plugin-check</span></td>
+<td>2.1.0</td><td>7.4</td>
+<td>1,606</td>
+<td>—</td>
+<td>—</td><td>—</td><td>137</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="snapppay woocommerce gateway snapppay-woocommerce-gateway" onclick="openSlug('snapppay-woocommerce-gateway')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>SnappPay Woocommerce Gateway</b><br><span class="mono muted">snapppay-woocommerce-gateway</span></td>
+<td>1.4.2</td><td>7.4</td>
+<td>5</td>
+<td>—</td>
+<td>—</td><td>—</td><td>1</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="surenapost surenapost" onclick="openSlug('surenapost')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>Surenapost</b><br><span class="mono muted">surenapost</span></td>
+<td>1.3.13</td><td>7.4</td>
+<td>24</td>
+<td>—</td>
+<td>—</td><td>—</td><td>2</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="tisacase exporter — مرکز خروجی تیساکیس tisacase-exporter" onclick="openSlug('tisacase-exporter')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>TisaCase Exporter — مرکز خروجی تیساکیس</b><br><span class="mono muted">tisacase-exporter</span></td>
+<td>2.1.6</td><td>7.4</td>
+<td>29</td>
+<td>—</td>
+<td>—</td><td>—</td><td>2</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="tisacase pricing tisacase-pricing" onclick="openSlug('tisacase-pricing')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>TisaCase Pricing</b><br><span class="mono muted">tisacase-pricing</span></td>
+<td>1.4.2</td><td>7.4</td>
+<td>28</td>
+<td>—</td>
+<td>—</td><td>—</td><td>13</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="wc sadad payment gateway sadad-woocommerce2" onclick="openSlug('sadad-woocommerce2')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>WC Sadad Payment gateway</b><br><span class="mono muted">sadad-woocommerce2</span></td>
+<td>5.1.0</td><td>—</td>
+<td>11</td>
+<td>—</td>
+<td>—</td><td>—</td><td>1</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="wp statistics wp-statistics" onclick="openSlug('wp-statistics')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>WP Statistics</b><br><span class="mono muted">wp-statistics</span></td>
+<td>14.12.6</td><td>7.2</td>
+<td>613</td>
+<td>—</td>
+<td>—</td><td>—</td><td>14</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="wp-optimize - clean, compress, cache wp-optimize" onclick="openSlug('wp-optimize')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>WP-Optimize - Clean, Compress, Cache</b><br><span class="mono muted">wp-optimize</span></td>
+<td>4.5.3</td><td>7.2</td>
+<td>592</td>
+<td>—</td>
+<td>—</td><td>—</td><td>51</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="waitlist woocommerce( back in stock notifier ) waitlist-woocommerce" onclick="openSlug('waitlist-woocommerce')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>Waitlist woocommerce( Back in stock notifier )</b><br><span class="mono muted">waitlist-woocommerce</span></td>
+<td>2.8.4</td><td>—</td>
+<td>77</td>
+<td>—</td>
+<td>—</td><td>—</td><td>1</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="yoast seo wordpress-seo" onclick="openSlug('wordpress-seo')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>Yoast SEO</b><br><span class="mono muted">wordpress-seo</span></td>
+<td>24.4</td><td>7.2.5</td>
+<td>1,124</td>
+<td>—</td>
+<td>—</td><td>—</td><td>88</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="اختصاصی تیساکیس (tisacase hub) tisacase-hub" onclick="openSlug('tisacase-hub')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>اختصاصی تیساکیس (TisaCase Hub)</b><br><span class="mono muted">tisacase-hub</span></td>
+<td>1.9.15</td><td>7.4</td>
+<td>10</td>
+<td>—</td>
+<td>—</td><td>—</td><td>2</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="ارسال سفارش‌ها به تلگرام ووکامرس wc-telegram-orders" onclick="openSlug('wc-telegram-orders')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>ارسال سفارش‌ها به تلگرام ووکامرس</b><br><span class="mono muted">wc-telegram-orders</span></td>
+<td>1.14.3</td><td>7.4</td>
+<td>4</td>
+<td>—</td>
+<td>—</td><td>—</td><td>2</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="افزونه درگاه پرداخت الکترونیک سامان (سپ) ووکامرس zhaket-woo-sep" onclick="openSlug('zhaket-woo-sep')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>افزونه درگاه پرداخت الکترونیک سامان (سپ) ووکامرس</b><br><span class="mono muted">zhaket-woo-sep</span></td>
+<td>1.3.0</td><td>—</td>
+<td>3</td>
+<td>—</td>
+<td>—</td><td>—</td><td>3</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="افزونه وردپرس پنل پیامکی ایده پردازان smsirapp" onclick="openSlug('SMSIRApp')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>افزونه وردپرس پنل پیامکی ایده پردازان</b><br><span class="mono muted">SMSIRApp</span></td>
+<td>1.0.26</td><td>7.0</td>
+<td>14</td>
+<td>—</td>
+<td>—</td><td>—</td><td>7</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="مرکز بهینه‌سازی تیساکیس (tisacase optimizer) tisacase-optimizer" onclick="openSlug('tisacase-optimizer')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>مرکز بهینه‌سازی تیساکیس (TisaCase Optimizer)</b><br><span class="mono muted">tisacase-optimizer</span></td>
+<td>1.3.4</td><td>7.4</td>
+<td>33</td>
+<td>—</td>
+<td>—</td><td>—</td><td>2</td></tr>
+<tr class="row" data-v="تقریباً سالم" data-n="ووکامرس فارسی persian-woocommerce" onclick="openSlug('persian-woocommerce')">
+<td><span class="verdict v-info">تقریباً سالم</span></td>
+<td><b>ووکامرس فارسی</b><br><span class="mono muted">persian-woocommerce</span></td>
+<td>9.3.4</td><td>7.4</td>
+<td>254</td>
+<td>—</td>
+<td>—</td><td>—</td><td>27</td></tr>
+<tr class="row" data-v="سالم" data-n="bulk product cleaner (drafts + images) bulk-product-cleaner" onclick="openSlug('bulk-product-cleaner')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Bulk Product Cleaner (Drafts + Images)</b><br><span class="mono muted">bulk-product-cleaner</span></td>
+<td>12.6.3</td><td>7.4</td>
+<td>11</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="checkout field editor for woocommerce woo-checkout-field-editor-pro" onclick="openSlug('woo-checkout-field-editor-pro')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Checkout Field Editor for WooCommerce</b><br><span class="mono muted">woo-checkout-field-editor-pro</span></td>
+<td>2.1.4</td><td>5.6</td>
+<td>39</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="litespeed cache litespeed-cache" onclick="openSlug('litespeed-cache')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>LiteSpeed Cache</b><br><span class="mono muted">litespeed-cache</span></td>
+<td>7.9.1</td><td>7.4</td>
+<td>212</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="members members" onclick="openSlug('members')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Members</b><br><span class="mono muted">members</span></td>
+<td>3.2.18</td><td>7.4</td>
+<td>112</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="page links to page-links-to" onclick="openSlug('page-links-to')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Page Links To</b><br><span class="mono muted">page-links-to</span></td>
+<td>3.3.7</td><td>—</td>
+<td>8</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="peprodev woocommerce receipt uploader pepro-bacs-receipt-upload-for-woocommerce" onclick="openSlug('pepro-bacs-receipt-upload-for-woocommerce')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>PeproDev WooCommerce Receipt Uploader</b><br><span class="mono muted">pepro-bacs-receipt-upload-for-woocommerce</span></td>
+<td>2.8.0</td><td>5.6</td>
+<td>19</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="tisa product zip importer tisa-product-importer" onclick="openSlug('tisa-product-importer')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Tisa Product ZIP Importer</b><br><span class="mono muted">tisa-product-importer</span></td>
+<td>0.8.0</td><td>—</td>
+<td>4</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="tisacase order phone exporter tisacase-order-phone-exporter" onclick="openSlug('tisacase-order-phone-exporter')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase Order Phone Exporter</b><br><span class="mono muted">tisacase-order-phone-exporter</span></td>
+<td>1.5.0</td><td>7.4</td>
+<td>15</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="tisacase order wallet reporter tisacase-order-wallet-reporter" onclick="openSlug('tisacase-order-wallet-reporter')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase Order Wallet Reporter</b><br><span class="mono muted">tisacase-order-wallet-reporter</span></td>
+<td>1.0.0</td><td>7.4</td>
+<td>1</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="tisacase — قوانین توضیحات محصول tisacase-product-description" onclick="openSlug('tisacase-product-description')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — قوانین توضیحات محصول</b><br><span class="mono muted">tisacase-product-description</span></td>
+<td>1.6.2</td><td>7.4</td>
+<td>7</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="tisacase — مدیریت انبوه موجودی tisacase-bulk-stock-manager" onclick="openSlug('tisacase-bulk-stock-manager')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — مدیریت انبوه موجودی</b><br><span class="mono muted">tisacase-bulk-stock-manager</span></td>
+<td>1.4.3</td><td>7.4</td>
+<td>7</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="tisacase — مدیریت گروهی متغیرها و مدل‌ها tisacase-bulk-variation-manager" onclick="openSlug('tisacase-bulk-variation-manager')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — مدیریت گروهی متغیرها و مدل‌ها</b><br><span class="mono muted">tisacase-bulk-variation-manager</span></td>
+<td>2.3.1</td><td>7.4</td>
+<td>7</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="tisacase — همگام‌سازی موجودی با همکار tisacase-ariocase-sync" onclick="openSlug('tisacase-ariocase-sync')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — همگام‌سازی موجودی با همکار</b><br><span class="mono muted">tisacase-ariocase-sync</span></td>
+<td>1.28.0</td><td>7.4</td>
+<td>39</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="tisacase — کارت به کارت تیساکیس tisacase-card-to-card" onclick="openSlug('tisacase-card-to-card')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>TisaCase — کارت به کارت تیساکیس</b><br><span class="mono muted">tisacase-card-to-card</span></td>
+<td>1.4.0</td><td>7.4</td>
+<td>19</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="variation swatches for woocommerce woo-variation-swatches" onclick="openSlug('woo-variation-swatches')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Variation Swatches for WooCommerce</b><br><span class="mono muted">woo-variation-swatches</span></td>
+<td>2.2.0</td><td>7.4</td>
+<td>39</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="variation swatches for woocommerce - pro woo-variation-swatches-pro" onclick="openSlug('woo-variation-swatches-pro')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>Variation Swatches for WooCommerce - Pro</b><br><span class="mono muted">woo-variation-swatches-pro</span></td>
+<td>2.2.0</td><td>7.4</td>
+<td>32</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="woocommerce sku prefix bar wc-sku-prefix-bar" onclick="openSlug('wc-sku-prefix-bar')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>WooCommerce SKU Prefix Bar</b><br><span class="mono muted">wc-sku-prefix-bar</span></td>
+<td>1.5.3</td><td>7.2</td>
+<td>3</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+<tr class="row" data-v="سالم" data-n="پکیج ویژه قاب موبایل case-special-package" onclick="openSlug('case-special-package')">
+<td><span class="verdict v-ok">سالم</span></td>
+<td><b>پکیج ویژه قاب موبایل</b><br><span class="mono muted">case-special-package</span></td>
+<td>1.5.4</td><td>7.4</td>
+<td>2</td>
+<td>—</td>
+<td>—</td><td>—</td><td>—</td></tr>
+</tbody></table>
+<h2>۵) جزئیات هر افزونه</h2>
+<details id="d-elementor-pro"><summary><span class="verdict v-critical">بحرانی</span><b>Elementor Pro</b><span class="badge">elementor-pro</span><span class="badge">نسخه 3.8.1</span><span class="badge">509 فایل</span><span class="badge">آخرین تغییر 2025-02-24</span></summary><div class="body">
+<div class="reason r-critical"><div class="t">کد رمزگذاری‌شده با SourceGuardian</div><div>6 فایل این افزونه با SourceGuardian رمزگذاری شده و فایلی که فایل اصلی آن را include می‌کند (elementor-pro/abzarwp/abzarwp.php) هم جزو آن‌هاست. اجرای این فایل‌ها نیازمند نصب Loader سازگار با PHP 8.2 روی هاست است. اگر Loader نصب نباشد یا نسخه‌اش با 8.2 هم‌خوان نباشد، همان لحظهٔ لود شدن افزونه پیام «Script error: ... requires the SourceGuardian PHP Loader» چاپ شده و سایت از کار می‌افتد.</div></div>
+<div class="reason r-medium"><div class="t">19 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده، نوشتن ${var} داخل رشته؛ فایل‌ها: elementor-pro/abzarwp/abzarwp-v12.php، elementor-pro/abzarwp/abzarwp-v13.php، elementor-pro/abzarwp/update-v12.php</div></div>
+<div class="reason r-info"><div class="t">27 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-ok"><div class="t">4 موردِ بی‌خطر (کدِ اجرا‌نشدنی)</div><div>مواردی که ابزار گزارش کرده ولی با بررسی دستی مشخص شد یا با شرط محافظت شده‌اند، یا مربوط به نسخه‌های بسیار قدیمی‌تر از نسخهٔ فعلی شما هستند و مسیرشان اجرا نمی‌شود.</div></div>
+<div class="muted" style="margin-top:8px">مهم‌ترین اخطارها:</div><ul class="f">
+<li class="mono">elementor-pro/abzarwp/abzarwp-v12.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/abzarwp-v12.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/abzarwp-v12.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/abzarwp-v12.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/abzarwp-v13.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/abzarwp-v13.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/abzarwp-v13.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/abzarwp-v13.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/update-v12.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/update-v12.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/update-v12.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/update-v12.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/update-v13.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/update-v13.php:2 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor-pro/abzarwp/update-v13.php:2 — تابع/اکستنشن حذف‌شده</li>
+</ul>
+</div></details>
+<details id="d-digits"><summary><span class="verdict v-critical">بحرانی</span><b>DIGITS: WordPress Mobile Number Signup and Login</b><span class="badge">digits</span><span class="badge">نسخه 9.2.1</span><span class="badge">1294 فایل</span><span class="badge">آخرین تغییر 2026-10-05</span></summary><div class="body">
+<div class="reason r-critical"><div class="t">کد رمزگذاری‌شده با ionCube</div><div>268 فایل این افزونه با ionCube رمزگذاری شده و فایل اصلی افزونه هم جزو آن‌هاست. اجرای این فایل‌ها نیازمند نصب Loader سازگار با PHP 8.2 روی هاست است. اگر Loader نصب نباشد یا نسخه‌اش با 8.2 هم‌خوان نباشد، همان لحظهٔ لود شدن افزونه پیام «Script error: ... requires the ionCube PHP Loader» چاپ شده و سایت از کار می‌افتد.</div></div>
+<div class="reason r-medium"><div class="t">19 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده، پارامتر اختیاری پیش از اجباری، پیاده‌سازی Serializable؛ فایل‌ها: digits/gateways/1b1/nusoap-php5.3.php، digits/gateways/1b1/nusoap-php7.php، digits/gateways/aradpayamak/nusoap-php5.3.php</div></div>
+<div class="reason r-info"><div class="t">97 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-ok"><div class="t">307 موردِ بی‌خطر (کدِ اجرا‌نشدنی)</div><div>مواردی که ابزار گزارش کرده ولی با بررسی دستی مشخص شد یا با شرط محافظت شده‌اند، یا مربوط به نسخه‌های بسیار قدیمی‌تر از نسخهٔ فعلی شما هستند و مسیرشان اجرا نمی‌شود.</div></div>
+<div class="reason r-info"><div class="t">3 اخطار در کتابخانه‌های همراه (vendor)</div><div>این اخطارها در کدِ کتابخانه‌های ثالثِ همراهِ افزونه هستند، نه در کد خود افزونه. تا وقتی آن کتابخانه به‌روز نشود فقط در لاگ دیده می‌شوند.</div></div>
+<div class="muted" style="margin-top:8px">مهم‌ترین اخطارها:</div><ul class="f">
+<li class="mono">digits/gateways/1b1/nusoap-php5.3.php:960 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">digits/gateways/1b1/nusoap-php5.3.php:2767 — پارامتر اختیاری پیش از اجباری</li>
+<li class="mono">digits/gateways/1b1/nusoap-php5.3.php:2767 — پارامتر اختیاری پیش از اجباری</li>
+<li class="mono">digits/gateways/1b1/nusoap-php5.3.php:7225 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">digits/gateways/1b1/nusoap-php7.php:890 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">digits/gateways/1b1/nusoap-php7.php:2673 — پارامتر اختیاری پیش از اجباری</li>
+<li class="mono">digits/gateways/1b1/nusoap-php7.php:2673 — پارامتر اختیاری پیش از اجباری</li>
+<li class="mono">digits/gateways/1b1/nusoap-php7.php:7086 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">digits/gateways/aradpayamak/nusoap-php5.3.php:960 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">digits/gateways/aradpayamak/nusoap-php5.3.php:2767 — پارامتر اختیاری پیش از اجباری</li>
+<li class="mono">digits/gateways/aradpayamak/nusoap-php5.3.php:2767 — پارامتر اختیاری پیش از اجباری</li>
+<li class="mono">digits/gateways/aradpayamak/nusoap-php5.3.php:7225 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">digits/gateways/aradpayamak/nusoap-php7.php:890 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">digits/gateways/aradpayamak/nusoap-php7.php:2673 — پارامتر اختیاری پیش از اجباری</li>
+<li class="mono">digits/gateways/aradpayamak/nusoap-php7.php:2673 — پارامتر اختیاری پیش از اجباری</li>
+</ul>
+</div></details>
+<details id="d-zhaket-updater"><summary><span class="verdict v-critical">بحرانی</span><b>Zhaket Smart Updater</b><span class="badge">zhaket-updater</span><span class="badge">نسخه 4.2.4</span><span class="badge">69 فایل</span><span class="badge">آخرین تغییر 2026-10-05</span></summary><div class="body">
+<div class="reason r-critical"><div class="t">کد رمزگذاری‌شده با ionCube</div><div>38 فایل این افزونه با ionCube رمزگذاری شده و فایلی که فایل اصلی آن را include می‌کند (zhaket-updater/vendor/autoload.php) هم جزو آن‌هاست. اجرای این فایل‌ها نیازمند نصب Loader سازگار با PHP 8.2 روی هاست است. اگر Loader نصب نباشد یا نسخه‌اش با 8.2 هم‌خوان نباشد، همان لحظهٔ لود شدن افزونه پیام «Script error: ... requires the ionCube PHP Loader» چاپ شده و سایت از کار می‌افتد.</div></div>
+</div></details>
+<details id="d-RTL-CareUnit"><summary><span class="verdict v-critical">بحرانی</span><b>افزونه مدیریت هوشمند راست چین</b><span class="badge">RTL-CareUnit</span><span class="badge">نسخه 2.5.2</span><span class="badge">115 فایل</span><span class="badge">آخرین تغییر 2025-03-04</span></summary><div class="body">
+<div class="reason r-critical"><div class="t">کد رمزگذاری‌شده با ionCube</div><div>114 فایل این افزونه با ionCube رمزگذاری شده و فایلی که فایل اصلی آن را include می‌کند (RTL-CareUnit/vendor/autoload.php) هم جزو آن‌هاست. اجرای این فایل‌ها نیازمند نصب Loader سازگار با PHP 8.2 روی هاست است. اگر Loader نصب نباشد یا نسخه‌اش با 8.2 هم‌خوان نباشد، همان لحظهٔ لود شدن افزونه پیام «Script error: ... requires the ionCube PHP Loader» چاپ شده و سایت از کار می‌افتد.</div></div>
+</div></details>
+<details id="d-cta-button"><summary><span class="verdict v-critical">بحرانی</span><b>دکمه تماس شناور</b><span class="badge">cta-button</span><span class="badge">نسخه 1.0</span><span class="badge">3 فایل</span><span class="badge">آخرین تغییر 2026-04-15</span></summary><div class="body">
+<div class="reason r-critical"><div class="t">کد رمزگذاری‌شده با ionCube</div><div>1 فایل این افزونه با ionCube رمزگذاری شده و فایلی که فایل اصلی آن را include می‌کند (cta-button/includes.php) هم جزو آن‌هاست. اجرای این فایل‌ها نیازمند نصب Loader سازگار با PHP 8.2 روی هاست است. اگر Loader نصب نباشد یا نسخه‌اش با 8.2 هم‌خوان نباشد، همان لحظهٔ لود شدن افزونه پیام «Script error: ... requires the ionCube PHP Loader» چاپ شده و سایت از کار می‌افتد.</div></div>
+</div></details>
+<details id="d-woocommerce-invoice"><summary><span class="verdict v-critical">بحرانی</span><b>فاکتور حرفه‌ای ووکامرس</b><span class="badge">woocommerce-invoice</span><span class="badge">نسخه 7.0.3</span><span class="badge">564 فایل</span><span class="badge">آخرین تغییر 2026-10-05</span></summary><div class="body">
+<div class="reason r-critical"><div class="t">کد رمزگذاری‌شده با SourceGuardian</div><div>24 فایل این افزونه با SourceGuardian رمزگذاری شده و فایل اصلی افزونه هم جزو آن‌هاست. اجرای این فایل‌ها نیازمند نصب Loader سازگار با PHP 8.2 روی هاست است. اگر Loader نصب نباشد یا نسخه‌اش با 8.2 هم‌خوان نباشد، همان لحظهٔ لود شدن افزونه پیام «Script error: ... requires the SourceGuardian PHP Loader» چاپ شده و سایت از کار می‌افتد.</div></div>
+<div class="reason r-medium"><div class="t">5 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده؛ فایل‌ها: woocommerce-invoice/vendor/nesbot/carbon/src/Carbon/Traits/Date.php، woocommerce-invoice/vendor/symfony/translation/Util/XliffUtils.php</div></div>
+<div class="reason r-info"><div class="t">41 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-info"><div class="t">5 اخطار در کتابخانه‌های همراه (vendor)</div><div>این اخطارها در کدِ کتابخانه‌های ثالثِ همراهِ افزونه هستند، نه در کد خود افزونه. تا وقتی آن کتابخانه به‌روز نشود فقط در لاگ دیده می‌شوند.</div></div>
+</div></details>
+<details id="d-woo-order-export-lite"><summary><span class="verdict v-high">پرخطر</span><b>Advanced Order Export For WooCommerce</b><span class="badge">woo-order-export-lite</span><span class="badge">نسخه 3.6.0</span><span class="badge">269 فایل</span><span class="badge">آخرین تغییر 2025-03-09</span></summary><div class="body">
+<div class="reason r-high"><div class="t">فراخوانی تابع حذف‌شده: FunctionUse.RemovedFunctions.get_magic_quotes_runtimeDeprecatedRemoved</div><div>woo-order-export-lite/classes/PHPExcel/Shared/PCLZip/pclzip.lib.php:4851 — Function get_magic_quotes_runtime() is deprecated since PHP 7.4 and removed since PHP 8.0 — در PCLZip هنگام ساخت فایل زیپ خروجی اجرا می‌شود و روی PHP 8 خطای Fatal می‌دهد</div></div>
+<div class="reason r-medium"><div class="t">10 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده، تنظیم ini حذف‌شده؛ فایل‌ها: woo-order-export-lite/classes/FPDF/class-woe-pdf-mc-table.php، woo-order-export-lite/classes/PHPExcel/Calculation/DateTime.php، woo-order-export-lite/classes/PHPExcel/Reader/CSV.php</div></div>
+<div class="reason r-info"><div class="t">89 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<ul class="f">
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Shared/PCLZip/pclzip.lib.php:4851 — Function get_magic_quotes_runtime() is deprecated since PHP 7.4 and removed since PHP 8.0</li>
+</ul>
+<div class="muted" style="margin-top:8px">مهم‌ترین اخطارها:</div><ul class="f">
+<li class="mono">woo-order-export-lite/classes/FPDF/class-woe-pdf-mc-table.php:549 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Calculation/DateTime.php:537 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Calculation/DateTime.php:557 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Calculation/DateTime.php:563 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Calculation/DateTime.php:566 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Reader/CSV.php:248 — تنظیم ini حذف‌شده</li>
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Reader/CSV.php:249 — تنظیم ini حذف‌شده</li>
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Reader/CSV.php:307 — تنظیم ini حذف‌شده</li>
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Settings.php:366 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">woo-order-export-lite/classes/PHPExcel/Settings.php:385 — تابع/اکستنشن حذف‌شده</li>
+</ul>
+</div></details>
+<details id="d-wp-parsidate"><summary><span class="verdict v-high">پرخطر</span><b>WP-Parsidate</b><span class="badge">wp-parsidate</span><span class="badge">نسخه 5.1.5</span><span class="badge">42 فایل</span><span class="badge">آخرین تغییر 2025-02-24</span></summary><div class="body">
+<div class="reason r-high"><div class="t">فراخوانی تابع حذف‌شده: ParameterValues.RemovedImplodeFlexibleParamOrder.Removed</div><div>wp-parsidate/includes/plugins/wc-gateways/lib/class-rsa.php:218 — Passing the $glue and $pieces parameters in reverse order to implode has been deprecated since PHP 7.4 and is removed since PHP 8.0; $glue should be the first parameter and $pieces the second — در PHP 8.0 حذف شده و فراخوانی آن خطای Fatal می‌دهد</div></div>
+<div class="reason r-medium"><div class="t">1 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده؛ فایل‌ها: wp-parsidate/includes/plugins/wc-gateways/lib/nusoap.php</div></div>
+<div class="reason r-info"><div class="t">16 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-ok"><div class="t">35 موردِ بی‌خطر (کدِ اجرا‌نشدنی)</div><div>مواردی که ابزار گزارش کرده ولی با بررسی دستی مشخص شد یا با شرط محافظت شده‌اند، یا مربوط به نسخه‌های بسیار قدیمی‌تر از نسخهٔ فعلی شما هستند و مسیرشان اجرا نمی‌شود.</div></div>
+<div class="reason r-info"><div class="t">1 اخطار در کتابخانه‌های همراه (vendor)</div><div>این اخطارها در کدِ کتابخانه‌های ثالثِ همراهِ افزونه هستند، نه در کد خود افزونه. تا وقتی آن کتابخانه به‌روز نشود فقط در لاگ دیده می‌شوند.</div></div>
+<ul class="f">
+<li class="mono">wp-parsidate/includes/plugins/wc-gateways/lib/class-rsa.php:218 — Passing the $glue and $pieces parameters in reverse order to implode has been deprecated since PHP 7.4 and is removed si</li>
+</ul>
+</div></details>
+<details id="d-persian-woocommerce-shipping"><summary><span class="verdict v-high">پرخطر</span><b>افزونه حمل و نقل ووکامرس</b><span class="badge">persian-woocommerce-shipping</span><span class="badge">نسخه 4.2.8</span><span class="badge">43 فایل</span><span class="badge">آخرین تغییر 2025-08-26</span></summary><div class="body">
+<div class="reason r-high"><div class="t">فراخوانی تابع حذف‌شده: FunctionUse.RemovedFunctions.create_functionDeprecatedRemoved</div><div>persian-woocommerce-shipping/includes/admin/class-settings.php:113 — Function create_function() is deprecated since PHP 7.2 and removed since PHP 8.0; Use an anonymous function instead — در ساخت صفحهٔ تنظیمات حمل‌ونقل (مدیریت) اجرا می‌شود و روی PHP 8 خطای Fatal می‌دهد</div></div>
+<div class="reason r-info"><div class="t">4 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<ul class="f">
+<li class="mono">persian-woocommerce-shipping/includes/admin/class-settings.php:113 — Function create_function() is deprecated since PHP 7.2 and removed since PHP 8.0; Use an anonymous function instead</li>
+</ul>
+</div></details>
+<details id="d-elementor"><summary><span class="verdict v-medium">نیاز به توجه</span><b>Elementor</b><span class="badge">elementor</span><span class="badge">نسخه 3.27.4</span><span class="badge">838 فایل</span><span class="badge">آخرین تغییر 2025-08-23</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">6 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده، نوشتن ${var} داخل رشته؛ فایل‌ها: elementor/core/utils/import-export/parsers/wxr-parser-simple-xml.php، elementor/core/utils/import-export/wp-exporter.php، elementor/core/utils/svg/svg-sanitizer.php</div></div>
+<div class="reason r-info"><div class="t">57 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="muted" style="margin-top:8px">مهم‌ترین اخطارها:</div><ul class="f">
+<li class="mono">elementor/core/utils/import-export/parsers/wxr-parser-simple-xml.php:47 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor/core/utils/import-export/parsers/wxr-parser-simple-xml.php:53 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor/core/utils/import-export/wp-exporter.php:170 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor/core/utils/svg/svg-sanitizer.php:87 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor/core/utils/svg/svg-sanitizer.php:112 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">elementor/modules/global-classes/global-classes-repository.php:35 — نوشتن ${var} داخل رشته</li>
+</ul>
+</div></details>
+<details id="d-order-import-export-for-woocommerce"><summary><span class="verdict v-medium">نیاز به توجه</span><b>Order Export &amp; Order Import for WooCommerce</b><span class="badge">order-import-export-for-woocommerce</span><span class="badge">نسخه 2.5.9</span><span class="badge">85 فایل</span><span class="badge">آخرین تغییر 2025-02-24</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">6 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده، تنظیم ini حذف‌شده؛ فایل‌ها: order-import-export-for-woocommerce/admin/classes/class-csvreader.php، order-import-export-for-woocommerce/admin/modules/order/import/import.php</div></div>
+<div class="reason r-info"><div class="t">4 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="muted" style="margin-top:8px">مهم‌ترین اخطارها:</div><ul class="f">
+<li class="mono">order-import-export-for-woocommerce/admin/classes/class-csvreader.php:39 — تنظیم ini حذف‌شده</li>
+<li class="mono">order-import-export-for-woocommerce/admin/classes/class-csvreader.php:130 — تنظیم ini حذف‌شده</li>
+<li class="mono">order-import-export-for-woocommerce/admin/classes/class-csvreader.php:262 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">order-import-export-for-woocommerce/admin/modules/order/import/import.php:697 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">order-import-export-for-woocommerce/admin/modules/order/import/import.php:758 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">order-import-export-for-woocommerce/admin/modules/order/import/import.php:1611 — تابع/اکستنشن حذف‌شده</li>
+</ul>
+</div></details>
+<details id="d-product-import-export-for-woo"><summary><span class="verdict v-medium">نیاز به توجه</span><b>Product Import Export for WooCommerce</b><span class="badge">product-import-export-for-woo</span><span class="badge">نسخه 2.4.4</span><span class="badge">89 فایل</span><span class="badge">آخرین تغییر 2026-10-06</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">6 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده، تنظیم ini حذف‌شده؛ فایل‌ها: product-import-export-for-woo/admin/classes/class-csvreader.php، product-import-export-for-woo/admin/classes/class-csvwriter.php، product-import-export-for-woo/admin/modules/product/export/class-wt-prodimpexpcsv-basic-exporter.php</div></div>
+<div class="reason r-info"><div class="t">5 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="muted" style="margin-top:8px">مهم‌ترین اخطارها:</div><ul class="f">
+<li class="mono">product-import-export-for-woo/admin/classes/class-csvreader.php:39 — تنظیم ini حذف‌شده</li>
+<li class="mono">product-import-export-for-woo/admin/classes/class-csvreader.php:130 — تنظیم ini حذف‌شده</li>
+<li class="mono">product-import-export-for-woo/admin/classes/class-csvreader.php:263 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">product-import-export-for-woo/admin/classes/class-csvwriter.php:122 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">product-import-export-for-woo/admin/modules/product/export/class-wt-prodimpexpcsv-basic-exporter.php:662 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">product-import-export-for-woo/admin/modules/product/export/export.php:648 — تابع/اکستنشن حذف‌شده</li>
+</ul>
+</div></details>
+<details id="d-woodmart-core"><summary><span class="verdict v-medium">نیاز به توجه</span><b>Woodmart Core</b><span class="badge">woodmart-core</span><span class="badge">نسخه 1.1.0</span><span class="badge">31 فایل</span><span class="badge">آخرین تغییر 2025-02-24</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">4 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده؛ فایل‌ها: woodmart-core/importer/parsers/class-wxr-parser-simplexml.php، woodmart-core/vendor/opauth/twitteroauth/OAuth.php</div></div>
+<div class="reason r-info"><div class="t">12 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-info"><div class="t">2 اخطار در کتابخانه‌های همراه (vendor)</div><div>این اخطارها در کدِ کتابخانه‌های ثالثِ همراهِ افزونه هستند، نه در کد خود افزونه. تا وقتی آن کتابخانه به‌روز نشود فقط در لاگ دیده می‌شوند.</div></div>
+<div class="muted" style="margin-top:8px">مهم‌ترین اخطارها:</div><ul class="f">
+<li class="mono">woodmart-core/importer/parsers/class-wxr-parser-simplexml.php:21 — تابع/اکستنشن حذف‌شده</li>
+<li class="mono">woodmart-core/importer/parsers/class-wxr-parser-simplexml.php:25 — تابع/اکستنشن حذف‌شده</li>
+</ul>
+</div></details>
+<details id="d-woo-wallet"><summary><span class="verdict v-medium">نیاز به توجه</span><b>TeraWallet</b><span class="badge">woo-wallet</span><span class="badge">نسخه 1.5.10</span><span class="badge">57 فایل</span><span class="badge">آخرین تغییر 2025-04-04</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">1 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده؛ فایل‌ها: woo-wallet/includes/export/class-terawallet-csv-exporter.php</div></div>
+<div class="reason r-info"><div class="t">2 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="muted" style="margin-top:8px">مهم‌ترین اخطارها:</div><ul class="f">
+<li class="mono">woo-wallet/includes/export/class-terawallet-csv-exporter.php:414 — تابع/اکستنشن حذف‌شده</li>
+</ul>
+</div></details>
+<details id="d-woocommerce"><summary><span class="verdict v-medium">نیاز به توجه</span><b>WooCommerce</b><span class="badge">woocommerce</span><span class="badge">نسخه 10.3.7</span><span class="badge">3316 فایل</span><span class="badge">آخرین تغییر 2025-12-23</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">1 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده؛ فایل‌ها: woocommerce/includes/admin/importers/class-wc-tax-rate-importer.php</div></div>
+<div class="reason r-info"><div class="t">15 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-ok"><div class="t">1 موردِ بی‌خطر (کدِ اجرا‌نشدنی)</div><div>مواردی که ابزار گزارش کرده ولی با بررسی دستی مشخص شد یا با شرط محافظت شده‌اند، یا مربوط به نسخه‌های بسیار قدیمی‌تر از نسخهٔ فعلی شما هستند و مسیرشان اجرا نمی‌شود.</div></div>
+<div class="muted" style="margin-top:8px">مهم‌ترین اخطارها:</div><ul class="f">
+<li class="mono">woocommerce/includes/admin/importers/class-wc-tax-rate-importer.php:128 — تابع/اکستنشن حذف‌شده</li>
+</ul>
+</div></details>
+<details id="d-admin-menu-editor"><summary><span class="verdict v-info">تقریباً سالم</span><b>Admin Menu Editor</b><span class="badge">admin-menu-editor</span><span class="badge">نسخه 1.15.2</span><span class="badge">246 فایل</span><span class="badge">آخرین تغییر 2026-08-30</span></summary><div class="body">
+<div class="reason r-info"><div class="t">1 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-ok"><div class="t">1 موردِ بی‌خطر (کدِ اجرا‌نشدنی)</div><div>مواردی که ابزار گزارش کرده ولی با بررسی دستی مشخص شد یا با شرط محافظت شده‌اند، یا مربوط به نسخه‌های بسیار قدیمی‌تر از نسخهٔ فعلی شما هستند و مسیرشان اجرا نمی‌شود.</div></div>
+</div></details>
+<details id="d-bulk-tracking-upload"><summary><span class="verdict v-info">تقریباً سالم</span><b>Automatic Postal Tracking for WooCommerce</b><span class="badge">bulk-tracking-upload</span><span class="badge">نسخه 3.7.0</span><span class="badge">3 فایل</span><span class="badge">آخرین تغییر 2026-10-31</span></summary><div class="body">
+<div class="reason r-info"><div class="t">1 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-woo-behpardakht"><summary><span class="verdict v-info">تقریباً سالم</span><b>Behpardakht Woocommerce</b><span class="badge">woo-behpardakht</span><span class="badge">نسخه 2.6.5</span><span class="badge">25 فایل</span><span class="badge">آخرین تغییر 2026-09-07</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">8 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده، پارامتر اختیاری پیش از اجباری؛ فایل‌ها: woo-behpardakht/inc/lib/class.nusoap_base.php، woo-behpardakht/inc/lib/class.soap_parser.php، woo-behpardakht/inc/lib/class.soap_transport_http.php</div></div>
+<div class="reason r-info"><div class="t">23 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-ok"><div class="t">78 موردِ بی‌خطر (کدِ اجرا‌نشدنی)</div><div>مواردی که ابزار گزارش کرده ولی با بررسی دستی مشخص شد یا با شرط محافظت شده‌اند، یا مربوط به نسخه‌های بسیار قدیمی‌تر از نسخهٔ فعلی شما هستند و مسیرشان اجرا نمی‌شود.</div></div>
+<div class="reason r-info"><div class="t">8 اخطار در کتابخانه‌های همراه (vendor)</div><div>این اخطارها در کدِ کتابخانه‌های ثالثِ همراهِ افزونه هستند، نه در کد خود افزونه. تا وقتی آن کتابخانه به‌روز نشود فقط در لاگ دیده می‌شوند.</div></div>
+</div></details>
+<details id="d-code-snippets"><summary><span class="verdict v-info">تقریباً سالم</span><b>Code Snippets</b><span class="badge">code-snippets</span><span class="badge">نسخه 3.6.8</span><span class="badge">158 فایل</span><span class="badge">آخرین تغییر 2025-02-26</span></summary><div class="body">
+<div class="reason r-info"><div class="t">3 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-digoneclickls"><summary><span class="verdict v-info">تقریباً سالم</span><b>DIGITS: One Click Login/Signup Addon</b><span class="badge">digoneclickls</span><span class="badge">نسخه 4.4</span><span class="badge">40 فایل</span><span class="badge">آخرین تغییر 2025-11-24</span></summary><div class="body">
+<div class="reason r-info"><div class="t">6 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-ajax-search-for-woocommerce-premium"><summary><span class="verdict v-info">تقریباً سالم</span><b>FiboSearch - AJAX Search for WooCommerce (Pro)</b><span class="badge">ajax-search-for-woocommerce-premium</span><span class="badge">نسخه 1.30.1</span><span class="badge">422 فایل</span><span class="badge">آخرین تغییر 2025-06-27</span></summary><div class="body">
+<div class="reason r-info"><div class="t">12 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-loco-translate"><summary><span class="verdict v-info">تقریباً سالم</span><b>Loco Translate</b><span class="badge">loco-translate</span><span class="badge">نسخه 2.7.1</span><span class="badge">241 فایل</span><span class="badge">آخرین تغییر 2025-02-24</span></summary><div class="body">
+<div class="reason r-info"><div class="t">23 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-plugin-check"><summary><span class="verdict v-info">تقریباً سالم</span><b>Plugin Check (PCP)</b><span class="badge">plugin-check</span><span class="badge">نسخه 2.1.0</span><span class="badge">1606 فایل</span><span class="badge">آخرین تغییر 2026-10-24</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">1 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تنظیم ini حذف‌شده؛ فایل‌ها: plugin-check/vendor/squizlabs/php_codesniffer/src/Runner.php</div></div>
+<div class="reason r-info"><div class="t">137 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-ok"><div class="t">2 موردِ بی‌خطر (کدِ اجرا‌نشدنی)</div><div>مواردی که ابزار گزارش کرده ولی با بررسی دستی مشخص شد یا با شرط محافظت شده‌اند، یا مربوط به نسخه‌های بسیار قدیمی‌تر از نسخهٔ فعلی شما هستند و مسیرشان اجرا نمی‌شود.</div></div>
+<div class="reason r-info"><div class="t">1 اخطار در کتابخانه‌های همراه (vendor)</div><div>این اخطارها در کدِ کتابخانه‌های ثالثِ همراهِ افزونه هستند، نه در کد خود افزونه. تا وقتی آن کتابخانه به‌روز نشود فقط در لاگ دیده می‌شوند.</div></div>
+</div></details>
+<details id="d-snapppay-woocommerce-gateway"><summary><span class="verdict v-info">تقریباً سالم</span><b>SnappPay Woocommerce Gateway</b><span class="badge">snapppay-woocommerce-gateway</span><span class="badge">نسخه 1.4.2</span><span class="badge">5 فایل</span><span class="badge">آخرین تغییر 2026-10-31</span></summary><div class="body">
+<div class="reason r-info"><div class="t">1 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-surenapost"><summary><span class="verdict v-info">تقریباً سالم</span><b>Surenapost</b><span class="badge">surenapost</span><span class="badge">نسخه 1.3.13</span><span class="badge">24 فایل</span><span class="badge">آخرین تغییر 2026-10-26</span></summary><div class="body">
+<div class="reason r-info"><div class="t">2 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-tisacase-exporter"><summary><span class="verdict v-info">تقریباً سالم</span><b>TisaCase Exporter — مرکز خروجی تیساکیس</b><span class="badge">tisacase-exporter</span><span class="badge">نسخه 2.1.6</span><span class="badge">29 فایل</span><span class="badge">آخرین تغییر 2026-10-27</span></summary><div class="body">
+<div class="reason r-info"><div class="t">2 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-tisacase-pricing"><summary><span class="verdict v-info">تقریباً سالم</span><b>TisaCase Pricing</b><span class="badge">tisacase-pricing</span><span class="badge">نسخه 1.4.2</span><span class="badge">28 فایل</span><span class="badge">آخرین تغییر 2026-10-28</span></summary><div class="body">
+<div class="reason r-info"><div class="t">13 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-sadad-woocommerce2"><summary><span class="verdict v-info">تقریباً سالم</span><b>WC Sadad Payment gateway</b><span class="badge">sadad-woocommerce2</span><span class="badge">نسخه 5.1.0</span><span class="badge">11 فایل</span><span class="badge">آخرین تغییر 2026-10-05</span></summary><div class="body">
+<div class="reason r-info"><div class="t">1 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-wp-statistics"><summary><span class="verdict v-info">تقریباً سالم</span><b>WP Statistics</b><span class="badge">wp-statistics</span><span class="badge">نسخه 14.12.6</span><span class="badge">613 فایل</span><span class="badge">آخرین تغییر 2025-03-25</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">1 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده؛ فایل‌ها: wp-statistics/includes/libraries/ExportData.php</div></div>
+<div class="reason r-info"><div class="t">14 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-info"><div class="t">1 اخطار در کتابخانه‌های همراه (vendor)</div><div>این اخطارها در کدِ کتابخانه‌های ثالثِ همراهِ افزونه هستند، نه در کد خود افزونه. تا وقتی آن کتابخانه به‌روز نشود فقط در لاگ دیده می‌شوند.</div></div>
+</div></details>
+<details id="d-wp-optimize"><summary><span class="verdict v-info">تقریباً سالم</span><b>WP-Optimize - Clean, Compress, Cache</b><span class="badge">wp-optimize</span><span class="badge">نسخه 4.5.3</span><span class="badge">592 فایل</span><span class="badge">آخرین تغییر 2026-05-05</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">7 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده، نوشتن ${var} داخل رشته؛ فایل‌ها: wp-optimize/vendor/monolog/monolog/src/Monolog/Handler/ChromePHPHandler.php، wp-optimize/vendor/monolog/monolog/src/Monolog/Utils.php، wp-optimize/vendor/mrclay/minify/lib/Minify/ScssCssSource.php</div></div>
+<div class="reason r-info"><div class="t">51 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-ok"><div class="t">53 موردِ بی‌خطر (کدِ اجرا‌نشدنی)</div><div>مواردی که ابزار گزارش کرده ولی با بررسی دستی مشخص شد یا با شرط محافظت شده‌اند، یا مربوط به نسخه‌های بسیار قدیمی‌تر از نسخهٔ فعلی شما هستند و مسیرشان اجرا نمی‌شود.</div></div>
+<div class="reason r-info"><div class="t">7 اخطار در کتابخانه‌های همراه (vendor)</div><div>این اخطارها در کدِ کتابخانه‌های ثالثِ همراهِ افزونه هستند، نه در کد خود افزونه. تا وقتی آن کتابخانه به‌روز نشود فقط در لاگ دیده می‌شوند.</div></div>
+</div></details>
+<details id="d-waitlist-woocommerce"><summary><span class="verdict v-info">تقریباً سالم</span><b>Waitlist woocommerce( Back in stock notifier )</b><span class="badge">waitlist-woocommerce</span><span class="badge">نسخه 2.8.4</span><span class="badge">77 فایل</span><span class="badge">آخرین تغییر 2025-11-06</span></summary><div class="body">
+<div class="reason r-info"><div class="t">1 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-wordpress-seo"><summary><span class="verdict v-info">تقریباً سالم</span><b>Yoast SEO</b><span class="badge">wordpress-seo</span><span class="badge">نسخه 24.4</span><span class="badge">1124 فایل</span><span class="badge">آخرین تغییر 2025-02-24</span></summary><div class="body">
+<div class="reason r-info"><div class="t">88 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-tisacase-hub"><summary><span class="verdict v-info">تقریباً سالم</span><b>اختصاصی تیساکیس (TisaCase Hub)</b><span class="badge">tisacase-hub</span><span class="badge">نسخه 1.9.15</span><span class="badge">10 فایل</span><span class="badge">آخرین تغییر 2026-10-14</span></summary><div class="body">
+<div class="reason r-info"><div class="t">2 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-wc-telegram-orders"><summary><span class="verdict v-info">تقریباً سالم</span><b>ارسال سفارش‌ها به تلگرام ووکامرس</b><span class="badge">wc-telegram-orders</span><span class="badge">نسخه 1.14.3</span><span class="badge">4 فایل</span><span class="badge">آخرین تغییر 2026-10-27</span></summary><div class="body">
+<div class="reason r-info"><div class="t">2 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-zhaket-woo-sep"><summary><span class="verdict v-info">تقریباً سالم</span><b>افزونه درگاه پرداخت الکترونیک سامان (سپ) ووکامرس</b><span class="badge">zhaket-woo-sep</span><span class="badge">نسخه 1.3.0</span><span class="badge">3 فایل</span><span class="badge">آخرین تغییر 2026-10-12</span></summary><div class="body">
+<div class="reason r-info"><div class="t">3 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-SMSIRApp"><summary><span class="verdict v-info">تقریباً سالم</span><b>افزونه وردپرس پنل پیامکی ایده پردازان</b><span class="badge">SMSIRApp</span><span class="badge">نسخه 1.0.26</span><span class="badge">14 فایل</span><span class="badge">آخرین تغییر 2025-02-24</span></summary><div class="body">
+<div class="reason r-info"><div class="t">7 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-tisacase-optimizer"><summary><span class="verdict v-info">تقریباً سالم</span><b>مرکز بهینه‌سازی تیساکیس (TisaCase Optimizer)</b><span class="badge">tisacase-optimizer</span><span class="badge">نسخه 1.3.4</span><span class="badge">33 فایل</span><span class="badge">آخرین تغییر 2026-10-26</span></summary><div class="body">
+<div class="reason r-info"><div class="t">2 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+</div></details>
+<details id="d-persian-woocommerce"><summary><span class="verdict v-info">تقریباً سالم</span><b>ووکامرس فارسی</b><span class="badge">persian-woocommerce</span><span class="badge">نسخه 9.3.4</span><span class="badge">254 فایل</span><span class="badge">آخرین تغییر 2026-02-08</span></summary><div class="body">
+<div class="reason r-medium"><div class="t">6 اخطار منسوخ‌شدگی مرتبط با PHP 8.2/8.1</div><div>این موارد سایت را از کار نمی‌اندازند ولی در لاگ خطا نویز ایجاد می‌کنند و اگر در پاسخ AJAX/JSON چاپ شوند می‌توانند درخواست‌ها را خراب کنند. مهم‌ترین‌ها: تابع/اکستنشن حذف‌شده؛ فایل‌ها: persian-woocommerce/vendor/econea/nusoap/src/nusoap.php، persian-woocommerce/vendor/nesbot/carbon/src/Carbon/Traits/Date.php، persian-woocommerce/vendor/symfony/translation/Util/XliffUtils.php</div></div>
+<div class="reason r-info"><div class="t">27 مورد برای PHP 8.3 به بعد</div><div>این‌ها روی 8.2 مشکلی ندارند و فقط برای ارتقاهای آینده مهم‌اند.</div></div>
+<div class="reason r-ok"><div class="t">35 موردِ بی‌خطر (کدِ اجرا‌نشدنی)</div><div>مواردی که ابزار گزارش کرده ولی با بررسی دستی مشخص شد یا با شرط محافظت شده‌اند، یا مربوط به نسخه‌های بسیار قدیمی‌تر از نسخهٔ فعلی شما هستند و مسیرشان اجرا نمی‌شود.</div></div>
+<div class="reason r-info"><div class="t">6 اخطار در کتابخانه‌های همراه (vendor)</div><div>این اخطارها در کدِ کتابخانه‌های ثالثِ همراهِ افزونه هستند، نه در کد خود افزونه. تا وقتی آن کتابخانه به‌روز نشود فقط در لاگ دیده می‌شوند.</div></div>
+</div></details>
+<details id="d-bulk-product-cleaner"><summary><span class="verdict v-ok">سالم</span><b>Bulk Product Cleaner (Drafts + Images)</b><span class="badge">bulk-product-cleaner</span><span class="badge">نسخه 12.6.3</span><span class="badge">11 فایل</span><span class="badge">آخرین تغییر 2026-10-27</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-woo-checkout-field-editor-pro"><summary><span class="verdict v-ok">سالم</span><b>Checkout Field Editor for WooCommerce</b><span class="badge">woo-checkout-field-editor-pro</span><span class="badge">نسخه 2.1.4</span><span class="badge">39 فایل</span><span class="badge">آخرین تغییر 2025-08-26</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-litespeed-cache"><summary><span class="verdict v-ok">سالم</span><b>LiteSpeed Cache</b><span class="badge">litespeed-cache</span><span class="badge">نسخه 7.9.1</span><span class="badge">212 فایل</span><span class="badge">آخرین تغییر 2026-09-29</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-members"><summary><span class="verdict v-ok">سالم</span><b>Members</b><span class="badge">members</span><span class="badge">نسخه 3.2.18</span><span class="badge">112 فایل</span><span class="badge">آخرین تغییر 2025-09-14</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-page-links-to"><summary><span class="verdict v-ok">سالم</span><b>Page Links To</b><span class="badge">page-links-to</span><span class="badge">نسخه 3.3.7</span><span class="badge">8 فایل</span><span class="badge">آخرین تغییر 2025-08-05</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-pepro-bacs-receipt-upload-for-woocommerce"><summary><span class="verdict v-ok">سالم</span><b>PeproDev WooCommerce Receipt Uploader</b><span class="badge">pepro-bacs-receipt-upload-for-woocommerce</span><span class="badge">نسخه 2.8.0</span><span class="badge">19 فایل</span><span class="badge">آخرین تغییر 2025-08-12</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-tisa-product-importer"><summary><span class="verdict v-ok">سالم</span><b>Tisa Product ZIP Importer</b><span class="badge">tisa-product-importer</span><span class="badge">نسخه 0.8.0</span><span class="badge">4 فایل</span><span class="badge">آخرین تغییر 2026-10-02</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-tisacase-order-phone-exporter"><summary><span class="verdict v-ok">سالم</span><b>TisaCase Order Phone Exporter</b><span class="badge">tisacase-order-phone-exporter</span><span class="badge">نسخه 1.5.0</span><span class="badge">15 فایل</span><span class="badge">آخرین تغییر 2026-09-14</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-tisacase-order-wallet-reporter"><summary><span class="verdict v-ok">سالم</span><b>TisaCase Order Wallet Reporter</b><span class="badge">tisacase-order-wallet-reporter</span><span class="badge">نسخه 1.0.0</span><span class="badge">1 فایل</span><span class="badge">آخرین تغییر 2026-08-01</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-tisacase-product-description"><summary><span class="verdict v-ok">سالم</span><b>TisaCase — قوانین توضیحات محصول</b><span class="badge">tisacase-product-description</span><span class="badge">نسخه 1.6.2</span><span class="badge">7 فایل</span><span class="badge">آخرین تغییر 2026-10-27</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-tisacase-bulk-stock-manager"><summary><span class="verdict v-ok">سالم</span><b>TisaCase — مدیریت انبوه موجودی</b><span class="badge">tisacase-bulk-stock-manager</span><span class="badge">نسخه 1.4.3</span><span class="badge">7 فایل</span><span class="badge">آخرین تغییر 2026-10-27</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-tisacase-bulk-variation-manager"><summary><span class="verdict v-ok">سالم</span><b>TisaCase — مدیریت گروهی متغیرها و مدل‌ها</b><span class="badge">tisacase-bulk-variation-manager</span><span class="badge">نسخه 2.3.1</span><span class="badge">7 فایل</span><span class="badge">آخرین تغییر 2026-10-27</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-tisacase-ariocase-sync"><summary><span class="verdict v-ok">سالم</span><b>TisaCase — همگام‌سازی موجودی با همکار</b><span class="badge">tisacase-ariocase-sync</span><span class="badge">نسخه 1.28.0</span><span class="badge">39 فایل</span><span class="badge">آخرین تغییر 2026-10-28</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-tisacase-card-to-card"><summary><span class="verdict v-ok">سالم</span><b>TisaCase — کارت به کارت تیساکیس</b><span class="badge">tisacase-card-to-card</span><span class="badge">نسخه 1.4.0</span><span class="badge">19 فایل</span><span class="badge">آخرین تغییر 2026-10-25</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-woo-variation-swatches"><summary><span class="verdict v-ok">سالم</span><b>Variation Swatches for WooCommerce</b><span class="badge">woo-variation-swatches</span><span class="badge">نسخه 2.2.0</span><span class="badge">39 فایل</span><span class="badge">آخرین تغییر 2025-02-24</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-woo-variation-swatches-pro"><summary><span class="verdict v-ok">سالم</span><b>Variation Swatches for WooCommerce - Pro</b><span class="badge">woo-variation-swatches-pro</span><span class="badge">نسخه 2.2.0</span><span class="badge">32 فایل</span><span class="badge">آخرین تغییر 2025-02-28</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-wc-sku-prefix-bar"><summary><span class="verdict v-ok">سالم</span><b>WooCommerce SKU Prefix Bar</b><span class="badge">wc-sku-prefix-bar</span><span class="badge">نسخه 1.5.3</span><span class="badge">3 فایل</span><span class="badge">آخرین تغییر 2026-10-27</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<details id="d-case-special-package"><summary><span class="verdict v-ok">سالم</span><b>پکیج ویژه قاب موبایل</b><span class="badge">case-special-package</span><span class="badge">نسخه 1.5.4</span><span class="badge">2 فایل</span><span class="badge">آخرین تغییر 2026-10-27</span></summary><div class="body">
+<div class="reason r-ok"><div class="t">هیچ مورد مرتبطی با PHP 8.2 پیدا نشد</div></div>
+</div></details>
+<h2>۶) چک‌لیست عملیاتی برای رفتن به PHP 8.2</h2>
+<ol>
+<li><b>قبل از هر چیز بک‌آپ بگیرید</b> (فایل + دیتابیس) و یک نسخه از سایت را روی ساب‌دامین staging منتقل کنید.</li>
+<li>در cPanel/DirectAdmin بخش Select PHP Version را باز کنید و برای PHP 8.2 تیک
+<span class="kbd">ioncube_loader</span> و <span class="kbd">sourceguardian</span> را فعال کنید
+(اگر گزینه ندارید، از هاست بخواهید نصب کند).</li>
+<li>وردپرس را به آخرین نسخه (حداقل 6.6) و ووکامرس را به‌روز کنید؛ نسخهٔ فعلی شما 10.3.7 است و از نظر 8.2 مشکلی ندارد.</li>
+<li>افزونه‌های <b>فاکتور حرفه‌ای ووکامرس</b> و <b>المنتور پرو</b> را از ناشرشان (woocommerce.ir / ارائه‌دهنده) نسخهٔ سازگار با PHP 8.2 بگیرید؛
+اگر نسخهٔ جدید ندادند، باید غیرفعال شوند.</li>
+<li>افزونه‌های <b>حمل‌ونقل ووکامرس</b> و <b>پی‌پی‌زد/درگاه‌های بانکی wp-parsidate</b> را به‌روز کنید
+(<span class="kbd">create_function</span> و <span class="kbd">implode</span> معکوس در آن‌ها روی 8 می‌شکند).</li>
+<li>با افزونهٔ <span class="kbd">Health Check &amp; Troubleshooting</span> حالت Troubleshooting را فعال کنید و افزونه‌ها را یکی‌یکی
+روی PHP 8.2 روشن کنید تا مقصر دقیق مشخص شود (بدون اینکه بازدیدکننده‌ها خطا ببینند).</li>
+<li>خطاها را از <span class="kbd">wp-content/debug.log</span> بخوانید
+(در <span class="kbd">wp-config.php</span>: <span class="kbd">define('WP_DEBUG', true); define('WP_DEBUG_LOG', true); define('WP_DEBUG_DISPLAY', false);</span>).</li>
+</ol>
+<h2>۷) روش کار</h2>
+<p class="muted">هر 56 فایل زیپ بازگشایی شد و همهٔ 13,462 فایل PHP آن‌ها
+با <b>PHP_CodeSniffer + PHPCompatibility</b> (موتور PHP 8.2 واقعی، نسخهٔ 8.2.33) و با
+<code>--runtime-set testVersion 8.2-</code> اسکن شد؛ سپس هر خطای بحرانی خط‌به‌خط بازبینی شد تا
+کدهای مرده (کتابخانه‌های قدیمی همراه، فراخوانی‌های پشت شرطِ نسخه، تشخیص‌های اشتباه ابزار) حذف شوند.
+اسکریپت‌ها در پوشهٔ <span class="mono">analysis/</span> هستند و دوباره قابل اجرایند.</p>
+<p class="muted">محدودیت مهم: فایل‌های رمزگذاری‌شده (ionCube/SourceGuardian) قابل تحلیلِ کد نیستند؛
+برای آن‌ها فقط می‌توان گفت «نیازمند لودرِ سازگار با 8.2» و تشخیص نهایی با اجرای واقعی روی هاست است.</p>
+</div>
+<script>
+let cur='all';
+function setV(v){cur=v;document.querySelectorAll('button.f').forEach(b=>b.classList.toggle('on',b.dataset.v===v));filterAll();}
+function filterAll(){const q=document.getElementById('q').value.trim().toLowerCase();
+document.querySelectorAll('#tb tr').forEach(tr=>{const ok=(cur==='all'||tr.dataset.v===cur)&&(!q||tr.dataset.n.includes(q));
+tr.style.display=ok?'':'none';});}
+function openSlug(s){const el=document.getElementById('d-'+s);if(el){el.open=true;el.scrollIntoView({behavior:'smooth',block:'center'});
+el.style.outline='2px solid #5aa9ff';setTimeout(()=>el.style.outline='',1800);}}
+</script></body></html>

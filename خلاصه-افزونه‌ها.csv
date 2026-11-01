@@ -1,0 +1,57 @@
+﻿وضعیت,نام افزونه,پوشه,نسخه,Requires PHP,تست‌شده تا WP,فایل PHP,خط کد,فایل رمزگذاری‌شده,نوع رمزگذاری,خطای Fatal,Deprecated مرتبط با 8.2,موارد 8.3+,آخرین تغییر بسته
+بحرانی,Elementor Pro,elementor-pro,3.8.1,,,509,112873,6,SourceGuardian,,19,27,2025-02-24
+بحرانی,DIGITS: WordPress Mobile Number Signup and Login,digits,9.2.1,5.5,,1294,408474,268,ionCube,,16,97,2026-10-05
+بحرانی,Zhaket Smart Updater,zhaket-updater,4.2.4,7.4,6.7.1,69,31090,38,ionCube,,,,2026-10-05
+بحرانی,افزونه مدیریت هوشمند راست چین,RTL-CareUnit,2.5.2,7.4,,115,59200,114,ionCube,,,,2025-03-04
+بحرانی,دکمه تماس شناور,cta-button,1.0,,,3,1431,1,ionCube,,,,2026-04-15
+بحرانی,فاکتور حرفه‌ای ووکامرس,woocommerce-invoice,7.0.3,,,564,83787,24,SourceGuardian,,,41,2026-10-05
+پرخطر,Advanced Order Export For WooCommerce,woo-order-export-lite,3.6.0,7.1.0,6.7,269,126027,,,1,10,89,2025-03-09
+پرخطر,WP-Parsidate,wp-parsidate,5.1.5,7.4,6.7.1,42,19859,,,1,,16,2025-02-24
+پرخطر,افزونه حمل و نقل ووکامرس,persian-woocommerce-shipping,4.2.8,7.4,6.7.1,43,11877,,,1,,4,2025-08-26
+نیاز به توجه,Elementor,elementor,3.27.4,7.4,6.7,838,155127,,,,6,57,2025-08-23
+نیاز به توجه,Order Export & Order Import for WooCommerce,order-import-export-for-woocommerce,2.5.9,5.6,6.7.1,85,21139,,,,6,4,2025-02-24
+نیاز به توجه,Product Import Export for WooCommerce,product-import-export-for-woo,2.4.4,5.6,6.5.3,89,20755,,,,6,5,2026-10-06
+نیاز به توجه,Woodmart Core,woodmart-core,1.1.0,,,31,7765,,,,2,12,2025-02-24
+نیاز به توجه,TeraWallet,woo-wallet,1.5.10,7.4,6.7,57,12437,,,,1,2,2025-04-04
+نیاز به توجه,WooCommerce,woocommerce,10.3.7,7.4,6.8,3316,646274,,,,1,15,2025-12-23
+تقریباً سالم,Admin Menu Editor,admin-menu-editor,1.15.2,7.4,7.1,246,40812,,,,,1,2026-08-30
+تقریباً سالم,Automatic Postal Tracking for WooCommerce,bulk-tracking-upload,3.7.0,7.4,,3,4243,,,,,1,2026-10-31
+تقریباً سالم,Behpardakht Woocommerce,woo-behpardakht,2.6.5,7.4,,25,19973,,,,,23,2026-09-07
+تقریباً سالم,Code Snippets,code-snippets,3.6.8,7.4,6.7.2,158,15277,,,,,3,2025-02-26
+تقریباً سالم,DIGITS: One Click Login/Signup Addon,digoneclickls,4.4,5.5,,40,9906,,,,,6,2025-11-24
+تقریباً سالم,FiboSearch - AJAX Search for WooCommerce (Pro),ajax-search-for-woocommerce-premium,1.30.1,7.4,6.7,422,109432,,,,,12,2025-06-27
+تقریباً سالم,Loco Translate,loco-translate,2.7.1,7.2.24,6.7.1,241,29026,,,,,23,2025-02-24
+تقریباً سالم,Plugin Check (PCP),plugin-check,2.1.0,7.4,7.0,1606,267312,,,,,137,2026-10-24
+تقریباً سالم,SnappPay Woocommerce Gateway,snapppay-woocommerce-gateway,1.4.2,7.4,,5,2026,,,,,1,2026-10-31
+تقریباً سالم,Surenapost,surenapost,1.3.13,7.4,6.9,24,9101,,,,,2,2026-10-26
+تقریباً سالم,TisaCase Exporter — مرکز خروجی تیساکیس,tisacase-exporter,2.1.6,7.4,,29,12213,,,,,2,2026-10-27
+تقریباً سالم,TisaCase Pricing,tisacase-pricing,1.4.2,7.4,,28,10601,,,,,13,2026-10-28
+تقریباً سالم,WC Sadad Payment gateway,sadad-woocommerce2,5.1.0,,,11,1974,,,,,1,2026-10-05
+تقریباً سالم,WP Statistics,wp-statistics,14.12.6,7.2,6.7,613,76314,,,,,14,2025-03-25
+تقریباً سالم,"WP-Optimize - Clean, Compress, Cache",wp-optimize,4.5.3,7.2,7.0,592,143640,,,,,51,2026-05-05
+تقریباً سالم,Waitlist woocommerce( Back in stock notifier ),waitlist-woocommerce,2.8.4,,6.8,77,15140,,,,,1,2025-11-06
+تقریباً سالم,Yoast SEO,wordpress-seo,24.4,7.2.5,6.7,1124,151125,,,,,88,2025-02-24
+تقریباً سالم,اختصاصی تیساکیس (TisaCase Hub),tisacase-hub,1.9.15,7.4,6.6,10,4326,,,,,2,2026-10-14
+تقریباً سالم,ارسال سفارش‌ها به تلگرام ووکامرس,wc-telegram-orders,1.14.3,7.4,,4,6183,,,,,2,2026-10-27
+تقریباً سالم,افزونه درگاه پرداخت الکترونیک سامان (سپ) ووکامرس,zhaket-woo-sep,1.3.0,,,3,1311,,,,,3,2026-10-12
+تقریباً سالم,افزونه وردپرس پنل پیامکی ایده پردازان,SMSIRApp,1.0.26,7.0,,14,4018,,,,,7,2025-02-24
+تقریباً سالم,مرکز بهینه‌سازی تیساکیس (TisaCase Optimizer),tisacase-optimizer,1.3.4,7.4,6.7,33,13611,,,,,2,2026-10-26
+تقریباً سالم,ووکامرس فارسی,persian-woocommerce,9.3.4,7.4,6.7.1,254,65541,,,,,27,2026-02-08
+سالم,Bulk Product Cleaner (Drafts + Images),bulk-product-cleaner,12.6.3,7.4,6.7,11,5573,,,,,,2026-10-27
+سالم,Checkout Field Editor for WooCommerce,woo-checkout-field-editor-pro,2.1.4,5.6,6.8,39,10261,,,,,,2025-08-26
+سالم,LiteSpeed Cache,litespeed-cache,7.9.1,7.4,7.1,212,58153,,,,,,2026-09-29
+سالم,Members,members,3.2.18,7.4,6.8,112,19110,,,,,,2025-09-14
+سالم,Page Links To,page-links-to,3.3.7,,6.4,8,1243,,,,,,2025-08-05
+سالم,PeproDev WooCommerce Receipt Uploader,pepro-bacs-receipt-upload-for-woocommerce,2.8.0,5.6,6.7,19,2263,,,,,,2025-08-12
+سالم,Tisa Product ZIP Importer,tisa-product-importer,0.8.0,,,4,993,,,,,,2026-10-02
+سالم,TisaCase Order Phone Exporter,tisacase-order-phone-exporter,1.5.0,7.4,,15,1967,,,,,,2026-09-14
+سالم,TisaCase Order Wallet Reporter,tisacase-order-wallet-reporter,1.0.0,7.4,,1,1021,,,,,,2026-08-01
+سالم,TisaCase — قوانین توضیحات محصول,tisacase-product-description,1.6.2,7.4,,7,2196,,,,,,2026-10-27
+سالم,TisaCase — مدیریت انبوه موجودی,tisacase-bulk-stock-manager,1.4.3,7.4,6.6,7,3930,,,,,,2026-10-27
+سالم,TisaCase — مدیریت گروهی متغیرها و مدل‌ها,tisacase-bulk-variation-manager,2.3.1,7.4,6.6,7,6683,,,,,,2026-10-27
+سالم,TisaCase — همگام‌سازی موجودی با همکار,tisacase-ariocase-sync,1.28.0,7.4,6.8,39,9870,,,,,,2026-10-28
+سالم,TisaCase — کارت به کارت تیساکیس,tisacase-card-to-card,1.4.0,7.4,,19,1298,,,,,,2026-10-25
+سالم,Variation Swatches for WooCommerce,woo-variation-swatches,2.2.0,7.4,6.7,39,9369,,,,,,2025-02-24
+سالم,Variation Swatches for WooCommerce - Pro,woo-variation-swatches-pro,2.2.0,7.4,6.7,32,7386,,,,,,2025-02-28
+سالم,WooCommerce SKU Prefix Bar,wc-sku-prefix-bar,1.5.3,7.2,,3,605,,,,,,2026-10-27
+سالم,پکیج ویژه قاب موبایل,case-special-package,1.5.4,7.4,,2,1783,,,,,,2026-10-27
