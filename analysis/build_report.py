@@ -409,6 +409,13 @@ def render_html(data):
 <p class="muted">تحلیل خودکارِ {t['plugins']} افزونه · {t['php_files']:,} فایل PHP · {t['php_lines']:,} خط کد
 · ابزار: PHP_CodeSniffer + PHPCompatibility روی موتور PHP 8.2.33 · تاریخ: {data['generated']}</p>""")
 
+    # pointer to the empirical test (phase 2)
+    parts.append("""<div class="note" style="border-color:#1d6b4c;background:#11251d"><b>تست عملی هم انجام شده:</b>
+این گزارش بر اساس <i>تحلیل کد</i> است. بعد از آن همهٔ افزونه‌ها روی یک وردپرس واقعی
+(WordPress 6.9.11) با PHP 8.2 هم نصب و اجرا شدند تا معلوم شود کدام‌ها <b>واقعاً</b> خطا می‌دهند.
+نتیجهٔ آن تست (۴ افزونه سایت را از کار می‌اندازند و ۲ افزونه فقط بی‌کار می‌مانند) در
+<a href="گزارش-تست-عملی-PHP-8.2.html" style="color:#7ce7b6">گزارش تست عملی</a> است.</div>""")
+
     # answer box
     parts.append(f"""<div class="note"><b>جواب کوتاه:</b> به احتمال خیلی زیاد مشکل شما از <b>کدهای رمزگذاری‌شده</b> است، نه از نسخهٔ PHP.
 <b>{len(enc_plugins)} افزونه</b> فایل‌هایی دارند که با ionCube یا SourceGuardian رمزگذاری شده‌اند

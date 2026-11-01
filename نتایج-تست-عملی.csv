@@ -1,0 +1,57 @@
+﻿وضعیت اجرا,نام افزونه,پوشه,نسخه,فعال شد,خطای فعال‌سازی,خطای مرگبار,خطای نحو,منسوخ‌شده,اخطار,صفحه‌های خراب,نتیجهٔ ماشین,تحلیل استاتیک,نخستین خطا
+سایت را از کار می‌اندازد,cta-button,cta-button,1.0,خیر,,0,0,0,0,7,رمزگذاری‌شده — سایت از کار افتاد,بحرانی,Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extensio
+سایت را از کار می‌اندازد,digits,digits,9.2.1,خیر,,0,8,0,0,7,خطای مرگبار,بحرانی,خطای مرگبار
+سایت را از کار می‌اندازد,elementor-pro,elementor-pro,3.8.1,خیر,,0,0,0,0,9,رمزگذاری‌شده — سایت از کار افتاد,بحرانی,PHP script '/tmp/wp/wordpress/wp-content/plugins/elementor-pro/abzarwp/abzarwp-v13.php' is protected by SourceGuardian a
+سایت را از کار می‌اندازد,zhaket-updater,zhaket-updater,4.2.4,خیر,,0,0,0,0,8,رمزگذاری‌شده — سایت از کار افتاد,بحرانی,Script error: the ionCube Loader for PHP needs to be installed. The ionCube Loader is the industry standard PHP extensio
+سایت بالاست ولی افزونه از کار می‌افتد,RTL-CareUnit,RTL-CareUnit,2.5.2,بله,,0,0,0,0,6,لودر ندارد — سایت بالاست، افزونه بی‌کار,بحرانی,لودر ندارد — سایت بالاست، افزونه بی‌کار
+سایت بالاست ولی افزونه از کار می‌افتد,woocommerce-invoice,woocommerce-invoice,7.0.3,بله,,0,0,0,0,0,سالم,بحرانی,سالم
+بالا می‌آید، اخطار در لاگ,code-snippets,code-snippets,3.6.8,بله,,0,0,2,3,0,با اخطار اجرا شد,تقریباً سالم,با اخطار اجرا شد
+بالا می‌آید، اخطار در لاگ,persian-woocommerce-shipping,persian-woocommerce-shipping,4.2.8,بله,,0,0,40,1,0,با اخطار اجرا شد,پرخطر,با اخطار اجرا شد
+بالا می‌آید، اخطار در لاگ,SMSIRApp,SMSIRApp,1.0.26,خیر,unexpected_output,0,0,0,3,0,فعال نشد,تقریباً سالم,OUTPUT: Warning:  Private methods cannot be final as they are never overridden by other classes in /tmp/wp/wordpress/wp-content/plugins/SMSIRApp/includes/SMSIRA
+بالا می‌آید، اخطار در لاگ,snapppay-woocommerce-gateway,snapppay-woocommerce-gateway,1.4.2,خیر,unexpected_output,0,0,63,8,0,فعال نشد,تقریباً سالم,OUTPUT: Warning:  Trying to access array offset on value of type bool in /tmp/wp/wordpress/wp-content/plugins/snapppay-woocommerce-gateway/functions.php on line
+بالا می‌آید، اخطار در لاگ,surenapost,surenapost,1.3.13,بله,,0,0,42,0,0,با اخطار اجرا شد,تقریباً سالم,با اخطار اجرا شد
+بالا می‌آید، اخطار در لاگ,tisacase-hub,tisacase-hub,1.9.15,بله,,0,0,0,1,0,با اخطار اجرا شد,تقریباً سالم,با اخطار اجرا شد
+خطای محیط تست (ربطی به 8.2 ندارد),elementor,elementor,3.27.4,بله,,1,0,1,8,2,خطای مرگبار,نیاز به توجه,[01-Nov-2026 12:55:58 UTC] PHP Fatal error:  Uncaught TypeError: Elementor\Modules\Home\Transformations\Filter_Plugins::get_add_ons_installation_status(): Argum
+سالم,admin-menu-editor,admin-menu-editor,1.15.2,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,ajax-search-for-woocommerce-premium,ajax-search-for-woocommerce-premium,1.30.1,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,bulk-product-cleaner,bulk-product-cleaner,12.6.3,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,bulk-tracking-upload,bulk-tracking-upload,3.7.0,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,case-special-package,case-special-package,1.5.4,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,digoneclickls,digoneclickls,4.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,litespeed-cache,litespeed-cache,7.9.1,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,loco-translate,loco-translate,2.7.1,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,members,members,3.2.18,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,order-import-export-for-woocommerce,order-import-export-for-woocommerce,2.5.9,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,page-links-to,page-links-to,3.3.7,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,pepro-bacs-receipt-upload-for-woocommerce,pepro-bacs-receipt-upload-for-woocommerce,2.8.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,persian-woocommerce,persian-woocommerce,9.3.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,plugin-check,plugin-check,2.1.0,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,product-import-export-for-woo,product-import-export-for-woo,2.4.4,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,sadad-woocommerce2,sadad-woocommerce2,5.1.0,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,tisa-product-importer,tisa-product-importer,0.8.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,tisacase-ariocase-sync,tisacase-ariocase-sync,1.28.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,tisacase-bulk-stock-manager,tisacase-bulk-stock-manager,1.4.3,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,tisacase-bulk-variation-manager,tisacase-bulk-variation-manager,2.3.1,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,tisacase-card-to-card,tisacase-card-to-card,1.4.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,tisacase-exporter,tisacase-exporter,2.1.6,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,tisacase-optimizer,tisacase-optimizer,1.3.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,tisacase-order-phone-exporter,tisacase-order-phone-exporter,1.5.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,tisacase-order-wallet-reporter,tisacase-order-wallet-reporter,1.0.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,tisacase-pricing,tisacase-pricing,1.4.2,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,tisacase-product-description,tisacase-product-description,1.6.2,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,waitlist-woocommerce,waitlist-woocommerce,2.8.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,wc-sku-prefix-bar,wc-sku-prefix-bar,1.5.3,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,wc-telegram-orders,wc-telegram-orders,1.14.3,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,woo-behpardakht,woo-behpardakht,2.6.5,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,woo-checkout-field-editor-pro,woo-checkout-field-editor-pro,2.1.4,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,woo-order-export-lite,woo-order-export-lite,3.6.0,بله,,0,0,0,0,0,سالم,پرخطر,سالم
+سالم,woo-variation-swatches,woo-variation-swatches,2.2.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,woo-variation-swatches-pro,woo-variation-swatches-pro,2.2.0,بله,,0,0,0,0,0,سالم,سالم,سالم
+سالم,woo-wallet,woo-wallet,1.5.10,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,woocommerce,woocommerce,10.3.7,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,woodmart-core,woodmart-core,1.1.0,بله,,0,0,0,0,0,سالم,نیاز به توجه,سالم
+سالم,wordpress-seo,wordpress-seo,24.4,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,wp-optimize,wp-optimize,4.5.3,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,wp-parsidate,wp-parsidate,5.1.5,بله,,0,0,0,0,0,سالم,پرخطر,سالم
+سالم,wp-statistics,wp-statistics,14.12.6,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
+سالم,zhaket-woo-sep,zhaket-woo-sep,1.3.0,بله,,0,0,0,0,0,سالم,تقریباً سالم,سالم
